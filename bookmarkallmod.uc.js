@@ -18,7 +18,7 @@ number:"15",                                            //条目限制，保存�
 savekey:"shift+alt+b",                                        //立刻保存
 switchkey:"shift+alt+n",                                    //实时启用禁用本次浏览保存，下次启动恢复bookmarkallon设定的值
 dateParse:"%Y/%m/%d %H:%M:%S",				// 日期格式,可以有空格之类的，年：%Y，月：%m，日：%d,，时：%H，分：%M，秒：%S
-//文件目录，可以中文，有节操无下限
+//文件目录，可以中文，有节操无下限,不限制下级目录个数
 dirs:[
 "Conversations", 
 
