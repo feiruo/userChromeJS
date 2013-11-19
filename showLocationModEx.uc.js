@@ -39,7 +39,6 @@ location == "chrome://browser/content/browser.xul" && gBrowser.addEventListener(
 			#identity-icon-country-label {\
 			 visibility: collapse !important;\
 			}\
-			#urlbar   {height:24px !important;}\
 			');
 		var style = document.createProcessingInstruction('xml-stylesheet', 'type="text/css" href="data:text/css;utf-8,' + encodeURIComponent(cssStr) + '"');
 		document.insertBefore(style, document.documentElement);

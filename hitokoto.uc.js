@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name            hitokoto.uc.js
-// @namespace         https://github.com/feiruo/userchromejs/blob/master/hitokoto.uc.js
 // @description     获取hitokoto一句话
-// @note            鼠标移到地址栏显示图标，移开显示文字，左键点击图标复制内容
+// @namespace         https://github.com/feiruo/userchromejs/
 // @author          feiruo
+// @note            鼠标移到地址栏显示图标，移开显示文字，左键点击图标复制内容
 // @charset      utf-8
 // @include         chrome://browser/content/browser.xul
 // @version         0.1

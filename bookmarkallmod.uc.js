@@ -1,11 +1,12 @@
 // ==UserScript==
 // @name         bookmarkallmod.uc.js
-// @namespace         https://github.com/feiruo/userchromejs/blob/master/bookmarkallmod.uc.js
 // @description  浏览器退出时保存所有页面
+// @namespace         https://github.com/feiruo/userchromejs/
+// @author       feiruo
 // @note         参考于jackchzj的bookmark_all_onclose，原脚本地址https://j.mozest.com/zh-CN/ucscript/script/58
 // @note        增加保存位置选择和条目限制等
+// @note        注意：因为最求功能使用了较多循环，可能造成进程延迟退出
 // @note        注意：因为用了与jackchzj原脚本不同的加入书签方法，所以对于未载入标签，存入的书签名是URL，只有载入之后才能获取标题
-// @author       feiruo
 // @charset      utf-8
 // @include      main
 // @version      1.1

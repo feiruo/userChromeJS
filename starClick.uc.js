@@ -5,11 +5,10 @@
 // @author         slimx
 // @homepage       http://g.mozest.com/viewthread.php?tid=41377
 // @version        0.0.2
-// @note        version20131118: mod by feiruo
+// @note        非AustralisUI版本
 // @note        为编辑面板增加更多功能
 // @note        修复右键删除当前书签
 // ==/UserScript==
-
 (function () {
     var onClick = function (aEvent) {
         if (aEvent.button == 0 && !this._pendingStmt) {
@@ -35,7 +34,7 @@
         }*/
     }.toString().replace(/^function.*{|}$/g, "");
 eval("StarUI._doShowEditBookmarkPanel="+StarUI._doShowEditBookmarkPanel.toString().replace(/hiddenRows: \[[^]*\]/,"hiddenRows: []").replace(/}$/,"setTimeout(function(){ gEditItemOverlay.toggleFolderTreeVisibility();/*此处为弹出更多标签gEditItemOverlay.toggleTagsSelector(); 此处为弹出更多标签*/document.getAnonymousNodes(document.getElementById('editBMPanel_tagsSelector'))[1].lastChild.style.display = 'inline-block';  document.getElementById('editBMPanel_tagsSelector').style.cssText = 'max-height:50px !important; width:300px !important'; document.getElementById('editBMPanel_folderTree').style.cssText = 'min-height:250px !important; max-width:300px !important';document.getElementById('editBookmarkPanel').style.maxHeight='800px'}, 0); $&"));
-})();
+
 
 //获取上次上次存放位置
 function _getLastFolderId()
@@ -71,3 +70,4 @@ if (location == "chrome://browser/content/browser.xul") {
             e.stopPropagation();
 			}
         }, false);})(document);}
+})();
