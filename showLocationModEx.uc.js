@@ -5,7 +5,7 @@
 // @include         chrome://browser/content/browser.xul
 // @author          紫云飞
 // @note            version20130617: mod by lastdream2013
-// @note            version20131118: mod by feiruo
+// @note            version20131122: mod by feiruo
 // ==/UserScript==
 
 (function () {
@@ -64,21 +64,21 @@ self.showFlag.addEventListener("click", function () {Cc['@mozilla.org/widget/cli
 		self.showFlagHash = [];
 		self.flagPath = 'http://www.razerzone.com/asset/images/icons/flags/' //备用：self.flagPath = 'http://www.1108.hk/images/ext/'
 	}
-	if(/^chrome:/.test(content.document.documentURI.substr(0,14))||/^about:/.test(content.document.documentURI.substr(0,14))||/^file:/.test(content.document.documentURI.substr(0,14))){
+		try{
+		var host = (event.originalTarget.location || content.location).hostname;
+	if(!host||/^chrome:/.test(content.document.documentURI.substr(0,14))||/^about:/.test(content.document.documentURI.substr(0,14))||/^file:/.test(content.document.documentURI.substr(0,14))){
 			(event.type == "TabSelect" || event.originalTarget == content.document) && (self.showFlag.src = self.flag);
 			return;
-		}else{
-		var host = (event.originalTarget.location || content.location).hostname;
-		try{
-		var ip = Cc["@mozilla.org/network/dns-service;1"].getService(Ci.nsIDNSService).resolve(host, 0).getNextAddrAsString();
-		}catch (e) {
-		var ip="127.0.0.1";}
-					try {
+		}
+		Components.classes["@mozilla.org/network/dns-service;1"].getService(Components.interfaces.nsIDNSService).asyncResolve(host, 0, {
+		onLookupComplete: function (inRequest, inRecord, inStatus) {
+		var ip = inRecord.getNextAddrAsString();
+		try {
 		var server = (gBrowser.mCurrentBrowser.webNavigation.currentDocumentChannel.QueryInterface(Components.interfaces.nsIHttpChannel).getResponseHeader("server").match(/\w+/) || ["\u672A\u77E5"])[0];
 }catch (e) {
 		var server="臣妾看不到啊~"
 	}
-		if (!self.showFlagHash[host]) {
+	if (!self.showFlagHash[host]) {
 			(event.type == "TabSelect" || event.originalTarget == content.document) && (self.showFlag.src = self.flag);
 			self.isReqFlagHash[host] = true;
 			let req = new XMLHttpRequest();
@@ -89,7 +89,6 @@ self.showFlag.addEventListener("click", function () {Cc['@mozilla.org/widget/cli
 					var responseObj = JSON.parse(req.responseText);
 					if (responseObj.code == 0) {
 						self.showFlagHash[host] = responseObj.data.country_id.toLocaleLowerCase();
-
 						host == content.location.hostname;
 						if (IsUserLocalFlag) {
 							self.showFlag.src = CountryFlags[self.showFlagHash[host]];
@@ -125,8 +124,11 @@ self.showFlagTooltipHash[host] = "国家：" + responseOb.country + "\n" +
 			} else {
 				self.showFlag.src = self.flagPath + self.showFlagHash[host] + ".gif";
 			}
-			self.showFlag.tooltipText = self.showFlagTooltipHash[host];
-		
-	} }
-}, false)
+			self.showFlag.tooltipText = self.showFlagTooltipHash[host];		
+	}
+		}	}, null);
+		}catch (e) {
+		(event.type == "TabSelect" || event.originalTarget == content.document) && (self.showFlag.src = self.flag);
+}
+ }, false)
 })();
