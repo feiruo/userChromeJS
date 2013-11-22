@@ -221,8 +221,6 @@ edit: function() {
     PopupMenu.appendChild(mi);
 		menu.addEventListener("popupshowing", this, false);
 		menu.appendChild(PopupMenu);
-		menu.setAttribute("context", "ucjs_UserAgentChanger_popup");
-		menu.setAttribute("onclick", "event.stopPropagation();");
 		
 	},
 	// URL 指定で User-Agent の書き換え(UserAgentSwitcher.uc.js より)
