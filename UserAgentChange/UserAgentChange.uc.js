@@ -110,7 +110,7 @@ edit: function() {
 		editor.initWithPath(editorPath);
 		}catch (e)  {
 			this.alert("请设置编辑器路径");
-			gBrowser.selectedTab = gBrowser.addTab('about:config?filter=view_source.editor.path');
+			toOpenWindowByType('pref:pref', 'about:config?filter=view_source.editor.path');
 			return;
 		}
 		var process = Cc['@mozilla.org/process/util;1'].createInstance(Ci.nsIProcess);
@@ -216,8 +216,9 @@ edit: function() {
 		var mi = document.createElement("menuitem");
 		mi.setAttribute('id', 'ucjs_UAChangerConfig');
 		mi.setAttribute('label', '重载UA配置');
+		mi.setAttribute("tooltiptext", '左键重载；右键编辑');
 		mi.setAttribute('oncommand', 'event.preventDefault(); ucjs_UAChanger.reload(true);');
-    mi.setAttribute('onclick', 'if (event.button == 2) {event.preventDefault(); ucjs_UAChanger.edit(); }');
+    mi.setAttribute('onclick', 'if (event.button == 2) {event.preventDefault(); closeMenus(event.currentTarget); ucjs_UAChanger.edit(); }');
     PopupMenu.appendChild(mi);
 		menu.addEventListener("popupshowing", this, false);
 		menu.appendChild(PopupMenu);
