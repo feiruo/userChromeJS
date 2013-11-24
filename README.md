@@ -7,7 +7,7 @@ userChromeJS
 
 
 bookmarkallmod.uc.js
-============
+-----------------------------------  
 
 
 退出浏览器的时候保存所有未关闭的页面为书签
@@ -16,7 +16,7 @@ bookmarkallmod.uc.js
 
 
 hitokoto.uc.js
-============
+-----------------------------------  
 
 
 获取hitokoto.us的一句话，并在地址栏显示
@@ -27,7 +27,7 @@ hitokoto.uc.js
 
 
 javascriptUrl.uc.js
-============
+-----------------------------------  
 
 
 地址栏执行 Javascript:
@@ -35,7 +35,7 @@ javascriptUrl.uc.js
 
 
 showLocationModEx.uc.js
-============
+-----------------------------------  
 
 
 根据lastdream2013的修改版再次修改
@@ -46,7 +46,7 @@ showLocationModEx.uc.js
 
 
 starClickMod.uc.js
-============
+-----------------------------------  
 
 
 多功能收藏按钮，支持UX版Fireofx
