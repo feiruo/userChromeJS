@@ -3,13 +3,13 @@
 // @description    多功能收藏星星
 // @homepage       https://github.com/feiruo/userchromejs/
 // @author         feiruo
-// @note        根据slimx大神的star Click修改 原脚本地址http://g.mozest.com/viewthread.php?tid=41377
-// @note        mozilla多次修改书签的的原因，这个脚本已经改的面目全非了，于是干脆重新写了一个..
-// @note        为编辑面板增加更多功能
-// @note        修复右键删除当前书签
-// @charset      utf-8
 // @include         chrome://browser/content/browser.xul
-// @version        0.5
+// @charset      utf-8
+// @version      1.0 
+// @note        参考star Click（http://g.mozest.com/viewthread.php?tid=41377）
+// @note        为编辑面板增加更多功能
+// @note        右键删除当前书签
+// @note        1.0 支持FF4+
 // ==/UserScript==
 (function () {
 if (location == "chrome://browser/content/browser.xul") {
@@ -54,5 +54,4 @@ try{
             e.stopPropagation();
 			}
     }, false);
-}
-})();
+}})();

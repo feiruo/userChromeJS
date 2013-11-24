@@ -3,10 +3,10 @@
 // @description     hitokoto一句话
 // @namespace         https://github.com/feiruo/userchromejs/
 // @author          feiruo
-// @note            获取hitokoto一句话，左键点击图标复制内容
-// @charset      utf-8
 // @include         chrome://browser/content/browser.xul
+// @charset      utf-8
 // @version         1.0
+// @note            获取hitokoto一句话，左键点击图标复制内容
 // ==/UserScript==
 (function () {
 var tip=0;  //0鼠标移到地址栏显示图标，移开显示文字;1弹出hitokoto一句话，
