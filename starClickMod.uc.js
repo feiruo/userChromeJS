@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name           star Click Mod
-// @description    多功能收藏星星
+// @description    多功能收藏按钮
 // @homepage       https://github.com/feiruo/userchromejs/
 // @author         feiruo
 // @include         chrome://browser/content/browser.xul
