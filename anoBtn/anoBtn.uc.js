@@ -8,7 +8,7 @@
 // @version      1.0 
 // @note        超感谢 ywzhaiqi  
 // @note        菜单按钮，外置配置文件.......
-// ==/UserScript==   
+// ==/UserScript==    
 (function() {
 	window.anobtn = {
 		get file() {
@@ -82,12 +82,11 @@
 				menuitem = $(obj.id);
 				if (menuitem) {
 					for (let[key, val] in Iterator(obj)) {
-						if (typeof val == "function") 
-						obj[key] = val = "(" + val.toSource() + ").call(this, event);";
+						if (typeof val == "function") obj[key] = val = "(" + val.toSource() + ").call(this, event);";
 						menuitem.setAttribute(key, val);
 					}
-						menuitem.classList.add("anobtn");
-						menuitem.classList.add("menu-iconic");
+					menuitem.classList.add("anobtn");
+					menuitem.classList.add("menu-iconic");
 				} else {
 					menuitem = obj.child ? this.newMenu(obj) : this.newMenuitem(obj);
 				}
@@ -230,22 +229,24 @@
 
 		edit: function(aFile) {
 			if (!aFile || !aFile.exists() || !aFile.isFile()) return;
-			var editorPath = Services.prefs.getCharPref("view_source.editor.path");
-			var editor = Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsILocalFile);
-			try {
-				editor.initWithPath(editorPath);
-			} catch (e) {
-				this.alert("请设置编辑器路径");
+			var editor = Services.prefs.getComplexValue("view_source.editor.path", Ci.nsILocalFile);
+			if (!editor.exists()) {
+				alert("编辑器的路径未设定。\n请设置 view_source.editor.path");
 				toOpenWindowByType('pref:pref', 'about:config?filter=view_source.editor.path');
+				openLinkIn(url, "tab", {
+					inBackground: false
+				});
 				return;
 			}
+			var UI = Cc["@mozilla.org/intl/scriptableunicodeconverter"].createInstance(Ci.nsIScriptableUnicodeConverter);
+			UI.charset = window.navigator.platform.toLowerCase().indexOf("win") >= 0 ? "gbk" : "UTF-8";
 			var process = Cc['@mozilla.org/process/util;1'].createInstance(Ci.nsIProcess);
+
 			try {
-				var UI = Cc["@mozilla.org/intl/scriptableunicodeconverter"].createInstance(Ci.nsIScriptableUnicodeConverter);
-				UI.charset = window.navigator.platform.toLowerCase().indexOf("win") >= 0 ? "GB2312" : "UTF-8";
 				var path = UI.ConvertFromUnicode(aFile.path);
+				var args = [path];
 				process.init(editor);
-				process.run(false, [path], 1);
+				process.run(false, args, args.length);
 			} catch (e) {}
 		},
 	}

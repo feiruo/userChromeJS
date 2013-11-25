@@ -10,7 +10,6 @@
 // @note         Ctrl+(right-click-up) => Reset Gesture
 // @charset      utf-8
 //==/UserScript==
-
 var ucjsMouseGestures = {
 	// options
 	enableWheelGestures: true,
@@ -21,8 +20,10 @@ var ucjsMouseGestures = {
 	_directionChain: '',
 	_isMouseDownL: false,
 	_isMouseDownR: false,
-	_hideFireContext: false, //for windows
-	_shouldFireContext: false, //for linux
+	_hideFireContext: false,
+	//for windows
+	_shouldFireContext: false,
+	//for linux
 	GESTURES: {},
 	createMenuitem: function() {
 		var menuitem = document.createElement('menuitem');
@@ -30,7 +31,7 @@ var ucjsMouseGestures = {
 		menuitem.setAttribute('label', '鼠标手势');
 		menuitem.setAttribute("tooltiptext", '左键重载；右键编辑');
 		menuitem.setAttribute('oncommand', 'ucjsMouseGestures.reload(true);');
-		menuitem.setAttribute('onclick', 'if (event.button == 2) { event.preventDefault(); ucjsMouseGestures.edit(ucjsMouseGestures.file); }');
+		menuitem.setAttribute('onclick', 'if (event.button == 2) { event.preventDefault(); closeMenus(event.currentTarget); ucjsMouseGestures.edit(ucjsMouseGestures.file); }');
 		var insPos = document.getElementById('devToolsSeparator');
 		insPos.parentNode.insertBefore(menuitem, insPos);
 	},
@@ -39,10 +40,8 @@ var ucjsMouseGestures = {
 		this.reload();
 		var self = this;
 		var events = ["mousedown", "mousemove", "mouseup", "contextmenu"];
-		if (this.enableRockerGestures)
-			events.push("draggesture");
-		if (this.enableWheelGestures)
-			events.push("DOMMouseScroll");
+		if (this.enableRockerGestures) events.push("draggesture");
+		if (this.enableWheelGestures) events.push("DOMMouseScroll");
 
 		function registerEvents(aAction, eventArray) {
 			eventArray.forEach(function(aType) {
@@ -58,19 +57,18 @@ var ucjsMouseGestures = {
 	reload: function(isAlert) {
 		var file = this.getMouseGesturesFile();
 		if (!file.exists()) return this.alert('Load Error: 配置文件不存在');
-		try{
-		this.importMouseGestures(file);
-		 } catch (e) {
-        this.alert('Error: ' + e + '\n请重新检查配置文件');
-        return;
-    }
+		try {
+			this.importMouseGestures(file);
+		} catch (e) {
+			this.alert('Error: ' + e + '\n请重新检查配置文件');
+			return;
+		}
 		if (isAlert) this.alert('配置已经重新载入');
 	},
-	
-alert : function(aString, aTitle) {
-    Cc['@mozilla.org/alerts-service;1'].getService(Ci.nsIAlertsService)
-        .showAlertNotification("", aTitle || "MouseGestures" , aString, false, "", null);
-},
+
+	alert: function(aString, aTitle) {
+		Cc['@mozilla.org/alerts-service;1'].getService(Ci.nsIAlertsService).showAlertNotification("", aTitle || "MouseGestures", aString, false, "", null);
+	},
 
 	getMouseGesturesFile: function() {
 		var aFile = Services.dirsvc.get("UChrm", Ci.nsILocalFile);
@@ -95,106 +93,107 @@ alert : function(aString, aTitle) {
 		this.GESTURES = new Function('', 'return ' + data)();
 		return;
 	},
-edit: function(aFile) {
+	edit: function(aFile) {
 		if (!aFile || !aFile.exists() || !aFile.isFile()) return;
-		var editorPath = Services.prefs.getCharPref("view_source.editor.path");
-		var editor = Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsILocalFile);
-		try{
-		editor.initWithPath(editorPath);
-		}catch (e)  {
-			this.alert("请设置编辑器路径");
-			gBrowser.selectedTab = gBrowser.addTab('about:config?filter=view_source.editor.path');
+		var editor = Services.prefs.getComplexValue("view_source.editor.path", Ci.nsILocalFile);
+		if (!editor.exists()) {
+			alert("编辑器的路径未设定。\n请设置 view_source.editor.path");
+			toOpenWindowByType('pref:pref', 'about:config?filter=view_source.editor.path');
+			openLinkIn(url, "tab", {
+				inBackground: false
+			});
 			return;
 		}
+		var UI = Cc["@mozilla.org/intl/scriptableunicodeconverter"].createInstance(Ci.nsIScriptableUnicodeConverter);
+		UI.charset = window.navigator.platform.toLowerCase().indexOf("win") >= 0 ? "gbk" : "UTF-8";
 		var process = Cc['@mozilla.org/process/util;1'].createInstance(Ci.nsIProcess);
+
 		try {
-			var UI = Cc["@mozilla.org/intl/scriptableunicodeconverter"].createInstance(Ci.nsIScriptableUnicodeConverter);
-			UI.charset = window.navigator.platform.toLowerCase().indexOf("win") >= 0 ? "GB2312" : "UTF-8";
 			var path = UI.ConvertFromUnicode(aFile.path);
+			var args = [path];
 			process.init(editor);
-			process.run(false, [path], 1);
+			process.run(false, args, args.length);
 		} catch (e) {}
 	},
 
 	handleEvent: function(event) {
 		switch (event.type) {
-			case "mousedown":
-				if (event.button == 2) {
-					this._isMouseDownR = true;
-					this._hideFireContext = false;
-					this._startGesture(event);
-				}
-				if (this.enableRockerGestures) {
-					if (event.button == 2 && this._isMouseDownL) {
-						this._isMouseDownR = false;
+		case "mousedown":
+			if (event.button == 2) {
+				this._isMouseDownR = true;
+				this._hideFireContext = false;
+				this._startGesture(event);
+			}
+			if (this.enableRockerGestures) {
+				if (event.button == 2 && this._isMouseDownL) {
+					this._isMouseDownR = false;
+					this._shouldFireContext = false;
+					this._hideFireContext = true;
+					this._directionChain = "L>R";
+					this._stopGesture(event);
+				} else if (event.button == 0) {
+					this._isMouseDownL = true;
+					if (this._isMouseDownR) {
+						this._isMouseDownL = false;
 						this._shouldFireContext = false;
 						this._hideFireContext = true;
-						this._directionChain = "L>R";
+						this._directionChain = "L<R";
 						this._stopGesture(event);
-					} else if (event.button == 0) {
-						this._isMouseDownL = true;
-						if (this._isMouseDownR) {
-							this._isMouseDownL = false;
-							this._shouldFireContext = false;
-							this._hideFireContext = true;
-							this._directionChain = "L<R";
-							this._stopGesture(event);
-						}
 					}
 				}
-				break;
-			case "mousemove":
-				if (this._isMouseDownR) {
-					this._hideFireContext = true;
-					this._progressGesture(event);
-				}
-				break;
-			case "mouseup":
-				if (event.ctrlKey && event.button == 2) {
-					this._isMouseDownL = false;
-					this._isMouseDownR = false;
-					this._shouldFireContext = false;
-					this._hideFireContext = false;
-					this._directionChain = '';
-					event.preventDefault();
-					XULBrowserWindow.statusTextField.label = "Reset Gesture";
-					break;
-				}
-				if (this._isMouseDownR && event.button == 2) {
-					if (this._directionChain)
-						this._shouldFireContext = false;
-					this._isMouseDownR = false;
-					this._stopGesture(event);
-					if (this._shouldFireContext && !this._hideFireContext) {
-						this._shouldFireContext = false;
-						this._displayContextMenu(event);
-					}
-				} else if (this.enableRockerGestures && event.button == 0 && this._isMouseDownL) {
-					this._isMouseDownL = false;
-					this._shouldFireContext = false;
-				}
-				break;
-			case "contextmenu":
-				if (this._isMouseDownL || this._isMouseDownR || this._hideFireContext) {
-					event.preventDefault();
-					event.stopPropagation();
-					this._shouldFireContext = true;
-					this._hideFireContext = false;
-				}
-				break;
-			case "DOMMouseScroll":
-				if (this.enableWheelGestures && this._isMouseDownR) {
-					event.preventDefault();
-					event.stopPropagation();
-					this._shouldFireContext = false;
-					this._hideFireContext = true;
-					this._directionChain = "W" + (event.detail > 0 ? "+" : "-");
-					this._stopGesture(event);
-				}
-				break;
-			case "draggesture":
+			}
+			break;
+		case "mousemove":
+			if (this._isMouseDownR) {
+				this._hideFireContext = true;
+				this._progressGesture(event);
+			}
+			break;
+		case "mouseup":
+			if (event.ctrlKey && event.button == 2) {
 				this._isMouseDownL = false;
+				this._isMouseDownR = false;
+				this._shouldFireContext = false;
+				this._hideFireContext = false;
+				this._directionChain = '';
+				event.preventDefault();
+				XULBrowserWindow.statusTextField.label = "Reset Gesture";
 				break;
+			}
+			if (this._isMouseDownR && event.button == 2) {
+				if (this._directionChain) this._shouldFireContext = false;
+				this._isMouseDownR = false;
+				this._stopGesture(event);
+				if (this._shouldFireContext && !this._hideFireContext) {
+					this._shouldFireContext = false;
+					this._displayContextMenu(event);
+				}
+			} else if (this.enableRockerGestures && event.button == 0 && this._isMouseDownL) {
+				this._isMouseDownL = false;
+				this._shouldFireContext = false;
+			}
+			break;
+		case "contextmenu":
+			if (this._isMouseDownL || this._isMouseDownR || this._hideFireContext) {
+				event.preventDefault();
+				event.stopPropagation();
+				this._shouldFireContext = true;
+				this._hideFireContext = false;
+			}
+			break;
+		case "DOMMouseScroll":
+			if (this.enableWheelGestures && this._isMouseDownR) {
+				event.preventDefault();
+				event.stopPropagation();
+				this._shouldFireContext = false;
+				this._hideFireContext = true;
+				this._directionChain = "W" + (event.detail > 0 ? "+" : "-");
+				this._stopGesture(event);
+			}
+			break;
+		case "draggesture":
+			this._isMouseDownL = false;
+			break;
 		}
 	},
 
@@ -221,12 +220,9 @@ edit: function(aFile) {
 		var distX = (subX > 0 ? subX : (-subX)),
 			distY = (subY > 0 ? subY : (-subY));
 		var direction;
-		if (distX < 10 && distY < 10)
-			return;
-		if (distX > distY)
-			direction = subX < 0 ? "L" : "R";
-		else
-			direction = subY < 0 ? "U" : "D";
+		if (distX < 10 && distY < 10) return;
+		if (distX > distY) direction = subX < 0 ? "L" : "R";
+		else direction = subY < 0 ? "U" : "D";
 		var dChain = this._directionChain;
 		this.drawTrail(this._lastX, this._lastY, x, y);
 		if (direction != dChain.charAt(dChain.length - 1)) {
@@ -242,10 +238,8 @@ edit: function(aFile) {
 	_stopGesture: function(event) {
 		try {
 			if (dChain = this._directionChain) {
-				if (typeof this.GESTURES[dChain].cmd == "function")
-					this.GESTURES[dChain].cmd(this, event);
-				else
-					eval(this.GESTURES[dChain].cmd);
+				if (typeof this.GESTURES[dChain].cmd == "function") this.GESTURES[dChain].cmd(this, event);
+				else eval(this.GESTURES[dChain].cmd);
 				XULBrowserWindow.statusTextField.label = "";
 			}
 		} catch (e) {
@@ -266,10 +260,8 @@ edit: function(aFile) {
 
 	createTrail: function FGH_createTrail(event) {
 		var win = event.view;
-		if (win.top.document instanceof Ci.nsIDOMHTMLDocument)
-			win = win.top;
-		else if (win.document instanceof Ci.nsIDOMHTMLDocument === false)
-			return;
+		if (win.top.document instanceof Ci.nsIDOMHTMLDocument) win = win.top;
+		else if (win.document instanceof Ci.nsIDOMHTMLDocument === false) return;
 		var doc = win.document;
 		var insertionNode = doc.documentElement ? doc.documentElement : doc;
 		var win = doc.defaultView;
@@ -289,26 +281,23 @@ edit: function(aFile) {
 	},
 
 	drawTrail: function FGH_drawTrail(x1, y1, x2, y2) {
-		if (!this._trailArea)
-			return;
+		if (!this._trailArea) return;
 		var xMove = x2 - x1;
 		var yMove = y2 - y1;
 		var xDecrement = xMove < 0 ? 1 : -1;
 		var yDecrement = yMove < 0 ? 1 : -1;
 		x2 -= this._trailOffsetX;
 		y2 -= this._trailOffsetY;
-		if (Math.abs(xMove) >= Math.abs(yMove))
-			for (var i = xMove; i != 0; i += xDecrement)
-				this._strokeDot(x2 - i, y2 - Math.round(yMove * i / xMove));
-		else
-			for (var i = yMove; i != 0; i += yDecrement)
-				this._strokeDot(x2 - Math.round(xMove * i / yMove), y2 - i);
+		if (Math.abs(xMove) >= Math.abs(yMove)) for (var i = xMove; i != 0; i += xDecrement)
+		this._strokeDot(x2 - i, y2 - Math.round(yMove * i / xMove));
+		else for (var i = yMove; i != 0; i += yDecrement)
+		this._strokeDot(x2 - Math.round(xMove * i / yMove), y2 - i);
 	},
 
 	eraseTrail: function FGH_eraseTrail() {
 		if (this._trailArea && this._trailArea.parentNode) {
 			while (this._trailArea.lastChild)
-				this._trailArea.removeChild(this._trailArea.lastChild);
+			this._trailArea.removeChild(this._trailArea.lastChild);
 			this._trailArea.parentNode.removeChild(this._trailArea);
 		}
 		this._trailDot = null;
