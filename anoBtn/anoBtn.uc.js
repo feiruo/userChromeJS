@@ -23,7 +23,7 @@
 			ins = $("devToolsSeparator");
 			ins.parentNode.insertBefore($C("menuitem", {
 				id: "anobtn_set",
-				label: "AnoBtn",
+				label: "Another Button",
 				tooltiptext: "左键重载 ；右键编辑",
 				oncommand: "setTimeout(function(){ anobtn.reload(true); }, 10);",
 				onclick: "if (event.button == 2) { event.preventDefault(); closeMenus(event.currentTarget);anobtn.edit(anobtn.file); }",
@@ -65,8 +65,7 @@
 			var intags;
 			intags = $(this.anobtnset.intags);
 			intags.parentNode.insertBefore($C("toolbarbutton", {
-				id: "Another Button",
-				label: "anobtn",
+				id: "anobtn",
 				class: "toolbarbutton-1 chromeclass-toolbar-additional",
 				type: "menu",
 				removable: "true",

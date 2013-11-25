@@ -21,6 +21,10 @@ child: [
 		text: "-no-remote -profile ProfileTest",
 		exec: "\\..\\firefox.exe",
 	},
+			{
+		label: "配置文件夹",
+		exec: Services.dirsvc.get("ProfD", Ci.nsILocalFile).path,
+	},
 {},// 分隔条
 	{
 		label: " Internet Explorer 打开此页",
@@ -56,10 +60,4 @@ label: "书签管理",
 oncommand: "PlacesCommandHook.showPlacesOrganizer('AllBookmarks');",
 image:"chrome://mozapps/skin/extensions/rating-not-won.png"
 },
-{
-id:"appmenu-quit",
-label: "退出浏览器",
-oncommand:"Application.quit();",
-image:"chrome://branding/content/icon16.png"
-}
 ]
