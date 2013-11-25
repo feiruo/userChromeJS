@@ -225,7 +225,7 @@
 
 
 		alert: function(aString, aTitle) {
-			Cc['@mozilla.org/alerts-service;1'].getService(Ci.nsIAlertsService).showAlertNotification("", aTitle || "AnoBtn", aString, false, "", null);
+			Cc['@mozilla.org/alerts-service;1'].getService(Ci.nsIAlertsService).showAlertNotification("", aTitle || "Another Button", aString, false, "", null);
 		},
 
 		edit: function(aFile) {
@@ -256,7 +256,7 @@
 	}
 
 	function log() {
-		Application.console.log("[AnoBtn] " + Array.slice(arguments));
+		Application.console.log("[Another Button] " + Array.slice(arguments));
 	}
 
 	function $C(name, attr) {
