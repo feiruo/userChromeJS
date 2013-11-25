@@ -5,10 +5,11 @@
 // @author         feiruo
 // @include         chrome://browser/content/browser.xul
 // @charset      utf-8
-// @version      1.3 
+// @version      1.4
 // @note        参考star Click（http://g.mozest.com/viewthread.php?tid=41377）
 // @note        为编辑面板增加更多功能
 // @note        右键删除当前书签
+// @note        1.4 增加ff24以下版本的支持，但在描述窗口回车会造成关闭
 // @note        1.3 修复了可能出现的文件夹列表不能自动展开和获取上次文件夹的问题
 // @note        1.2 修正因ff26添加了bookmarks-menu-button的原因导致的判断出错
 // @note        1.1 修正因为Australis没有删除star-button的原因导致的判断出错，并且修正编辑书签面板描述框时回车换行时关闭的问题
@@ -50,8 +51,11 @@
 						e.stopPropagation()
 					}
 				}.toString().replace(/^function.*{|}$/g, "");
-			eval("BookmarkingUI.onCommand=function PSB_onClick(e) {" + onClick + "}");
-			(function(doc) {
+			if (version < 24) {
+				eval("PlacesStarButton.onClick=function PSB_onClick(e) {" + onClick + "}");
+			} else {
+				eval("BookmarkingUI.onCommand=function PSB_onClick(e) {" + onClick + "}");
+			}(function(doc) {
 				var starbuttonrc = doc.getElementById('star-button');
 				if (!starbuttonrc) return;
 				starbuttonrc.addEventListener("click", function(e) {
