@@ -1,3 +1,7 @@
+//   @NORMAL：不改变referer
+//   @FORGE：发送根站点referer
+//   @ORIGINAL：发送打开站点referer
+//   @BLOCK : 发送空referer
 sites = {
     'img.ph.126.net' : '@FORGE',
     'isnowfy.com' : '@FORGE',
