@@ -5,9 +5,11 @@
 // @author         feiruo
 // @include      main
 // @charset      utf-8
-// @version      1.0 
+// @version      1.1
 // @note        超感谢 ywzhaiqi  
 // @note        菜单按钮，外置配置文件.......
+// @note        1.1解决编辑器中文路径问题，菜单，提示等文字修改。
+// @note        1.0
 // ==/UserScript==    
 (function() {
 	window.anobtn = {
@@ -66,6 +68,7 @@
 			intags = $(this.anobtnset.intags);
 			intags.parentNode.insertBefore($C("toolbarbutton", {
 				id: "anobtn",
+				label: "AnotherBtn",
 				class: "toolbarbutton-1 chromeclass-toolbar-additional",
 				type: "menu",
 				removable: "true",
