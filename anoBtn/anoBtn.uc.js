@@ -7,10 +7,10 @@
 // @charset      utf-8
 // @version      1.1
 // @note        超感谢 ywzhaiqi  
-// @note        菜单按钮，外置配置文件.......
-// @note        1.1解决编辑器中文路径问题，菜单，提示等文字修改。
+// @note        按钮菜单，外置配置文件.......
+// @note        1.1解决编辑器中文路径问题，修改菜单，提示等文字。
 // @note        1.0
-// ==/UserScript==    
+// ==/UserScript==
 (function() {
 	window.anobtn = {
 		get file() {
@@ -20,12 +20,14 @@
 			aFile.appendRelativePath("_anoBtn.js");
 			delete this.file;
 			return this.file = aFile;
-		}, init: function() {
+		},
+
+		init: function() {
 			var ins;
 			ins = $("devToolsSeparator");
 			ins.parentNode.insertBefore($C("menuitem", {
 				id: "anobtn_set",
-				label: "Another Button",
+				label: "AnotherButton",
 				tooltiptext: "左键重载 ；右键编辑",
 				oncommand: "setTimeout(function(){ anobtn.reload(true); }, 10);",
 				onclick: "if (event.button == 2) { event.preventDefault(); closeMenus(event.currentTarget);anobtn.edit(anobtn.file); }",
@@ -225,20 +227,18 @@
 			}
 		},
 
-
 		alert: function(aString, aTitle) {
 			Cc['@mozilla.org/alerts-service;1'].getService(Ci.nsIAlertsService).showAlertNotification("", aTitle || "Another Button", aString, false, "", null);
 		},
 
 		edit: function(aFile) {
 			if (!aFile || !aFile.exists() || !aFile.isFile()) return;
-			var editor = Services.prefs.getComplexValue("view_source.editor.path", Ci.nsILocalFile);
-			if (!editor.exists()) {
-				alert("编辑器的路径未设定。\n请设置 view_source.editor.path");
+			var editor;
+			try {
+				editor = Services.prefs.getComplexValue("view_source.editor.path", Ci.nsILocalFile);
+			} catch (e) {
+				this.alert("请设置编辑器的路径。\nview_source.editor.path");
 				toOpenWindowByType('pref:pref', 'about:config?filter=view_source.editor.path');
-				openLinkIn(url, "tab", {
-					inBackground: false
-				});
 				return;
 			}
 			var UI = Cc["@mozilla.org/intl/scriptableunicodeconverter"].createInstance(Ci.nsIScriptableUnicodeConverter);
@@ -250,7 +250,9 @@
 				var args = [path];
 				process.init(editor);
 				process.run(false, args, args.length);
-			} catch (e) {}
+			} catch (e) {
+				this.alert("编辑器不正确！")
+			}
 		},
 	}
 	window.anobtn.init()
