@@ -70,7 +70,7 @@
 			intags = $(this.anobtnset.intags);
 			intags.parentNode.insertBefore($C("toolbarbutton", {
 				id: "anobtn",
-				label: "AnotherBtn",
+				label: "AnoBtn",
 				class: "toolbarbutton-1 chromeclass-toolbar-additional",
 				type: "menu",
 				removable: "true",

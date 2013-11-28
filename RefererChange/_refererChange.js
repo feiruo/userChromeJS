@@ -36,7 +36,6 @@ sites = {
     //下はデバッグ用
     //'taruo.net' : 'example.co.jp',
         'postimage.org' : '@FORGE',
-        'xunlei.com' : '@BLOCK',
         'hiphotos.baidu.com' : '@FORGE',
         'img.cnbeta.com' : '@FORGE',
         'imgsrc.baidu.com' : '@FORGE',
