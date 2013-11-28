@@ -18,7 +18,7 @@ userChromeJS
 ###showLocationModEx.uc.js
 根据lastdream2013的修改版再次修改<br /> 
 修复在无法解析的域名浏览器卡死问题<br /> 
-修复无法获取网站服务的时候脚本出错问题<br /> 
+修复无法获取网站服务器的时候脚本出错问题<br /> 
 修改使用搜狐的API并修改显示格式
 
 ###starClickMod.uc.js
