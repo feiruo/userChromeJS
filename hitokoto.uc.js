@@ -5,11 +5,12 @@
 // @author          feiruo
 // @include         chrome://browser/content/browser.xul
 // @charset      utf-8
-// @version         1.3
+// @version         1.4
 // @note            获取hitokoto一句话，左键点击图标复制内容
+// @note            1.4 解决后台加载问题。
 // @note            1.3 修改提示框为弹出型，自动弹出时提示框左键隐藏，右键复制内容。
-// @note            1.2 解决dead object 问题
-// @note            1.1 解决页面内框架请求也会跟着请求的问题（一个页面内数次请求的问题）
+// @note            1.2 解决dead object 问题。
+// @note            1.1 解决页面内框架请求也会跟着请求的问题（一个页面内数次请求的问题）。
 // @note            1.0
 // ==/UserScript==
 (function() {
@@ -89,24 +90,12 @@
 								self.hitokotoHash[host] = responseObj.hitokoto + '--《' + responseObj.source + '》';
 							}
 						}
-						if (tip == 0) {
-							self.hitokotos.label = self.hitokotoHash[host];
-							setValue(self.hitokotoHash[host]);
-						} else {
-							setValue(self.hitokotoHash[host]);
-							show(self.hitokotoHash[host]);
-						}
+						sethitokoto();
 					}
 					self.isReqHash[host] = false;
 				}
 			} else {
-				if (tip == 0) {
-					self.hitokotos.label = self.hitokotoHash[host];
-					setValue(self.hitokotoHash[host]);
-				} else {
-					setValue(self.hitokotoHash[host]);
-					show(self.hitokotoHash[host]);
-				}
+				sethitokoto();
 			}
 		} catch (e) {
 			if (tip == 0) {
@@ -134,6 +123,17 @@
 				label.removeChild(label.firstChild);
 			}
 			if (val != "") label.appendChild(document.createTextNode(val));
+		}
+
+		function sethitokoto() {
+			if (host == content.location.href) {
+				if (tip == 0) {
+					self.hitokotos.label = self.hitokotoHash[host];
+				} else {
+					show(self.hitokotoHash[host]);
+				}
+				setValue(self.hitokotoHash[host]);
+			}
 		}
 
 	}, false)
