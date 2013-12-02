@@ -5,8 +5,9 @@
 // @author          feiruo
 // @include         chrome://browser/content/browser.xul
 // @charset      utf-8
-// @version         1.2
+// @version         1.3
 // @note            获取hitokoto一句话，左键点击图标复制内容
+// @note            1.3 修改提示框为弹出型，自动弹出时提示框左键隐藏，右键复制内容。
 // @note            1.2 解决dead object 问题
 // @note            1.1 解决页面内框架请求也会跟着请求的问题（一个页面内数次请求的问题）
 // @note            1.0
@@ -33,25 +34,36 @@
 			}
 			self.hitokoto = document.querySelector("#urlbar-icons").appendChild(document.createElement("image"));
 			self.hitokoto.id = "hitokoto-icon";
+			self.hitokoto.tooltip = 'hitokototip';
 			self.hitokoto.src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAADbklEQVQ4jTWKW0ybZQBA/8Rnn40PvhgfNIsajTHenozTZMZb9MlF4+XBYGam28wWXBySMfkCImxcZMKADGqhgVK0XAstLRRKaQcUKLRQWqAttD8t/bmW9uP44DzJeTpHOcjnz0kphZRSNLjj4rW7S+JsQ0C8fHNE6G0zQspjkZNSZB8+UuZE7jAlpNwXUkqhqMf5ah5SNx7jzC037xmSvNUa5+2GAN0Pov9n8kA6k2IptkWTN40jAUpS00Q+f4Q8PeHusJ9HP2vmyctdvFlu5ePGWT6snaS0x8P1xkGe+Lwa04iN33pcvFgX5JnyWZRtTRNoEdDW+aXdyRtXdDRMbGCJZLGu57BuSIyBY+pdO1ztmOXBtJ22PgvPFVl4vzOFEt8/FKe7a2zNOen1q4wnwZUE2+Z/WiJ5rFFwxU9Y3NplL70Ch8tcqrzPmbI5FFVdEcdLI0z7Anh2wbUNjugptk1Jf+gEvW+XuskYo5FDdnbWOEj6ON3zc6P8T54vNKNoc2aRXnCwmJEs7Erc21kGw3s4onk65lUM8yrf66dp9u4yE02T14LAJj+3/MPTP5pRVLtepNNx1rIwqx5gj+1hCKiMRY+od4Xp8ie5ZJiiqHcRdyLHxPIqairM/lGCL6rMKAGHWfi1fTypHMPrGRrdMX4fC9Mb0Ljc5qKkd4mS1iEK6ocxL2cwrRxT2jUOchvIonhGTGIgnKHFl6TSuU5xl5syk5vW6TiFTUOUdE1hMhr5qeIe3VMhrFtQcN/LnR4HAMpMf7todYW52DXPN21efm3txzAwStVQAKPDzfWKJi58fZHHHn8dUdPGSALEUIiXrnWyEIujRGx6oR+Y5FyFjfOVgzgmxkmpIVrtPjZjAabdDj658RdPnb/NHx1DGINZKkbWeOFaN6X9ARTNrhOhlQAfVFh495aZ7uYavFYDCXUNUIE9+kedjI/b+XvKT+1kku90Hp69YuCCbg4ladMJkNwZnOfVIjPN99rIL9g4TQfQNnyo3lEIumDVSV2vhx+My7xzs4dhX5iKXh+K9JhEd0cfHxV38q3eR0F1Pwn/FGhBovoW9i095OPzRPyTfFkzyFe1Y1gmggD0eUIoxaU68cgrVzlb2M5ta4Qm4yxVOhvmqWmWPGNoc3aOVu14B9r5tKyHPucKZHPAKZmDE/4FfP05vqO/HLUAAAAASUVORK5CYII=";
 			self.hitokoto.style.padding = "0px 2px";
 			self.isReqHash = [];
 			self.hitokotoHash = [];
 			self.hitokoto.addEventListener("click", function() {
-				Cc['@mozilla.org/widget/clipboardhelper;1'].createInstance(Ci.nsIClipboardHelper).copyString(self.hitokoto.tooltipText);
+				Cc['@mozilla.org/widget/clipboardhelper;1'].createInstance(Ci.nsIClipboardHelper).copyString(document.getElementById("hitokotoPopupLabel").textContent);
 			}, false);
-			if (tip == 1) {
-				var xmltt = '\
+
+			var xmltt = '\
         <tooltip id="hitokototip" style="opacity: 0.8 ;color: brown ;text-shadow:0 0 3px #CCC ;background: rgba(255,255,255,0.6) ;padding-bottom:3px ;border:1px solid #BBB ;border-radius: 3px ;box-shadow:0 0 3px #444 ;">\
         <label id="hitokotoPopupLabel" flex="1" />\
     		</tooltip>\
     	';
-				var rangett = document.createRange();
-				rangett.selectNodeContents(document.getElementById('mainPopupSet'));
-				rangett.collapse(false);
-				rangett.insertNode(rangett.createContextualFragment(xmltt.replace(/\n|\r/g, '')));
-				rangett.detach();
-			}
+			var rangett = document.createRange();
+			rangett.selectNodeContents(document.getElementById('mainPopupSet'));
+			rangett.collapse(false);
+			rangett.insertNode(rangett.createContextualFragment(xmltt.replace(/\n|\r/g, '')));
+			rangett.detach();
+
+			self.hitokototip = document.getElementById("hitokotoPopupLabel");
+			self.hitokototip.addEventListener("click", function(e) {
+				if (e.button == 0) {
+					self.hitokototip.hidePopup();
+				} else if (e.button == 2) {
+					Cc['@mozilla.org/widget/clipboardhelper;1'].createInstance(Ci.nsIClipboardHelper).copyString(self.hitokototip.textContent);
+					self.hitokototip.hidePopup();
+				}
+			}, false);
+
 		}
 		try {
 			var host = (event.originalTarget.location || content.location).href;
@@ -78,9 +90,10 @@
 							}
 						}
 						if (tip == 0) {
-							self.hitokotos.label = self.hitokoto.tooltipText = self.hitokotoHash[host];
+							self.hitokotos.label = self.hitokotoHash[host];
+							setValue(self.hitokotoHash[host]);
 						} else {
-							self.hitokoto.tooltipText = self.hitokotoHash[host];
+							setValue(self.hitokotoHash[host]);
 							show(self.hitokotoHash[host]);
 						}
 					}
@@ -88,39 +101,40 @@
 				}
 			} else {
 				if (tip == 0) {
-					self.hitokotos.label = self.hitokoto.tooltipText = self.hitokotoHash[host];
+					self.hitokotos.label = self.hitokotoHash[host];
+					setValue(self.hitokotoHash[host]);
 				} else {
-					self.hitokoto.tooltipText = self.hitokotoHash[host];
+					setValue(self.hitokotoHash[host]);
 					show(self.hitokotoHash[host]);
 				}
 			}
 		} catch (e) {
 			if (tip == 0) {
-				(event.type == "TabSelect" || event.originalTarget == content.document) && (self.hitokotos.label = self.hitokoto.tooltipText = "hitokoto");
+				(event.type == "TabSelect" || event.originalTarget == content.document) && (self.hitokotos.label = "hitokoto") && (setValue("hitokoto"));
 			} else {
-				(event.type == "TabSelect" || event.originalTarget == content.document) && (self.hitokoto.tooltipText = "hitokoto");
+				(event.type == "TabSelect" || event.originalTarget == content.document) && (setValue("hitokoto"));
 			}
 		}
-		if (tip == 1) {
-			function show(res) {
-				var popup = document.getElementById("hitokototip");
-				setValue(res);
-				if (self.timer) clearTimeout(self.timer);
 
-				if (typeof popup.openPopup != 'undefined') popup.openPopup(self.hitokoto, "overlap", 0, 0, true, false);
-				else popup.showPopup(self.hitokoto, -1, -1, "popup", null, null);
-				self.timer = setTimeout(function() {
-					popup.hidePopup();
-				}, 5000); //
-			}
+		function show(res) {
+			var popup = document.getElementById("hitokototip");
+			setValue(res);
+			if (self.timer) clearTimeout(self.timer);
 
-			function setValue(val) {
-				var label = document.getElementById("hitokotoPopupLabel");
-				while (label.firstChild) {
-					label.removeChild(label.firstChild);
-				}
-				if (val != "") label.appendChild(document.createTextNode(val));
-			}
+			if (typeof popup.openPopup != 'undefined') popup.openPopup(self.hitokoto, "overlap", 0, 0, true, false);
+			else popup.showPopup(self.hitokoto, -1, -1, "popup", null, null);
+			self.timer = setTimeout(function() {
+				popup.hidePopup();
+			}, 5000); //
 		}
+
+		function setValue(val) {
+			var label = document.getElementById("hitokotoPopupLabel");
+			while (label.firstChild) {
+				label.removeChild(label.firstChild);
+			}
+			if (val != "") label.appendChild(document.createTextNode(val));
+		}
+
 	}, false)
 })();
