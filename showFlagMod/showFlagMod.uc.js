@@ -8,7 +8,7 @@
 // @note            原脚本地址 http://files.cnblogs.com/ziyunfei/showFlag.uc.js
 // ==/UserScript==
 
-location == "chrome://browser/content/browser.xul" && (function(){
+location == "chrome://browser/content/browser.xul" && (function() {
 
 	//改这里选择是否加载本地国旗图标库，不存在或路径错误自动切换从网络中读国旗图标
 	var localFlagPath = "lib\\countryflags.js"; // 注意是相对路径： profile\chrome\lib\countryflags.js
@@ -22,11 +22,7 @@ location == "chrome://browser/content/browser.xul" && (function(){
 	var API_URL = 'http://int.dpool.sina.com.cn/iplookup/iplookup.php?format=json&ip=';
 
 	// 备用：self.flagPath = 'http://www.1108.hk/images/ext/'
-	var flagPath = 'http://www.razerzone.com/asset/images/icons/flags/';
-
-	function debug() {
-		if (1) Application.console.log('[showFlagMod DEBUG] ' + Array.slice(arguments));
-	}
+	//var flagPath = 'http://www.razerzone.com/asset/images/icons/flags/';
 
 	var ns = {
 		init: function() {
@@ -49,7 +45,7 @@ location == "chrome://browser/content/browser.xul" && (function(){
 				userChrome.import(localFlagPath, "UChrm");
 			}
 		},
-		addStyle: function(){
+		addStyle: function() {
 			if (showLocationPos == "identity-box") {
 				var cssStr = ('\
 					#page-proxy-favicon,\
@@ -66,18 +62,20 @@ location == "chrome://browser/content/browser.xul" && (function(){
 
 	ns.init();
 
-	gBrowser.addEventListener("DOMWindowCreated", function (event) {
+	gBrowser.addEventListener("DOMWindowCreated", function(event) {
 		var self = arguments.callee;
 		if (!self.showFlag) {
 			self.showFlag = document.getElementById("identity-box").appendChild(document.createElement("image"));
 			var parentNode = document.getAnonymousElementByAttribute(self.showFlag.parentNode, "class", "*");
 			if (parentNode) parentNode.hidden = true;
-			
+
 			if (showLocationPos == "identity-box") {
 				self.showFlag.style.marginLeft = "4px";
 				self.showFlag.style.marginRight = "2px";
+				self.showFlag.style.padding = "0px 2px";
 			} else {
 				self.showFlag.style.width = "16px";
+				self.showFlag.style.padding = "5px 2px";
 			}
 
 			window.addEventListener("TabSelect", self, false);
@@ -89,7 +87,7 @@ location == "chrome://browser/content/browser.xul" && (function(){
 		try {
 			var host = (event.originalTarget.location || content.location).hostname;
 			if (!/tp/.test(content.location.protocol) || !host || self.isReqHash[host]) {
-				(event.type == "TabSelect" || event.originalTarget == content.document) && (self.showFlag.src = self.flag);
+				(event.type == "TabSelect" || event.originalTarget == content.document) && (self.showFlag.src = self.flag) && (self.showFlag.tooltipText = '');
 				return
 			}
 			if (event.type == "DOMWindowCreated") {
@@ -98,7 +96,7 @@ location == "chrome://browser/content/browser.xul" && (function(){
 				if (doc.body instanceof HTMLFrameSetElement || win.frameElement) return;
 			}
 			Components.classes["@mozilla.org/network/dns-service;1"].getService(Components.interfaces.nsIDNSService).asyncResolve(host, 0, {
-				onLookupComplete: function (inRequest, inRecord, inStatus) {
+				onLookupComplete: function(inRequest, inRecord, inStatus) {
 					var ip = inRecord.getNextAddrAsString();
 					var server;
 					try {
@@ -113,15 +111,15 @@ location == "chrome://browser/content/browser.xul" && (function(){
 						var req = new XMLHttpRequest();
 						req.open("GET", API_URL + ip, true);
 						req.send(null);
-						req.onload = function () {
+						req.onload = function() {
 							if (req.status == 200) {
 								var countryId = null,
 									tooltipText = null;
 
 								var responseObj = JSON.parse(req.responseText);
-								if (responseObj.data && responseObj.code == 0) {  // 淘宝的格式
+								if (responseObj.data && responseObj.code == 0) { // 淘宝的格式
 									countryId = responseObj.data.country_id;
-								} else if (responseObj.country && responseObj.ret == 1){  // 新浪的格式
+								} else if (responseObj.country && responseObj.ret == 1) { // 新浪的格式
 									countryId = window.CountryNames && window.CountryNames[responseObj.country];
 									content.console.log(window.CountryNames, responseObj.country);
 									tooltipText = "国家：" + responseObj.country + "\n" +
@@ -131,7 +129,10 @@ location == "chrome://browser/content/browser.xul" && (function(){
 										"所属：" + responseObj.desc + "\n" +
 										"服务器：" + server + "\n" +
 										"IP地址：" + ip;
-									
+
+								} else {
+									countryId = "iana";
+									tooltipText = "本地局域网" + '\n' + "IP地址：" + ip;
 								}
 
 								self.showFlagHash[host] = countryId;
@@ -147,21 +148,19 @@ location == "chrome://browser/content/browser.xul" && (function(){
 				}
 			}, null);
 		} catch (e) {
-			(event.type == "TabSelect" || event.originalTarget == content.document) && (self.showFlag.src = self.flag);
+			(event.type == "TabSelect" || event.originalTarget == content.document) && (self.showFlag.src = self.flag) && (self.showFlag.tooltipText = '');
 		}
 
 		function setFlagSrc() {
 			var countryId = self.showFlagHash[host];
 			var tooltiptext = self.showFlagTooltipHash[host] || "";
-			
+
 			if (countryId && host == content.location.hostname) {
 				countryId = countryId.toLocaleLowerCase()
-				self.showFlag.src = window.CountryFlags && window.CountryFlags[countryId] || (flagPath + countryId + ".gif");
-				self.showFlag.tooltipText = self.showFlagTooltipHash[host] || '';
-			} else {
-				debug('countryId is null')
+				var src = window.CountryFlags && window.CountryFlags[countryId];
+				self.showFlag.src = src || self.flag;
+				self.showFlag.tooltipText = tooltiptext;
 			}
 		}
 	}, false)
 })()
-
