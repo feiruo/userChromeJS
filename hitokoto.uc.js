@@ -5,12 +5,13 @@
 // @author          feiruo
 // @include         chrome://browser/content/browser.xul
 // @charset      utf-8
-// @version         1.4
+// @version         1.5
 // @note            获取hitokoto一句话，左键点击图标复制内容
-// @note            1.4 解决后台加载问题。
+// @note            1.5 当hitokoto服务器不能打开时提示。
+// @note            1.4 修复后台加载问题。
 // @note            1.3 修改提示框为弹出型，自动弹出时提示框左键隐藏，右键复制内容。
-// @note            1.2 解决dead object 问题。
-// @note            1.1 解决页面内框架请求也会跟着请求的问题（一个页面内数次请求的问题）。
+// @note            1.2 修复dead object 问题。
+// @note            1.1 修复页面内框架请求也会跟着请求的问题（一个页面内数次请求的问题）。
 // @note            1.0
 // ==/UserScript==
 (function() {
@@ -78,20 +79,23 @@
 				var req = new XMLHttpRequest();
 				req.open("GET", 'http://api.hitokoto.us/rand', true);
 				req.send(null);
+				req.onerror = function() {
+					self.hitokotoHash[host] = "hitokoto无法访问";
+					sethitokoto();
+					self.isReqHash[host] = false;
+				};
 				req.onload = function() {
 					if (req.status == 200) {
 						var responseObj = JSON.parse(req.responseText);
 						if (responseObj.source == "") {
 							self.hitokotoHash[host] = responseObj.hitokoto;
+						} else if (responseObj.source.match("《")) {
+							self.hitokotoHash[host] = responseObj.hitokoto + '--' + responseObj.source;
 						} else {
-							if (responseObj.source.match("《")) {
-								self.hitokotoHash[host] = responseObj.hitokoto + '--' + responseObj.source;
-							} else {
-								self.hitokotoHash[host] = responseObj.hitokoto + '--《' + responseObj.source + '》';
-							}
+							self.hitokotoHash[host] = responseObj.hitokoto + '--《' + responseObj.source + '》';
 						}
-						sethitokoto();
 					}
+					sethitokoto();
 					self.isReqHash[host] = false;
 				}
 			} else {
