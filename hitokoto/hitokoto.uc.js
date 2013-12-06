@@ -5,8 +5,9 @@
 // @author          feiruo
 // @include         chrome://browser/content/browser.xul
 // @charset      utf-8
-// @version         1.5
+// @version         1.6
 // @note            获取hitokoto一句话，左键点击图标复制内容
+// @note            1.6 添加本地数据库，当hitokoto不能访问的时候使用本地数据库。
 // @note            1.5 当hitokoto服务器不能打开时提示。
 // @note            1.4 修复后台加载问题。
 // @note            1.3 修改提示框为弹出型，自动弹出时提示框左键隐藏，右键复制内容。
@@ -80,7 +81,7 @@
 				req.open("GET", 'http://api.hitokoto.us/rand', true);
 				req.send(null);
 				req.onerror = function() {
-					self.hitokotoHash[host] = "hitokoto无法访问";
+					self.hitokotoHash[host] = locallib();
 					sethitokoto();
 					self.isReqHash[host] = false;
 				};
@@ -138,6 +139,48 @@
 				}
 				setValue(self.hitokotoHash[host]);
 			}
+		}
+
+		var hitokoto_lib = loadFile();
+		if (hitokoto_lib)
+			var hitokoto_json = JSON.parse(hitokoto_lib);
+
+		function locallib() {
+			var localjson;
+			if (hitokoto_json) {
+				var responseObj = hitokoto_json[Math.floor(Math.random() * hitokoto_json.length)];
+				if (responseObj.source == "") {
+					localjson = responseObj.hitokoto;
+				} else if (responseObj.source.match("《")) {
+					localjson = responseObj.hitokoto + '--' + responseObj.source;
+				} else {
+					localjson = responseObj.hitokoto + '--《' + responseObj.source + '》';
+				}
+				return localjson;
+			} else {
+				return localjson = "hitokoto无法访问";
+			}
+		}
+
+		function loadFile() {
+			var aFile = Cc["@mozilla.org/file/directory_service;1"]
+				.getService(Ci.nsIDirectoryService)
+				.QueryInterface(Ci.nsIProperties)
+				.get('UChrm', Ci.nsILocalFile);
+			aFile.appendRelativePath('lib');
+			aFile.appendRelativePath('hitokoto.json');
+			if (!aFile.exists() || !aFile.isFile()) return null;
+			var fstream = Cc["@mozilla.org/network/file-input-stream;1"].createInstance(Ci.nsIFileInputStream);
+			var sstream = Cc["@mozilla.org/scriptableinputstream;1"].createInstance(Ci.nsIScriptableInputStream);
+			fstream.init(aFile, -1, 0, 0);
+			sstream.init(fstream);
+			var data = sstream.read(sstream.available());
+			try {
+				data = decodeURIComponent(escape(data));
+			} catch (e) {}
+			sstream.close();
+			fstream.close();
+			return data;
 		}
 
 	}, false)
