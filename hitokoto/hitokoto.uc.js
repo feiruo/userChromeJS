@@ -12,7 +12,7 @@
 // ==/UserScript==
 location == "chrome://browser/content/browser.xul" && (function() {
 
-	var aotutip = 0; //是否自动弹出
+	var aotutip = 0; //0为地址栏文字显示，1为自动弹出
 	var aotutiptime = 5000; //自动弹出多少秒后关闭弹窗
 
 	var hitokoto_json = [];
