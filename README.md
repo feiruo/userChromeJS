@@ -7,11 +7,6 @@ userChromeJS
 可以自定义保存位置(书签工具栏/书签菜单)，保存目录等<br /> 
 但设置了保存次数之后，达到数量会自动删除较早的条目
 
-###hitokoto.uc.js
-获取hitokoto.us的一句话，并在地址栏显示<br /> 
-可设置自动弹出提示 或 地址栏文字  <br /> 
-点击图标复制内容
-
 ###javascriptUrl.uc.js
 地址栏执行 Javascript:
 
