@@ -28,7 +28,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			if (hitokoto_lib)
 				hitokoto_json = JSON.parse(hitokoto_lib);
 
-			if (!aotutip)
+			if (aotutip == 0)
 				this.addlabel();
 
 			this.addIcon();
@@ -201,7 +201,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			}
 		},
 		updateTooltipText: function(val) {
-			if (!aotutip)
+			if (aotutip == 0)
 				this.hitokotos.label = val;
 			else {
 				var popup = $("hitokototip");
