@@ -43,8 +43,8 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			window.getBrowser().addProgressListener(this.progressListener);
 
 			window.addEventListener("unload", function() {
-				hitokoto.onDestroy();
 				hitokoto.finsh();
+				hitokoto.onDestroy();
 			}, false);
 		},
 		onDestroy: function() {
@@ -153,10 +153,10 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			req.send(null);
 
 			var onerror = function() {
-					var obj = locallib();
-					self.hitokotoHash[host] = obj;
-					self.updateTooltipText(obj);
-				};
+				var obj = locallib();
+				self.hitokotoHash[host] = obj;
+				self.updateTooltipText(obj);
+			};
 			req.onerror = onerror;
 			req.onload = function() {
 				if (req.status == 200) {
