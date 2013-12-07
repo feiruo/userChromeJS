@@ -89,7 +89,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				} else if (event.button == 2) {
 					hitokoto.onLocationChange(true);
 					event.preventDefault();
-					event.stopProgation();
 				}
 			}, false);
 
