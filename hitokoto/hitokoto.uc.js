@@ -12,8 +12,8 @@
 // ==/UserScript==
 location == "chrome://browser/content/browser.xul" && (function() {
 
-	var aotutip = 0; //0为地址栏文字显示，1为自动弹出
-	var aotutiptime = 5000; //自动弹出多少秒后关闭弹窗
+	var autotip = 0; //0为地址栏文字显示，1为自动弹出
+	var autotiptime = 5000; //自动弹出多少秒后关闭弹窗
 
 	var hitokoto_json = [];
 	window.hitokoto = {
@@ -25,11 +25,9 @@ location == "chrome://browser/content/browser.xul" && (function() {
 
 			var hitokoto_lib = this.loadFile();
 
-			if (hitokoto_lib)
-				hitokoto_json = JSON.parse(hitokoto_lib);
+			if (hitokoto_lib) hitokoto_json = JSON.parse(hitokoto_lib);
 
-			if (aotutip == 0)
-				this.addlabel();
+			if (autotip == 0) this.addlabel();
 
 			this.addIcon();
 			this.onLocationChange();
@@ -53,10 +51,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			window.getBrowser().removeProgressListener(this.progressListener);
 		},
 		loadFile: function() {
-			var aFile = Cc["@mozilla.org/file/directory_service;1"]
-				.getService(Ci.nsIDirectoryService)
-				.QueryInterface(Ci.nsIProperties)
-				.get('UChrm', Ci.nsILocalFile);
+			var aFile = Cc["@mozilla.org/file/directory_service;1"].getService(Ci.nsIDirectoryService).QueryInterface(Ci.nsIProperties).get('UChrm', Ci.nsILocalFile);
 			aFile.appendRelativePath('lib');
 			aFile.appendRelativePath('hitokoto.json');
 			if (!aFile.exists() || !aFile.isFile()) return null;
@@ -80,7 +75,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				style: 'padding: 0px 2px'
 			}));
 
-			// 点击复制
 			this.icon.addEventListener("click", function(event) {
 				if (event.button == 0) {
 					Cc['@mozilla.org/widget/clipboardhelper;1'].createInstance(Ci.nsIClipboardHelper).copyString($("hitokotoPopupLabel").textContent);
@@ -159,10 +153,10 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			req.send(null);
 
 			var onerror = function() {
-				var obj = locallib();
-				self.hitokotoHash[host] = obj;
-				self.updateTooltipText(obj);
-			};
+					var obj = locallib();
+					self.hitokotoHash[host] = obj;
+					self.updateTooltipText(obj);
+				};
 			req.onerror = onerror;
 			req.onload = function() {
 				if (req.status == 200) {
@@ -200,8 +194,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			}
 		},
 		updateTooltipText: function(val) {
-			if (aotutip == 0)
-				this.hitokotos.label = val;
+			if (autotip == 0) this.hitokotos.label = val;
 			else {
 				var popup = $("hitokototip");
 				if (this.timer) clearTimeout(this.timer);
@@ -209,7 +202,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				else popup.showPopup(this.icon, -1, -1, "popup", null, null);
 				this.timer = setTimeout(function() {
 					popup.hidePopup();
-				}, aotutiptime);
+				}, autotiptime);
 			}
 			var label = $("hitokotoPopupLabel");
 			while (label.firstChild) {
