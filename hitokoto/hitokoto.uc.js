@@ -5,21 +5,25 @@
 // @author          feiruo
 // @include         chrome://browser/content/browser.xul
 // @charset      	utf-8
-// @version         2.0
+// @version         2.1
 // @note            当hitokoto不能访问的时候使用本地数据库。
 // @note            每次关闭浏览器后数据库添加获取过的内容，并去重复。
 // @note            左键图标复制内容，右键重新获取，中键保存并去重。
+// @note            2.1 设置延迟，如果设定时间内内未获得hitokoto数据则使用本地数据库。
 // ==/UserScript==
 location == "chrome://browser/content/browser.xul" && (function() {
 
-	var Local_Path = 'lib\\hitokoto.json'; //数据库文件位置
 	var autotip = 0; //0为地址栏文字显示，1为自动弹出
 	var autotiptime = 5000; //自动弹出多少秒后关闭弹窗
+
+	var Local_Delay = 2500; //毫秒， 延迟时间，时间内为取得hitokoto在线数据，则使用本地数据库
+	var Local_Path = 'lib\\hitokoto.json'; //数据库文件位置
 
 	var hitokoto_lib = false;
 	var hitokoto_json = [];
 
 	window.hitokoto = {
+		debug: false,
 		isReqHash: [],
 		hitokotoHash: [],
 
@@ -155,13 +159,14 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			var req = new XMLHttpRequest();
 			req.open("GET", 'http://api.hitokoto.us/rand', true);
 			req.send(null);
-
 			var onerror = function() {
 				var obj = self.locallib();
 				self.hitokotoHash[host] = obj;
 				self.updateTooltipText(obj);
 			};
 			req.onerror = onerror;
+			req.timeout = Local_Delay;
+			req.ontimeout = onerror;
 			req.onload = function() {
 				if (req.status == 200) {
 					var obj;
@@ -176,8 +181,9 @@ location == "chrome://browser/content/browser.xul" && (function() {
 					}
 					self.hitokotoHash[host] = obj;
 					self.updateTooltipText(obj);
+					debug('得到在线数据:', JSON.stringify(responseObj));
 				} else {
-					onerror(responseObj);
+					onerror();
 				}
 			};
 		},
@@ -192,10 +198,11 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				} else {
 					localjson = responseObj.hitokoto + '--《' + responseObj.source + '》';
 				}
+				debug('得到数据库数据:', JSON.stringify(responseObj));
 				return localjson;
 			} else {
 				return localjson = "hitokoto无法访问";
-			}
+			}			
 		},
 		updateTooltipText: function(val) {
 			if (autotip == 0) this.hitokotos.label = val;
@@ -246,6 +253,10 @@ location == "chrome://browser/content/browser.xul" && (function() {
 	};
 
 	hitokoto.init();
+
+	function debug() {
+		if (hitokoto.debug) Application.console.log('[hitokoto DEBUG] ' + Array.slice(arguments));
+	}
 
 	function $(id) document.getElementById(id);
 
