@@ -12,10 +12,13 @@
 // ==/UserScript==
 location == "chrome://browser/content/browser.xul" && (function() {
 
+	var Local_Path = 'lib\\hitokoto.json'; //数据库文件位置
 	var autotip = 0; //0为地址栏文字显示，1为自动弹出
 	var autotiptime = 5000; //自动弹出多少秒后关闭弹窗
 
+	var hitokoto_lib = false;
 	var hitokoto_json = [];
+
 	window.hitokoto = {
 		isReqHash: [],
 		hitokotoHash: [],
@@ -23,11 +26,13 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		init: function() {
 			var self = this;
 
-			var hitokoto_lib = this.loadFile();
+			hitokoto_lib = this.loadFile();
 
-			if (hitokoto_lib) hitokoto_json = JSON.parse(hitokoto_lib);
+			if (hitokoto_lib)
+				hitokoto_json = JSON.parse(hitokoto_lib);
 
-			if (autotip == 0) this.addlabel();
+			if (autotip == 0)
+				this.addlabel();
 
 			this.addIcon();
 			this.onLocationChange();
@@ -52,8 +57,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		},
 		loadFile: function() {
 			var aFile = Cc["@mozilla.org/file/directory_service;1"].getService(Ci.nsIDirectoryService).QueryInterface(Ci.nsIProperties).get('UChrm', Ci.nsILocalFile);
-			aFile.appendRelativePath('lib');
-			aFile.appendRelativePath('hitokoto.json');
+			aFile.appendRelativePath(Local_Path);
 			if (!aFile.exists() || !aFile.isFile()) return null;
 			var fstream = Cc["@mozilla.org/network/file-input-stream;1"].createInstance(Ci.nsIFileInputStream);
 			var sstream = Cc["@mozilla.org/scriptableinputstream;1"].createInstance(Ci.nsIScriptableInputStream);
@@ -153,7 +157,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			req.send(null);
 
 			var onerror = function() {
-				var obj = locallib();
+				var obj = self.locallib();
 				self.hitokotoHash[host] = obj;
 				self.updateTooltipText(obj);
 			};
@@ -219,13 +223,12 @@ location == "chrome://browser/content/browser.xul" && (function() {
 					newInfo.push(i);
 				}
 			});
-			this.saveFile('hitokoto.json', JSON.stringify(newInfo));
+			this.saveFile(Local_Path, JSON.stringify(newInfo));
 		},
 		saveFile: function(name, data) {
 			var file;
 			if (typeof name == "string") {
 				var file = Services.dirsvc.get('UChrm', Ci.nsILocalFile);
-				file.appendRelativePath('lib');
 				file.appendRelativePath(name);
 			} else {
 				file = name;
