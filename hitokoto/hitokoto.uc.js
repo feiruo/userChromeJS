@@ -14,16 +14,16 @@
 location == "chrome://browser/content/browser.xul" && (function() {
 
 	var autotip = 0; //0为地址栏文字显示，1为自动弹出
-	var autotiptime = 5000; //自动弹出多少秒后关闭弹窗
+	var autotiptime = 5000; //设置自动弹出时，多少秒后关闭弹窗
 
-	var Local_Delay = 2500; //毫秒， 延迟时间，时间内为取得hitokoto在线数据，则使用本地数据库
+	var Local_Delay = 2500; //毫秒， 延迟时间，时间内未取得hitokoto在线数据，则使用本地数据库
 	var Local_Path = 'lib\\hitokoto.json'; //数据库文件位置
 
 	var hitokoto_lib = false;
 	var hitokoto_json = [];
 
 	window.hitokoto = {
-		debug: false,
+		debug: true,
 		isReqHash: [],
 		hitokotoHash: [],
 
