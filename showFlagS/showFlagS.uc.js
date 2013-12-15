@@ -588,7 +588,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			try {
 				server = gBrowser.mCurrentBrowser.webNavigation.currentDocumentChannel.QueryInterface(Ci.nsIHttpChannel).getResponseHeader("Server").split(" ", 1)[0];
 			} catch (e) {}
-			return server || '未知';
+			return server || '未知类型';
 		},
 		get dns() {
 			return Cc["@mozilla.org/network/dns-service;1"]
