@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            showFlagS.uc.js
 // @description     显示国旗与IP
-// @author          ywzhaiqi
+// @author          ywzhaiqi、feiruo
 // @homepage       https://github.com/feiruo/userchromejs/
 // @include         chrome://browser/content/browser.xul
 // @charset         UTF-8
