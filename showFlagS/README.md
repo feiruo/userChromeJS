@@ -1,11 +1,14 @@
 showFlagS
 ============
-showFlagS<br /> 
 author：ywzhaiqi、feiruo<br /> 
 参考 Show Location 扩展、Flagfox 扩展、http://files.cnblogs.com/ziyunfei/showFlag.uc.js<br /> 
-内置四个查询地址，纯真（CZ）和3个备用地址： 纯真2（CZedu)  myip  新浪（sina）<br /> 
-图标左键复制内容，中键刷新，右键弹出菜单<br /> 
-注：只有纯真才能显示本地ip和地址<br /> 
-本地数据库countryflags.js<br /> 
-<br /> 
-countryflags.js放在chomre\lib文件夹下
+脚本里面可以修改图标位置等。<br /> 
+本地数据库位置)<br />
+		Chrome\lib\countryflags.js
+国旗图标左键复制内容，中键刷新，右键弹出菜单。<br /> 
+可选择查询地址，目前内置4个，可以自己在脚本里面添加。<br /> 
+注意：<br /> 
+myip地址是从myip网站获得图标，不使用本地图标，所以略有延迟；而且myip不稳定
+就算选择在线图标，也是优先使用本地数据库<br /> 
+脚本不带样式，推荐使用样式隐藏page-proxy-favicon，可以用下面的样式：)<br />
+		#page-proxy-favicon,#identity-icon-country-label{visibility: collapse !important;}

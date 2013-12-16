@@ -44,7 +44,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 
 
 	window.showFlagS = {
-		debug: true,
 		dnsCache: [],
 		isReqHash: [],
 		isReqHash_tooltip: [],
@@ -317,7 +316,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			}
 
 			var self = this;
-			debug('得到 IP: ', host, ip);
 
 			if (ip == "set") {
 				site = host;
@@ -368,7 +366,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				if (req.status == 200) {
 					var responseObj = JSON.parse(req.responseText);
 					if (responseObj.code == 0) {
-						debug('得到淘宝数据 ', JSON.stringify(responseObj));
 						var country_id = responseObj.data.country_id.toLocaleLowerCase();
 						self.showFlagHash[host] = country_id;
 						self.updateIcon(host, country_id, responseObj.data.country);
@@ -415,8 +412,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 					} else {
 						onerror();
 					}
-
-					debug('得到纯真数据 ', JSON.stringify(obj));
 				} else {
 					onerror();
 				}
@@ -446,8 +441,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 					} else {
 						onerror();
 					}
-
-					debug('得到纯真edu数据 ', JSON.stringify(obj));
 				} else {
 					onerror();
 				}
@@ -461,7 +454,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			req.onload = function() {
 				if (req.status == 200) {
 					var responseObj = JSON.parse(req.responseText);
-					debug('得到新浪数据 ', host, JSON.stringify(responseObj));
 					if (responseObj.ret == 1) {
 						self.showFlagTooltipHash[host] = responseObj;
 						self.updateTooltipText(ip, host, responseObj);
@@ -500,9 +492,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 					var obj = {
 						myipS: myip_addr
 					};
-
-					debug('得到myip数据 ', flagSrc, JSON.stringify(obj));
-
 					self.showFlagHash[host] = flagSrc;
 					self.updateIcon(host, flagSrc);
 
@@ -600,10 +589,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 	};
 
 	showFlagS.init();
-
-	function debug() {
-		if (showFlagS.debug) Application.console.log('[showFlagMod DEBUG] ' + Array.slice(arguments));
-	}
 
 	function $(id) document.getElementById(id);
 
