@@ -5,9 +5,10 @@
 // @homepage       https://github.com/feiruo/userchromejs/
 // @include         chrome://browser/content/browser.xul
 // @charset         UTF-8
-// @version         1.0
+// @version         1.1
 // @note            2013-12-5
 // @note            左键点击复制，右键弹出菜单。需要 countryflags.js 数据文件
+// @note            1.1 设置延迟，增加本地文件图标。
 // ==/UserScript==
 
 /**
@@ -26,6 +27,9 @@ location == "chrome://browser/content/browser.xul" && (function() {
 	// 打开查询网站是否激活
 	var TAB_ACTIVE = true;
 
+	//毫秒,延迟时间，时间内未取得所选择查询源数据，就使用新浪查询源
+	var Inquiry_Delay = 2500;
+
 	// 备用国旗地址
 	var BAK_FLAG_PATH = 'http://www.razerzone.com/asset/images/icons/flags/';
 	// var BAK_FLAG_PATH = 'http://www.1108.hk/images/ext/';
@@ -42,6 +46,8 @@ location == "chrome://browser/content/browser.xul" && (function() {
 	// 未知国旗图标
 	var Unknown_Flag = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABwUlEQVQ4jZWRMahScRjFL40REW9ojqaGhoaGprg0eL3//3fkj0pCDrYp2hARmRItjk4ND0EuSFMgSEQIiuMjEjdnwUGIvLdF+bxc/j6ut8X3eM9X7z3P+vE7nPMdw9gRgPdEdCSlPJRS3t+9Xyrbtp8A4FqtFmQyGQbARHRERAXLsg6uNADwMZ1O83q9jpbLZdjtdnW5XPa3Rksi+iqEeA7g5j8NFosFu64bRjuaz+dhu93WhULBB8AAXCll3TTNO6fweDx+qLWOwvACf06TySR0HCdQSjGAt2fjKwA8m83+6zCdTsNWqxXkcjkG4Nq2/ezUgIg+ZbNZ3mw25yDP88JOp6NLpdLJL/4AaAkhnu4+cFyv14MoiiJmjvr9vq5Wq34ikeBt7+8AXpimeevC8+Lx+D0APBgMdK/X08lk8gT6KaV8HYvF7l46nxDiJQD2PC+sVCo+Ef0A8ODK3c/0/5zP5/0gCCKlFBPRu2vD2/6/ms1mMBqNjgGwEOLxtWEhxCMAPBwOjx3H0UT02zCMG/vEf6OU4tVqFRWLRZ+IvuwVn4g+pFIpbjQawXbnV3sZWJZ1IKU8BDAhom+2bd/eh/8LEFU+M9Rx2boAAAAASUVORK5CYII=";
 
+	//本地文件图标
+	var File_Flag = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAACf0lEQVQ4jX3S3UtTYQDH8QP9GV31T0TXKmLFiBGjmlPLt6RSyZc0kFCLcqEhXRQSeBNaDXFqw7em29yc23Fbvswdt7mztzPn5Gnu5cyxF/t1ERw8LvrBc/d8PzwXD0VRFMVz7+b5w+Eiz40gFVAiyQ4h6VPixPsacfdLEKYfx3t9iG73sBF7Vzd1fiqV7FImOoLC6SzOCjHwx2P45X+DA3sv8hktzvJrwsnx8wg7Olnq4jLRERSyGhSyGgBFAEUENluwZ36B0/g0ijkdCtkfyPML4OxP8V/gLwL4LA3Y1vcgsjOAPL+AXGoW2ZMphGzt/wAOLwJFeEy12FrtRPhnH7InU8iQCaRj4wjSraVAOvJWiHOZGfw+48Ho78GhbUXQ1o10bBypyEckQqPwWx+VAqnwkBBnkyoU80dwrshgX3qIgLUdidAo4qwSxDOIkK0NPlPzBxGQCLwSYp58xmnSjJ1lKTbn74M1t4B4BnHMPMfRbgcOt57gYL1R/Io4OyDEiegnkOB7bC1IYJ2T42CtXgg5exMIIfAa68UA8faJ4iOvEg7NdVjUt+HRVYOzNyFM1yG4IQchBJ61B2Igtt8rijlnP2xzlTBPSeDWyhDckCOwLoPfKAUhBG5DnRiIOrtEccDxDPRMBUzfqrC/LIXfKAVrkIA1SKBY8mFfXyMGuO12UeyztoFWl8P0tQLMokSIWYMEVRO7YHQKMRB0PBbFHlMzaHU5jJNlJYDPcAvOFblXBPg2GrVuYy1cegVcuhq4dHWg1eUwTN6Ac1EGRl8DRqeAa7UazpW73h3tnY6Sz2T+Lru8qbnZQM9UzFqmy9KasWuWL8NXWwyqyisll8/tD6KEcRuPWHf/AAAAAElFTkSuQmCC";
 
 	window.showFlagS = {
 		dnsCache: [],
@@ -273,6 +279,9 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				var aLocation = this.contentDoc.location;
 				if (aLocation && aLocation.host && /tp/.test(aLocation.protocol)) {
 					this.updateState(aLocation.host);
+				} else if (aLocation && /file/.test(aLocation.protocol)) {
+					this.icon.src = File_Flag;
+					this.icon.tooltipText = '本地文件' + "\n" + aLocation;
 				} else {
 					this.resetState();
 				}
@@ -382,6 +391,8 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				self.lookupIP_sina(ip, host);
 			};
 			req.onerror = onerror;
+			req.timeout = Inquiry_Delay;
+			req.ontimeout = onerror;
 			req.onload = function() {
 				if (req.status == 200) {
 					var s_local, myip, myAddr;
@@ -426,6 +437,8 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				self.lookupIP_sina(ip, host);
 			};
 			req.onerror = onerror;
+			req.timeout = Inquiry_Delay;
+			req.ontimeout = onerror;
 			req.onload = function() {
 				if (req.status == 200) {
 					var s_local;
@@ -472,6 +485,8 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				self.lookupIP_taobao(ip, host);
 			};
 			req.onerror = onerror;
+			req.timeout = Inquiry_Delay;
+			req.ontimeout = onerror;
 			req.onload = function() {
 				if (req.status == 200) {
 					var myip_addr, myip_flag;
@@ -492,6 +507,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 					var obj = {
 						myipS: myip_addr
 					};
+
 					self.showFlagHash[host] = flagSrc;
 					self.updateIcon(host, flagSrc);
 
