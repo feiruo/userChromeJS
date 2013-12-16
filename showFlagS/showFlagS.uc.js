@@ -5,20 +5,20 @@
 // @homepage       https://github.com/feiruo/userchromejs/
 // @include         chrome://browser/content/browser.xul
 // @charset         UTF-8
-// @version         1.1
-// @note            2013-12-5
+// @version         1.2
+// @note            2013-12-16
 // @note            左键点击复制，右键弹出菜单。需要 countryflags.js 数据文件
+// @note            1.2 位置为identity-box时自动隐藏page-proxy-favicon，https显示
 // @note            1.1 设置延迟，增加本地文件图标。
 // ==/UserScript==
 
 /**
  * 参考 Show Location 扩展、Flagfox 扩展、http://files.cnblogs.com/ziyunfei/showFlag.uc.js
- *
  */
 
 location == "chrome://browser/content/browser.xul" && (function() {
 
-	// 显示国旗图标/IP位置
+	// 显示国旗图标/IP位置 urlbar-icons	identity-box addon-bar status-bar 等等
 	var showLocationPos = "identity-box";
 
 	// 本地国旗图标库，相对路径： profile\chrome\lib\countryflags.js
@@ -277,6 +277,10 @@ location == "chrome://browser/content/browser.xul" && (function() {
 
 			try {
 				var aLocation = this.contentDoc.location;
+				if (showLocationPos == 'identity-box') {
+					$("page-proxy-favicon").hidden = ((aLocation.protocol !== 'https:') && (aLocation.protocol !== "about:") && (aLocation.protocol !== "chrome:"));
+					this.icon.hidden = ((aLocation.protocol == "about:") || (aLocation.protocol == "chrome:"));
+				}
 				if (aLocation && aLocation.host && /tp/.test(aLocation.protocol)) {
 					this.updateState(aLocation.host);
 				} else if (aLocation && /file/.test(aLocation.protocol)) {
