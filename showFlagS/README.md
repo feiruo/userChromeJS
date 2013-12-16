@@ -11,4 +11,4 @@ Chrome\lib\countryflags.js<br />
 myip地址是从myip网站获得图标，不使用本地图标，所以略有延迟；而且myip不稳定
 就算选择在线图标，也是优先使用本地数据库<br /> 
 脚本不带样式，推荐使用样式隐藏page-proxy-favicon，可以用下面的样式：)<br />
-#page-proxy-favicon,#identity-icon-country-label{visibility: collapse !important;}
+	#page-proxy-favicon,#identity-icon-country-label{visibility: collapse !important;}
