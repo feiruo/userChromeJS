@@ -23,7 +23,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 	var hitokoto_json = [];
 
 	window.hitokoto = {
-		debug: true,
 		isReqHash: [],
 		hitokotoHash: [],
 
@@ -181,7 +180,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 					}
 					self.hitokotoHash[host] = obj;
 					self.updateTooltipText(obj);
-					debug('得到在线数据:', JSON.stringify(responseObj));
 				} else {
 					onerror();
 				}
@@ -198,7 +196,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				} else {
 					localjson = responseObj.hitokoto + '--《' + responseObj.source + '》';
 				}
-				debug('得到数据库数据:', JSON.stringify(responseObj));
 				return localjson;
 			} else {
 				return localjson = "hitokoto无法访问";
@@ -253,10 +250,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 	};
 
 	hitokoto.init();
-
-	function debug() {
-		if (hitokoto.debug) Application.console.log('[hitokoto DEBUG] ' + Array.slice(arguments));
-	}
 
 	function $(id) document.getElementById(id);
 
