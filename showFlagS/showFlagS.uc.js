@@ -5,9 +5,10 @@
 // @homepage       https://github.com/feiruo/userchromejs/
 // @include         chrome://browser/content/browser.xul
 // @charset         UTF-8
-// @version         1.2
+// @version         1.2.1
 // @note            2013-12-16
 // @note            左键点击复制，右键弹出菜单。需要 countryflags.js 数据文件
+// @note            1.2.1 修复page-proxy-favicon等问题
 // @note            1.2 位置为identity-box时自动隐藏page-proxy-favicon，https显示
 // @note            1.1 设置延迟，增加本地文件图标。
 // ==/UserScript==
@@ -278,7 +279,10 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			try {
 				var aLocation = this.contentDoc.location;
 				if (showLocationPos == 'identity-box') {
-					$("page-proxy-favicon").hidden = ((aLocation.protocol !== 'https:') && (aLocation.protocol !== "about:") && (aLocation.protocol !== "chrome:"));
+					if ((aLocation.protocol !== 'https:') && (aLocation.protocol !== "about:") && (aLocation.protocol !== "chrome:"))
+						$('page-proxy-favicon').style.visibility = 'collapse';
+					else
+						$('page-proxy-favicon').style.visibility = 'visible';
 					this.icon.hidden = ((aLocation.protocol == "about:") || (aLocation.protocol == "chrome:"));
 				}
 				if (aLocation && aLocation.host && /tp/.test(aLocation.protocol)) {
