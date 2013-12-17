@@ -10,7 +10,7 @@ showFlagS
  - 可选择查询地址，目前内置4个，可以在脚本里面添加。
  - 国旗图标左键复制内容，中键刷新，右键弹出菜单。
  - 本地数据库位置：
- 
+
 		Chrome\lib\countryflags.js
     
     
@@ -22,7 +22,8 @@ showFlagS
 - 鼠标中键点击图标会同时载入配置文件和中文规则数据库文件。
 - 如果有特殊需要显示 网站标识(page-proxy-favicon)的，请添加以下样式：
 
-		#page-proxy-favicon{visibility: visible !important;}
+		 #page-proxy-favicon{visibility: visible !important;}
 
+		
 ![menmenu](menu.png)
 ![news](news.gif)
