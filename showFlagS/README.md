@@ -10,8 +10,6 @@ showFlagS
  <br />
  - 可选择查询地址，目前内置4个，可以在脚本里面添加。
  - 国旗图标左键复制内容，中键刷新，右键弹出菜单。
-  ![menmenu](menu.png)
-  
  <br />
  - 本地数据库位置：
 
@@ -29,4 +27,11 @@ showFlagS
 	#page-proxy-favicon{visibility: visible !important;}
 
 
-   ![news](news.gif)
+![menmenu](menu.png) 
+
+
+
+
+
+![news](news.gif)
+
