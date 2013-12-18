@@ -5,10 +5,11 @@
 // @homepage       https://github.com/feiruo/userchromejs/
 // @include         chrome://browser/content/browser.xul
 // @charset         UTF-8
-// @version         1.2.1
-// @note            2013-12-16
-// @note            左键点击复制，右键弹出菜单。需要 countryflags.js 数据文件
-// @note            1.2.1 修复page-proxy-favicon等问题
+// @version         1.3
+// @note            2013-12-18
+// @note            左键点击复制，中键刷新，右键弹出菜单。
+// @note            1.3 增加淘宝查询源，修复不显示图标，刷新、切换查询源时可能出现的图标提示消失等BUG
+// @note            1.2.1 修复identity-box时page-proxy-favicon的问题
 // @note            1.2 位置为identity-box时自动隐藏page-proxy-favicon，https显示
 // @note            1.1 设置延迟，增加本地文件图标。
 // ==/UserScript==
@@ -29,7 +30,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 	var TAB_ACTIVE = true;
 
 	//毫秒,延迟时间，时间内未取得所选择查询源数据，就使用新浪查询源
-	var Inquiry_Delay = 2500;
+	var Inquiry_Delay = 3500;
 
 	// 备用国旗地址
 	var BAK_FLAG_PATH = 'http://www.razerzone.com/asset/images/icons/flags/';
@@ -200,7 +201,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			}));
 
 			popup.appendChild($C('menuitem', {
-				label: "myip 查询源",
+				label: "MyIP 查询源",
 				id: "flagsSetLookMyip",
 				type: "radio",
 				oncommand: 'showFlagS.lookupIP("set","myip");'
@@ -218,6 +219,13 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				id: "flagsSetLookSina",
 				type: "radio",
 				oncommand: 'showFlagS.lookupIP("set","sina");'
+			}));
+
+			popup.appendChild($C('menuitem', {
+				label: "淘宝 查询源",
+				id: "flagsSetLookTaobao",
+				type: "radio",
+				oncommand: 'showFlagS.lookupIP("set","taobao");'
 			}));
 
 			popup.appendChild($C('menuseparator'));
@@ -238,6 +246,8 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				$("flagsSetLookCZedu").setAttribute('checked', true);
 			else if (site == "sina")
 				$("flagsSetLookSina").setAttribute('checked', true);
+			else if (site == "taobao")
+				$("flagsSetLookTaobao").setAttribute('checked', true);
 			if (NetSrc)
 				$("flagsNetSrc").setAttribute('checked', (($("flagsNetSrc").value != NetSrc) ? true : false));
 			else
@@ -337,6 +347,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			if (ip == "set") {
 				site = host;
 				this._prefs.setCharPref("SourceSite", site);
+				return;
 			}
 
 			var func = self['lookupIP_' + site];
@@ -350,11 +361,10 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				// 防止重复获取
 				if (checkCache && self.isReqHash[host]) return;
 				self.isReqHash[host] = true;
-				if (site !== 'myip')
-					self.lookupIP_taobao(ip, host);
-				else
+				if (site == 'myip' || site == 'taobao')
 					return;
-				// self.lookupIP_myip(ip, host);
+				else
+					self.lookupIP_taobao(ip, host);
 			};
 
 			var tooltipFunc = function(checkCache) {
@@ -373,19 +383,37 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			tooltipFunc(!this.forceRefresh);
 			this.forceRefresh = false;
 		},
-		lookupIP_taobao: function(ip, host) {
-			var self = this;
+		lookupIP_taobao: function(ip, host, other) {
+			var self = showFlagS;
 
 			var req = new XMLHttpRequest();
 			req.open("GET", 'http://ip.taobao.com/service/getIpInfo.php?ip=' + ip, true);
 			req.send(null);
+			var onerror = function() {
+				self.icon.src = Unknown_Flag;
+				if (other || site == 'taobao')
+					self.icon.tooltipText = '无法查询，请刷新！';
+			};
+			req.onerror = onerror;
+			req.timeout = Inquiry_Delay;
+			req.ontimeout = onerror;
 			req.onload = function() {
 				if (req.status == 200) {
 					var responseObj = JSON.parse(req.responseText);
 					if (responseObj.code == 0) {
 						var country_id = responseObj.data.country_id.toLocaleLowerCase();
+						var addr = responseObj.data.country + responseObj.data.area + '\n' + responseObj.data.region + responseObj.data.city + responseObj.data.county + responseObj.data.isp;
+						var obj = {
+							taobao: addr
+						};
+						if (other || site == 'taobao') {
+							self.showFlagTooltipHash[host] = obj;
+							self.updateTooltipText(ip, host, obj);
+						}
 						self.showFlagHash[host] = country_id;
 						self.updateIcon(host, country_id, responseObj.data.country);
+					} else {
+						onerror();
 					}
 				}
 			};
@@ -396,7 +424,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			req.open("GET", 'http://www.cz88.net/ip/index.aspx?ip=' + ip, true);
 			req.send(null);
 			var onerror = function() {
-				self.lookupIP_sina(ip, host);
+				self.lookupIP_taobao(ip, host, other);
 			};
 			req.onerror = onerror;
 			req.timeout = Inquiry_Delay;
@@ -431,6 +459,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 					} else {
 						onerror();
 					}
+
 				} else {
 					onerror();
 				}
@@ -442,7 +471,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			req.open("GET", 'http://phyxt8.bu.edu/iptool/qqwry.php?ip=' + ip, true);
 			req.send(null);
 			var onerror = function() {
-				self.lookupIP_sina(ip, host);
+				self.lookupIP_taobao(ip, host, other);
 			};
 			req.onerror = onerror;
 			req.timeout = Inquiry_Delay;
@@ -462,24 +491,9 @@ location == "chrome://browser/content/browser.xul" && (function() {
 					} else {
 						onerror();
 					}
+
 				} else {
 					onerror();
-				}
-			};
-		},
-		lookupIP_sina: function(ip, host) {
-			var self = showFlagS;
-			var req = new XMLHttpRequest();
-			req.open("GET", 'http://int.dpool.sina.com.cn/iplookup/iplookup.php?format=json&ip=' + ip, true);
-			req.send(null);
-			req.onload = function() {
-				if (req.status == 200) {
-					var responseObj = JSON.parse(req.responseText);
-					if (responseObj.ret == 1) {
-						self.showFlagTooltipHash[host] = responseObj;
-						self.updateTooltipText(ip, host, responseObj);
-						return;
-					}
 				}
 			};
 		},
@@ -489,8 +503,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			req.send(null);
 			var self = showFlagS;
 			var onerror = function() {
-				self.lookupIP_sina(ip, host);
-				self.lookupIP_taobao(ip, host);
+				self.lookupIP_taobao(ip, host, other);
 			};
 			req.onerror = onerror;
 			req.timeout = Inquiry_Delay;
@@ -523,6 +536,37 @@ location == "chrome://browser/content/browser.xul" && (function() {
 					self.updateTooltipText(ip, host, obj);
 				} else {
 					onerror();
+				}
+			};
+		},
+		lookupIP_sina: function(ip, host) {
+			var self = showFlagS;
+			var req = new XMLHttpRequest();
+			req.open("GET", 'http://int.dpool.sina.com.cn/iplookup/iplookup.php?format=json&ip=' + ip, true);
+			req.send(null);
+			var onerror = function() {
+				self.lookupIP_taobao(ip, host, other);
+			};
+			req.onerror = onerror;
+			req.timeout = Inquiry_Delay;
+			req.ontimeout = onerror;
+			req.onload = function() {
+				if (req.status == 200) {
+					var responseObj = JSON.parse(req.responseText);
+					if (responseObj.ret == 1) {
+						if (responseObj.isp !== '' || responseObj.type !== '' || responseObj.desc !== '')
+							var addr = responseObj.country + responseObj.province + responseObj.city + responseObj.district + '\n' + responseObj.isp + responseObj.type + responseObj.desc;
+						else
+							var addr = responseObj.country + responseObj.province + responseObj.city + responseObj.district;
+						var obj = {
+							sina: addr
+						};
+						self.showFlagTooltipHash[host] = obj;
+						self.updateTooltipText(ip, host, obj);
+						return;
+					} else {
+						onerror();
+					}
 				}
 			};
 		},
@@ -569,13 +613,8 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			tooltipArr.push("网站IP：" + ip);
 			tooltipArr.push("服务器：" + obj.server);
 
-			if (obj.country) {
-				if (obj.isp !== "" || obj.type !== "")
-					tooltipArr.push(obj.isp + obj.type);
-				if (obj.desc !== "")
-					tooltipArr.push(obj.desc);
-				tooltipArr.push(obj.country + obj.province + obj.city + obj.district);
-			}
+			if (obj.taobao)
+				tooltipArr.push(obj.taobao);
 
 			if (obj.CZ) {
 				tooltipArr.push(obj.CZ);
@@ -586,10 +625,11 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			if (obj.CZedu)
 				tooltipArr.push(obj.CZedu);
 
-
-			if (obj.myipS) {
+			if (obj.myipS)
 				tooltipArr.push(obj.myipS);
-			}
+
+			if (obj.sina)
+				tooltipArr.push(obj.sina);
 
 			this.icon.tooltipText = tooltipArr.join('\n');
 		},
