@@ -6,8 +6,8 @@
 // @include         chrome://browser/content/browser.xul
 // @charset         UTF-8
 // @version         1.3
-// @note            2013-12-18
-// @note            左键点击复制，中键刷新，右键弹出菜单。
+// @note            2013-12-16
+// @note            左键点击复制，右键弹出菜单。需要 countryflags.js 数据文件
 // @note            1.3 增加淘宝查询源，修复不显示图标，刷新、切换查询源时可能出现的图标提示消失等BUG
 // @note            1.2.1 修复identity-box时page-proxy-favicon的问题
 // @note            1.2 位置为identity-box时自动隐藏page-proxy-favicon，https显示
@@ -131,11 +131,12 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				}));
 			}
 
-			if (showLocationPos == "identity-box" || showLocationPos == 'urlbar-icons') {
+			if (showLocationPos == "identity-box") {
 				this.icon.style.marginLeft = "4px";
 				this.icon.style.marginRight = "2px";
-				this.icon.style.width = "16px";
 			}
+			this.icon.style.width = "16px";
+			this.icon.style.height = "16px";
 
 			this.icon.src = DEFAULT_Flag;
 
@@ -295,6 +296,8 @@ location == "chrome://browser/content/browser.xul" && (function() {
 						$('page-proxy-favicon').style.visibility = 'visible';
 					this.icon.hidden = ((aLocation.protocol == "about:") || (aLocation.protocol == "chrome:"));
 				}
+				if (showLocationPos == 'urlbar-icons')
+					this.icon.hidden = ((aLocation.protocol == "about:") || (aLocation.protocol == "chrome:"));
 				if (aLocation && aLocation.host && /tp/.test(aLocation.protocol)) {
 					this.updateState(aLocation.host);
 				} else if (aLocation && /file/.test(aLocation.protocol)) {
@@ -459,7 +462,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 					} else {
 						onerror();
 					}
-
 				} else {
 					onerror();
 				}
@@ -491,7 +493,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 					} else {
 						onerror();
 					}
-
 				} else {
 					onerror();
 				}
@@ -592,12 +593,13 @@ location == "chrome://browser/content/browser.xul" && (function() {
 								this.showFlagHash[host] = contryCode;
 							}
 						}
+					} else if (NetSrc) {
+						src = src || (BAK_FLAG_PATH + countryCode + ".gif");
+					} else {
+						src = Unknown_Flag;
 					}
 
-					if (NetSrc)
-						src = src || (BAK_FLAG_PATH + countryCode + ".gif");
-					else
-						src = src;
+					src = src;
 				}
 				this.icon.src = src;
 			}
