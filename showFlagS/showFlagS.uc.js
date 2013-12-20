@@ -293,9 +293,8 @@ location == "chrome://browser/content/browser.xul" && (function() {
 						$('page-proxy-favicon').style.visibility = 'collapse';
 					else
 						$('page-proxy-favicon').style.visibility = 'visible';
-					this.icon.hidden = ((aLocation.protocol == "about:") || (aLocation.protocol == "chrome:"));
 				}
-				if (showLocationPos == 'urlbar-icons')
+				if (showLocationPos == 'urlbar-icons' || showLocationPos == 'identity-box')
 					this.icon.hidden = ((aLocation.protocol == "about:") || (aLocation.protocol == "chrome:"));
 				if (aLocation && aLocation.host && /tp/.test(aLocation.protocol)) {
 					this.updateState(aLocation.host);
