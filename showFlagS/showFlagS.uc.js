@@ -136,7 +136,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				this.icon.style.marginRight = "2px";
 			}
 			this.icon.style.width = "16px";
-			this.icon.style.height = "16px";
 
 			this.icon.src = DEFAULT_Flag;
 
