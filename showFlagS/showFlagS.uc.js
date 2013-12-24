@@ -425,7 +425,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			req.open("GET", 'http://www.cz88.net/ip/index.aspx?ip=' + ip, true);
 			req.send(null);
 			var onerror = function() {
-				self.lookupIP_taobao(ip, host, other);
+				self.lookupIP_taobao(ip, host, "other");
 			};
 			req.onerror = onerror;
 			req.timeout = Inquiry_Delay;
@@ -471,7 +471,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			req.open("GET", 'http://phyxt8.bu.edu/iptool/qqwry.php?ip=' + ip, true);
 			req.send(null);
 			var onerror = function() {
-				self.lookupIP_taobao(ip, host, other);
+				self.lookupIP_taobao(ip, host, "other");
 			};
 			req.onerror = onerror;
 			req.timeout = Inquiry_Delay;
@@ -502,7 +502,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			req.send(null);
 			var self = showFlagS;
 			var onerror = function() {
-				self.lookupIP_taobao(ip, host, other);
+				self.lookupIP_taobao(ip, host, "other");
 			};
 			req.onerror = onerror;
 			req.timeout = Inquiry_Delay;
@@ -544,7 +544,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			req.open("GET", 'http://int.dpool.sina.com.cn/iplookup/iplookup.php?format=json&ip=' + ip, true);
 			req.send(null);
 			var onerror = function() {
-				self.lookupIP_taobao(ip, host, other);
+				self.lookupIP_taobao(ip, host, "other");
 			};
 			req.onerror = onerror;
 			req.timeout = Inquiry_Delay;
