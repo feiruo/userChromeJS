@@ -7,6 +7,10 @@ userChromeJS
 可以自定义保存位置(书签工具栏/书签菜单)，保存目录等<br /> 
 但设置了保存次数之后，达到数量会自动删除较早的条目
 
+###bookmarkBtn.uc.js
+可移动书签菜单按钮<br /> 
+方便FF23以下版本和UX版本
+
 ###javascriptUrl.uc.js
 地址栏执行 Javascript:
 
