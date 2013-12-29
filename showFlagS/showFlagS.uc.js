@@ -5,9 +5,11 @@
 // @homepage       https://github.com/feiruo/userchromejs/
 // @include         chrome://browser/content/browser.xul
 // @charset         UTF-8
-// @version         1.3
+// @version         1.3.2
 // @note            2013-12-16
 // @note            左键点击复制，右键弹出菜单。需要 countryflags.js 数据文件
+// @note            1.3.2 修复identity-box图标的判断
+// @note            1.3.1 修复https找不到服务的情况下显示2个图标的bug
 // @note            1.3 增加淘宝查询源，修复不显示图标，刷新、切换查询源时可能出现的图标提示消失等BUG
 // @note            1.2.1 修复identity-box时page-proxy-favicon的问题
 // @note            1.2 位置为identity-box时自动隐藏page-proxy-favicon，https显示
@@ -289,13 +291,12 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			try {
 				var aLocation = this.contentDoc.location;
 				if (showLocationPos == 'identity-box') {
-					if ((aLocation.protocol !== 'https:') && (aLocation.protocol !== "about:") && (aLocation.protocol !== "chrome:"))
+					if ((aLocation.protocol !== "about:") && (aLocation.protocol !== "chrome:"))
 						$('page-proxy-favicon').style.visibility = 'collapse';
 					else
 						$('page-proxy-favicon').style.visibility = 'visible';
-				}
-				if (showLocationPos == 'urlbar-icons' || showLocationPos == 'identity-box')
 					this.icon.hidden = ((aLocation.protocol == "about:") || (aLocation.protocol == "chrome:"));
+				}
 				if (aLocation && aLocation.host && /tp/.test(aLocation.protocol)) {
 					this.updateState(aLocation.host);
 				} else if (aLocation && /file/.test(aLocation.protocol)) {
@@ -336,6 +337,10 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		resetState: function() {
 			this.icon.src = DEFAULT_Flag;
 			this.icon.tooltipText = '';
+			if (showLocationPos == 'identity-box') {
+				this.icon.hidden = true;
+				$('page-proxy-favicon').style.visibility = 'visible';
+			}
 		},
 		lookupIP: function(ip, host) {
 			if (ip == "0") {
@@ -572,6 +577,14 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		updateIcon: function(host, countryCode, countryName) {
 			// 跳过后台获取的情况
 			if (host == this.contentDoc.location.host) {
+				this.icon.hidden = false;
+				var aLocation = this.contentDoc.location;
+				if (showLocationPos == 'identity-box') {
+					if (aLocation.protocol !== 'https:')
+						$('page-proxy-favicon').style.visibility = 'collapse';
+					else
+						$('page-proxy-favicon').style.visibility = 'visible';
+				}
 				var src;
 				if (countryCode.indexOf('http://') == 0) {
 					if (countryCode.indexOf('http://www.myip.cn/images/country_icons/') == 0)
