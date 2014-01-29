@@ -1,15 +1,16 @@
 // ==UserScript==
-// @name           anoBtn.uc.js
-// @description    AnotherButton
-// @homepage       https://github.com/feiruo/userchromejs/
-// @author         feiruo
-// @include      main
-// @charset      utf-8
-// @version      1.1
-// @note        超感谢 ywzhaiqi  
-// @note        按钮菜单，外置配置文件.......
-// @note        1.1解决编辑器中文路径问题，修改菜单，提示等文字。
-// @note        1.0
+// @name		 anoBtn.uc.js
+// @description	 AnotherButton
+// @homepage	 https://github.com/feiruo/userchromejs/
+// @author		 feiruo
+// @include		 main
+// @charset 	 utf-8
+// @version		 1.2
+// @note 		 超感谢 ywzhaiqi  
+// @note 		 按钮菜单，外置配置文件.......
+// @note 		 1.2修复按钮移动之后重载残留问题，增加菜单弹出位置选择。
+// @note 		 1.1解决编辑器中文路径问题，修改菜单，提示等文字。
+// @note 		 1.0
 // ==/UserScript==
 (function() {
 	window.anobtn = {
@@ -81,6 +82,7 @@
 		makepopup: function() {
 			var popup = document.createElement("menupopup");
 			popup.setAttribute("id", "anobtn_popup");
+			popup.setAttribute('position', this.anobtnset.position);
 			var obj, menuitem;
 			for (var i = 0; i < this.anomenu.length; i++) {
 				obj = this.anomenu[i];
@@ -108,7 +110,7 @@
 				} catch (e) {}
 			}
 			$("anobtn").removeChild($("anobtn_popup"));
-			$(this.anobtnset.intags).parentNode.removeChild($("anobtn"));
+			$("anobtn").parentNode.removeChild($("anobtn"));
 		},
 
 		newMenu: function(menuObj) {
