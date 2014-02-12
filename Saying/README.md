@@ -9,6 +9,7 @@ saying
  - 其他同hitokoto.uc.js脚本。
  - 数据库位置：
 
+		Chrome\lib\saying.json
 		Chrome\lib\hitokoto.json
 		Chrome\lib\veryCD.json
     
