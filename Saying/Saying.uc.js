@@ -7,27 +7,38 @@
 // @charset      	utf-8
 // @version         1.0
 // @note            地址栏显示自定义语句，根据网址切换。
-// @note            自定义内容可在 Chrome\lib\veryCD.json 自己添加。
 // @note            目前可自动获取的有VeryCD标题上的，和hitokoto API。
 // @note            每次关闭浏览器后数据库添加获取过的内容，并去重复。
 // @note            左键图标复制内容，中键重新获取，右键弹出菜单。
 // ==/UserScript==
 location == "chrome://browser/content/browser.xul" && (function() {
 
-	var sayingType = 'veryCD'; //VeryCD(名言名句)或hitokoto。
+	//VeryCD(名言名句)或hitokoto。
+	sayingType = 'veryCD',
 
-	var autotip = 0; //0为地址栏文字显示，1为自动弹出
-	var autotiptime = 5000; //autotip=1时有效，设置自动弹出时，多少秒后关闭弹窗
+	//0为地址栏文字显示，1为自动弹出
+	autotip = 0,
 
-	var hitokoto_Path = 'lib\\hitokoto.json'; //数据库文件位置
-	var veryCD_Path = 'lib\\veryCD.json'; //数据库文件位置	
+	//autotip=1时有效，设置自动弹出时，多少秒后关闭弹窗
+	autotiptime = 5000,
 
-	var Local_Delay = 2500; //毫秒， 延迟时间，时间内未取得hitokoto在线数据，则使用本地数据库
+	//是否混合随机显示
+	random = true,
 
-	var hitokoto_lib = false;
-	var hitokoto_json = [];
-	var veryCD_lib = false;
-	var veryCD_json = [];
+	//数据库文件位置
+	saying_Path = 'lib\\saying.json', //此数据库为自定义数据库，不更新只读取。
+	hitokoto_Path = 'lib\\hitokoto.json',
+	veryCD_Path = 'lib\\veryCD.json',
+
+	//毫秒， 延迟时间，时间内未取得hitokoto在线数据，则使用本地数据库
+	Local_Delay = 2500,
+
+	saying_lib = false,
+	saying_json = [],
+	hitokoto_lib = false,
+	hitokoto_json = [],
+	veryCD_lib = false,
+	veryCD_json = [];
 
 	window.saying = {
 		isReqHash: [],
@@ -47,9 +58,17 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				sayingType = this._prefs.getCharPref("type");
 			}
 
+			if (!this._prefs.prefHasUserValue("random")) {
+				this._prefs.setIntPref("random", random);
+			} else {
+				random = this._prefs.getIntPref("random");
+			}
+
+			saying_lib = this.loadFile(saying_Path);
 			hitokoto_lib = this.loadFile(hitokoto_Path);
 			veryCD_lib = this.loadFile(veryCD_Path);
 
+			if (saying_lib) saying_json = JSON.parse(saying_lib);
 			if (hitokoto_lib) hitokoto_json = JSON.parse(hitokoto_lib);
 			if (veryCD_lib) veryCD_json = JSON.parse(veryCD_lib);
 
@@ -112,6 +131,11 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				oncommand: "saying.onLocationChange(true);"
 			}));
 
+			popup.appendChild($C('menuitem', {
+				label: "去重保存",
+				oncommand: "saying.finsh('all');"
+			}));
+
 			popup.appendChild($C('menuseparator'));
 
 			popup.appendChild($C('menuitem', {
@@ -128,17 +152,41 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				oncommand: 'saying.lookup("set","veryCD");'
 			}));
 
+			popup.appendChild($C('menuitem', {
+				label: "手动设定",
+				id: "sayingSaying",
+				type: "radio",
+				oncommand: 'saying.lookup("set","saying");'
+			}));
+
+			popup.appendChild($C('menuseparator'));
+
+			popup.appendChild($C('menuitem', {
+				label: "混合随机",
+				id: "sayingRandom",
+				type: "checkbox",
+				oncommand: 'saying.random();'
+			}));
+
 			$('mainPopupSet').appendChild(popup);
 			if (sayingType == "veryCD")
 				$("sayingVeryCD").setAttribute('checked', true);
 			else if (sayingType == "hitokoto")
 				$("sayinghitokoto").setAttribute('checked', true);
+			else if (sayingType == "saying")
+				$("sayingSaying").setAttribute('checked', true);
+
+			if (random)
+				$("sayingRandom").setAttribute('checked', (($("sayingRandom").value != random) ? true : false));
+			else
+				$("sayingRandom").setAttribute('checked', (($("sayingRandom").value != random) ? false : true));
 
 			var xmltt = '\
         	<tooltip id="sayingtip" style="opacity: 0.8 ;color: brown ;text-shadow:0 0 3px #CCC ;background: rgba(255,255,255,0.6) ;padding-bottom:3px ;border:1px solid #BBB ;border-radius: 3px ;box-shadow:0 0 3px #444 ;">\
         	<label id="sayingPopupLabel" flex="1" />\
     		</tooltip>\
     		';
+
 			var rangett = document.createRange();
 			rangett.selectNodeContents($('mainPopupSet'));
 			rangett.collapse(false);
@@ -159,6 +207,14 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		copy: function() {
 			Cc['@mozilla.org/widget/clipboardhelper;1'].createInstance(Ci.nsIClipboardHelper)
 				.copyString($("sayingPopupLabel").textContent);
+		},
+
+		random: function() {
+			if (random)
+				random = false;
+			else
+				random = true;
+			this._prefs.setIntPref("random", random);
 		},
 
 		addlabel: function() {
@@ -188,10 +244,16 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		},
 
 		lookup: function(host, type) {
+
 			if (host == "set") {
 				sayingType = type;
 				this._prefs.setCharPref("type", sayingType);
 				return;
+			}
+
+			if (random) {
+				var sayingRandom = ['saying', 'veryCD', 'hitokoto'];
+				sayingType = sayingRandom[Math.floor(Math.random() * sayingRandom.length)];
 			}
 
 			if (this.forceRefresh) {
@@ -209,13 +271,25 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			this.isReqHash[host] = true;
 		},
 
+		lookup_saying: function(host) {
+			var self = this;
+			if (saying_lib) {
+				var responseObj = saying_json[Math.floor(Math.random() * saying_json.length)];
+				self.sayingHash[host] = responseObj;
+				self.updateTooltipText(responseObj);
+			} else {
+				self.sayingHash[host] = "无自定义数据";
+				self.updateTooltipText("无自定义数据");
+			}
+		},
+
 		lookup_hitokoto: function(host) {
 			var self = this;
 			var req = new XMLHttpRequest();
 			req.open("GET", 'http://api.hitokoto.us/rand', true);
 			req.send(null);
 			var onerror = function() {
-				var obj = self.locallib(hitokoto);
+				var obj = self.locallib('hitokoto');
 				self.sayingHash[host] = obj;
 				self.updateTooltipText(obj);
 			};
@@ -249,8 +323,8 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				self.sayingHash[host] = responseObj;
 				self.updateTooltipText(responseObj);
 			} else {
-				self.sayingHash[host] = "无自定义数据";
-				self.updateTooltipText("无自定义数据");
+				self.sayingHash[host] = "无VeryCD数据";
+				self.updateTooltipText("无VeryCD数据");
 			}
 		},
 
