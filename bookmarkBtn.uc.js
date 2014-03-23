@@ -6,6 +6,7 @@
 // @include      main
 // @charset      utf-8
 // @version      0.2
+// @note         0.2 新版添加订阅项。
 // @note         可移动书签菜单按钮。
 // ==/UserScript==
 (function() {
