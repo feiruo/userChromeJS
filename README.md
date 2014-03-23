@@ -9,7 +9,7 @@ userChromeJS
 
 ###bookmarkBtn.uc.js
 可移动书签菜单按钮<br /> 
-方便FF23以下版本和UX版本
+方便FF23以下版本和UX版本。
 
 ###javascriptUrl.uc.js
 地址栏执行 Javascript:
@@ -20,4 +20,15 @@ userChromeJS
 自动获取上次使用的文件夹并选中<br /> 
 书签编辑面板自动展开文件夹选择面板<br /> 
 书签编辑面板增加关键字、标签、侧边栏打开等<br /> 
-右键单击收藏按钮从收藏中删除当前页面
+右键单击收藏按钮从收藏中删除当前页面。
+
+###StarUrlicon.uc.js
+新版UI移动整个书签按钮到地址栏。<br /> 
+添加右键 显示/隐藏 书签侧栏，中键删除当前页面书签。<br /> 
+推荐和bookmarkBtn.uc.js同时使用，并使用CSS
+
+		#bookmarks-menu-button > dropmarker {display: none !important;}
+
+###NoShowBorder.uc.js
+FF去边框，延迟生效，新版UI适用。<br /> 
+定制动作之后再次生效。
