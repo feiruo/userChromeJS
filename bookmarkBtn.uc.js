@@ -5,7 +5,7 @@
 // @author       feiruo
 // @include      main
 // @charset      utf-8
-// @version      0.1
+// @version      0.2
 // @note         可移动书签菜单按钮。
 // ==/UserScript==
 (function() {
@@ -68,7 +68,6 @@
 			if (Australis) {
 				var menuitem = $C("menuitem", {
 					id: "BMB_bookmarksShowAll",
-					key: "manBookmarkKb",
 					oncommand: "PlacesCommandHook.showPlacesOrganizer('AllBookmarks');",
 					label: $('BMB_bookmarksShowAll').label,
 				});
@@ -78,6 +77,15 @@
 					type: "checkbox",
 					oncommand: "toggleSidebar('viewBookmarksSidebar');",
 					label: $('BMB_viewBookmarksSidebar').label,
+				});
+				menupopup.appendChild(menuitem);
+				var menuitem = $C("menuitem", {
+					id: "BMB_subscribeToPageMenuitem",
+					class: "menuitem-iconic subviewbutton",
+					oncommand: "return FeedHandler.subscribeToFeed(null, event);",
+					onclick: "checkForMiddleClick(this, event);",
+					observes: "singleFeedMenuitemState",
+					label: $('BMB_subscribeToPageMenuitem').label,
 				});
 				menupopup.appendChild(menuitem);
 			} else {
