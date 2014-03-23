@@ -5,7 +5,8 @@
 // @author         feiruo
 // @include         chrome://browser/content/browser.xul
 // @charset      utf-8
-// @version      1.0
+// @version      1.1
+// @note        1.1 左键添加书签，中键删除当前页面书签，右键 打开/隐藏 书签侧栏。
 // @note        参考黒仪大螃蟹的BMStar.uc.js（http://pan.baidu.com/share/link?uk=2467242534&shareid=545029）
 // @note        收藏按钮移动到地址栏，左键添加书签并弹出编辑窗口，右键删除当前页面书签
 // @note        仅Australis 适用
@@ -43,11 +44,14 @@
 		if (e.button == 0) {
 			PlacesCommandHook.bookmarkCurrentPage(true);
 		}
-		if (e.button == 2) {
+		if (e.button == 1) {
 			var uri = gBrowser.selectedBrowser.currentURI;
 			var itemId = PlacesUtils.getMostRecentBookmarkForURI(uri);
 			var navBookmarksService = Cc["@mozilla.org/browser/nav-bookmarks-service;1"].getService(Ci.nsINavBookmarksService);
 			navBookmarksService.removeItem(itemId);
+		}
+		if (e.button == 2) {
+			toggleSidebar('viewBookmarksSidebar');
 		}
 		e.preventDefault();
 		e.stopPropagation()
