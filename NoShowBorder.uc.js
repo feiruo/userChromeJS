@@ -3,11 +3,12 @@
 // @namespace       firefox
 // @description     无边框
 // @include         chrome://browser/content/browser.xul
-// @version         1.1
+// @version         1.2
 // ==/UserScript==
 (function() {
 	window.chromemargin = {
 		init: function() {
+			window.addEventListener("resize", this, true);
 			window.addEventListener("aftercustomization", this, false);
 			window.addEventListener("customizationchange", this, false);
 		},
