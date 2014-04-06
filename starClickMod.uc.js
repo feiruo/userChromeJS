@@ -5,10 +5,11 @@
 // @author         feiruo
 // @include         chrome://browser/content/browser.xul
 // @charset      utf-8
-// @version      1.7
+// @version      1.8
 // @note        参考star Click（http://g.mozest.com/viewthread.php?tid=41377）
 // @note        为编辑面板增加更多功能
 // @note        右键删除当前书签
+// @note        1.8 修正重启后可能按键失效的问题。
 // @note        1.7 修复右键报错，Australis重整UI后失效问题,增加 中键 打开/隐藏 书签侧栏。
 // @note        1.6 Australis 添加书签按钮移动至地址栏。
 // @note        1.5 支持 Nightly Holly.
@@ -33,9 +34,6 @@
 				this.lastfolder();
 				this.clickStar();
 				this.resizeUI();
-				window.addEventListener("resize", starClick.clickStar, true);
-				window.addEventListener("aftercustomization", starClick.clickStar, false);
-				window.addEventListener("customizationchange", starClick.clickStar, false);
 			},
 
 			bookmarkPageU: function() {
@@ -173,5 +171,9 @@
 			},
 		};
 		window.starClick.init();
+		setTimeout(starClick.clickStar, 500);
+		window.addEventListener("resize", starClick.clickStar, true);
+		window.addEventListener("aftercustomization", starClick.clickStar, false);
+		window.addEventListener("customizationchange", starClick.clickStar, false);
 	}
 })();
