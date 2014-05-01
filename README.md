@@ -5,14 +5,11 @@ userChromeJS
 ###bookmarkallmod.uc.js
 退出浏览器的时候保存所有未关闭的页面为书签<br /> 
 可以自定义保存位置(书签工具栏/书签菜单)，保存目录等<br /> 
-但设置了保存次数之后，达到数量会自动删除较早的条目
+但设置了保存次数之后，达到数量会自动删除较早的条目。
 
 ###bookmarkBtn.uc.js
 可移动书签菜单按钮<br /> 
 方便FF23以下版本和UX版本。
-
-###javascriptUrl.uc.js
-地址栏执行 Javascript:
 
 ###starClickMod.uc.js
 多功能收藏按钮，支持UX版Fireofx<br /> 
@@ -25,10 +22,18 @@ userChromeJS
 ###StarUrlicon.uc.js
 新版UI移动整个书签按钮到地址栏。<br /> 
 添加右键 显示/隐藏 书签侧栏，中键删除当前页面书签。<br /> 
-推荐和bookmarkBtn.uc.js同时使用，并使用CSS
+推荐和bookmarkBtn.uc.js同时使用，并使用CSS。
 
 		#bookmarks-menu-button > dropmarker {display: none !important;}
 
 ###NoShowBorder.uc.js
 FF去边框，延迟生效，新版UI适用。<br /> 
 定制动作之后再次生效。
+
+###AwesomeBookmarkbar.uc.js
+点击地址栏显示书签工具栏。<br /> 
+地址栏任意按键，地址栏失去焦点后自动隐藏书签工具栏。<br /> 
+左键点击书签后自动隐藏书签工具栏。
+
+###javascriptUrl.uc.js
+地址栏执行“Javascript:”。
