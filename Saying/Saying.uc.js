@@ -5,11 +5,12 @@
 // @author          feiruo
 // @include         chrome://browser/content/browser.xul
 // @charset      	utf-8
-// @version         1.0
+// @version         1.1
 // @note            地址栏显示自定义语句，根据网址切换。
 // @note            目前可自动获取的有VeryCD标题上的，和hitokoto API。
 // @note            每次关闭浏览器后数据库添加获取过的内容，并去重复。
 // @note            左键图标复制内容，中键重新获取，右键弹出菜单。
+// @note            1.1 增加地址栏文字长度设置，避免撑长地址栏。
 // ==/UserScript==
 location == "chrome://browser/content/browser.xul" && (function() {
 
@@ -18,6 +19,9 @@ location == "chrome://browser/content/browser.xul" && (function() {
 
 	//0为地址栏文字显示，1为自动弹出
 	autotip = 0,
+
+	//如果是地址栏文字，文字长度（个数，包括标点符号），留空或0则全部显示
+	SayingLong = 0,
 
 	//autotip=1时有效，设置自动弹出时，多少秒后关闭弹窗
 	autotiptime = 5000,
@@ -346,7 +350,15 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		},
 
 		updateTooltipText: function(val) {
-			if (autotip == 0) this.sayings.label = val;
+
+			if (SayingLong && SayingLong !== 0 && val.length > SayingLong) {
+				urlval = val.substr(0, SayingLong) + '.....';
+			} else {
+				urlval = val;
+			}
+
+			if (autotip == 0) this.sayings.label = urlval;
+
 			else {
 				var popup = $("sayingtip");
 				if (this.timer) clearTimeout(this.timer);
