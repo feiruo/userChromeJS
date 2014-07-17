@@ -5,9 +5,10 @@
 // @homepage       https://github.com/feiruo/userchromejs/
 // @include         chrome://browser/content/browser.xul
 // @charset         UTF-8
-// @version         1.5
+// @version         1.5.5
 // @note            Begin 2013-12-16
 // @note            左键点击复制，右键弹出菜单。需要 countryflags.js 数据文件
+// @note            1.5.5 增加flagfox扩展国旗图标库，相对路径profile\chrome\lib\flagfoxflags下，直接存放图标,支持实时切换。
 // @note            1.5 增加右键菜单外部配置，配置方式和anoBtn一样，具体请参考配置文件。
 // @note            1.4 增加几个详细信息；服务器没给出的就不显示；去除图标大小调整，避免撑高，拉宽地址栏，请自行使用样式调整。
 // @note            1.3 增加淘宝查询源，修复不显示图标，刷新、切换查询源时可能出现的图标提示消失等BUG
@@ -25,8 +26,11 @@ location == "chrome://browser/content/browser.xul" && (function() {
 	// 显示国旗图标/IP位置 urlbar-icons	identity-box addon-bar status-bar 等等
 	var showLocationPos = "identity-box";
 
-	// 本地国旗图标库，相对路径： profile\chrome\lib\countryflags.js
-	var localFlagPath = "lib\\countryflags.js";
+	// 是否启用flagfox扩展国旗图标,perfs
+	var isFlagFoxFlags = true;
+
+	// flagfox扩展国旗图标库，相对路径： profile\chrome\lib\flagfoxflags  注意格式
+	var flagFoxFlags = "/lib/flagfoxflags/";
 
 	// 菜单配置文件，相对路径： profile\chrome\lib\_showFlagS.js
 	var showFlagSitemFile = "lib\\_showFlagS.js";
@@ -36,6 +40,9 @@ location == "chrome://browser/content/browser.xul" && (function() {
 
 	//毫秒,延迟时间，时间内未取得所选择查询源数据，就使用新浪查询源
 	var Inquiry_Delay = 3500;
+
+	// 本地国旗图标库，相对路径： profile\chrome\lib\countryflags.js
+	var localFlagPath = "lib\\countryflags.js";
 
 	// 备用国旗地址
 	var BAK_FLAG_PATH = 'http://www.razerzone.com/asset/images/icons/flags/';
@@ -81,6 +88,12 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				this._prefs.setIntPref("NetSrc", NetSrc);
 			} else {
 				NetSrc = this._prefs.getIntPref("NetSrc");
+			}
+
+			if (!this._prefs.prefHasUserValue("isFlagFoxFlags")) {
+				this._prefs.setIntPref("isFlagFoxFlags", isFlagFoxFlags);
+			} else {
+				isFlagFoxFlags = this._prefs.getIntPref("isFlagFoxFlags");
 			}
 
 			this.importLib();
@@ -136,7 +149,13 @@ location == "chrome://browser/content/browser.xul" && (function() {
 					context: "showFlagS-popup",
 				}));
 			}
-			
+
+			if (showLocationPos == "identity-box") {
+				this.icon.style.marginLeft = "4px";
+				this.icon.style.marginRight = "2px";
+			}
+			this.icon.style.width = "16px";
+
 			this.icon.src = DEFAULT_Flag;
 
 			// 点击复制
@@ -279,7 +298,14 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				label: "在线图标",
 				id: "flagsNetSrc",
 				type: "checkbox",
-				oncommand: 'showFlagS.flagsNetSrc();'
+				oncommand: 'showFlagS.flagsStyle("NetSrc");'
+			}));
+
+			twpopup.appendChild($C('menuitem', {
+				label: "FlagFox扩展图标",
+				id: "useflagFoxFlag",
+				type: "checkbox",
+				oncommand: 'showFlagS.flagsStyle("isFlagFoxFlags");'
 			}));
 
 			popup.appendChild($C('menuitem', {
@@ -305,6 +331,10 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				$("flagsNetSrc").setAttribute('checked', (($("flagsNetSrc").value != NetSrc) ? true : false));
 			else
 				$("flagsNetSrc").setAttribute('checked', (($("flagsNetSrc").value != NetSrc) ? false : true));
+			if (isFlagFoxFlags)
+				$("useflagFoxFlag").setAttribute('checked', (($("useflagFoxFlag").value != NetSrc) ? true : false));
+			else
+				$("useflagFoxFlag").setAttribute('checked', (($("useflagFoxFlag").value != NetSrc) ? false : true));
 		},
 		newMenu: function(menuObj) {
 			var menu = document.createElement("menu");
@@ -443,12 +473,20 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				this.alert("编辑器不正确！")
 			}
 		},
-		flagsNetSrc: function() {
-			if (NetSrc)
-				NetSrc = false;
-			else
-				NetSrc = true;
-			this._prefs.setIntPref("NetSrc", NetSrc);
+		flagsStyle: function(val) {
+			if (val == "NetSrc") {
+				if (NetSrc)
+					NetSrc = false;
+				else
+					NetSrc = true;
+				this._prefs.setIntPref("NetSrc", NetSrc);
+			} else if (val == "isFlagFoxFlags") {
+				if (isFlagFoxFlags)
+					isFlagFoxFlags = false;
+				else
+					isFlagFoxFlags = true;
+				this._prefs.setIntPref("isFlagFoxFlags", isFlagFoxFlags);
+			}
 		},
 		copy: function(str) {
 			str || (str = this.icon.tooltipText)
@@ -782,9 +820,12 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				} else if (countryCode === 'iana') {
 					src = Unknown_Flag;
 				} else {
-					//  如果 countryCode 无法找到图标，再次用 countryName 查找
-					if (window.CountryFlags) {
-						src = CountryFlags[countryCode];
+					//  如果 countryCode 无法找到图标，再次用 countryName 查找					
+					if (window.CountryFlags || isFlagFoxFlags) {
+						if (isFlagFoxFlags)
+							src = getFlagFoxIconPath(countryCode);
+						else
+							src = CountryFlags[countryCode];
 						if (!src && countryName) {
 							contryCode = window.CountryNames && CountryNames[countryName];
 							if (contryCode in CountryFlags) {
@@ -897,6 +938,12 @@ location == "chrome://browser/content/browser.xul" && (function() {
 	};
 
 	showFlagS.init();
+
+	function getFlagFoxIconPath(filename) {
+		var Path = "file:///" + Cc["@mozilla.org/file/directory_service;1"].getService(Ci.nsIProperties).
+		get('UChrm', Ci.nsILocalFile).path + flagFoxFlags;
+		return Path + filename + ".png";
+	}
 
 	function log() {
 		Application.console.log("[showFlagS] " + Array.slice(arguments));
