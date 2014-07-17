@@ -5,11 +5,11 @@
 // @homepage       https://github.com/feiruo/userchromejs/
 // @include         chrome://browser/content/browser.xul
 // @charset         UTF-8
-// @version         1.3.2
-// @note            2013-12-16
+// @version         1.5
+// @note            Begin 2013-12-16
 // @note            左键点击复制，右键弹出菜单。需要 countryflags.js 数据文件
-// @note            1.3.2 修复identity-box图标的判断
-// @note            1.3.1 修复https找不到服务的情况下显示2个图标的bug
+// @note            1.5 增加右键菜单外部配置，配置方式和anoBtn一样，具体请参考配置文件。
+// @note            1.4 增加几个详细信息；服务器没给出的就不显示；去除图标大小调整，避免撑高，拉宽地址栏，请自行使用样式调整。
 // @note            1.3 增加淘宝查询源，修复不显示图标，刷新、切换查询源时可能出现的图标提示消失等BUG
 // @note            1.2.1 修复identity-box时page-proxy-favicon的问题
 // @note            1.2 位置为identity-box时自动隐藏page-proxy-favicon，https显示
@@ -27,6 +27,9 @@ location == "chrome://browser/content/browser.xul" && (function() {
 
 	// 本地国旗图标库，相对路径： profile\chrome\lib\countryflags.js
 	var localFlagPath = "lib\\countryflags.js";
+
+	// 菜单配置文件，相对路径： profile\chrome\lib\_showFlagS.js
+	var showFlagSitemFile = "lib\\_showFlagS.js";
 
 	// 打开查询网站是否激活
 	var TAB_ACTIVE = true;
@@ -82,6 +85,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 
 			this.importLib();
 			this.addIcon();
+			this.reloadShowFlagSitem();
 			this.onLocationChange();
 			this.progressListener = {
 				onLocationChange: function() {
@@ -132,13 +136,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 					context: "showFlagS-popup",
 				}));
 			}
-
-			if (showLocationPos == "identity-box") {
-				this.icon.style.marginLeft = "4px";
-				this.icon.style.marginRight = "2px";
-			}
-			this.icon.style.width = "16px";
-
+			
 			this.icon.src = DEFAULT_Flag;
 
 			// 点击复制
@@ -149,97 +147,150 @@ location == "chrome://browser/content/browser.xul" && (function() {
 					showFlagS.onLocationChange(true);
 				}
 			}, false);
-
-			// 右键菜单
+		},
+		reloadShowFlagSitem: function(isAlert) {
+			var aFile = Cc["@mozilla.org/file/directory_service;1"].getService(Ci.nsIDirectoryService).QueryInterface(Ci.nsIProperties).get('UChrm', Ci.nsILocalFile);
+			aFile.appendRelativePath(showFlagSitemFile);
+			if (!aFile.exists() || !aFile.isFile()) return null;
+			var fstream = Cc["@mozilla.org/network/file-input-stream;1"].createInstance(Ci.nsIFileInputStream);
+			var sstream = Cc["@mozilla.org/scriptableinputstream;1"].createInstance(Ci.nsIScriptableInputStream);
+			fstream.init(aFile, -1, 0, 0);
+			sstream.init(fstream);
+			var data = sstream.read(sstream.available());
+			try {
+				data = decodeURIComponent(escape(data));
+			} catch (e) {}
+			sstream.close();
+			fstream.close();
+			if (!data) return;
+			var sandbox = new Cu.Sandbox(new XPCNativeWrapper(window));
+			sandbox.Components = Components;
+			sandbox.Cc = Cc;
+			sandbox.Ci = Ci;
+			sandbox.Cr = Cr;
+			sandbox.Cu = Cu;
+			sandbox.Services = Services;
+			sandbox.locale = Services.prefs.getCharPref("general.useragent.locale");
+			try {
+				Cu.evalInSandbox(data, sandbox, "1.8");
+			} catch (e) {
+				this.alert('Error: ' + e + '\n请重新检查配置文件');
+				return;
+			}
+			try {
+				var obj = this.showFlagS[i];
+				$("main-menubar").insertBefore($(obj.id), $("main-menubar").childNodes[7]);
+			} catch (e) {}
+			try {
+				$("mainPopupSet").removeChild($("showFlagS-popup"));
+			} catch (e) {}
+			this.showFlagSitem = sandbox.showFlagSitem;
+			this.buildMenupopup();
+			if (isAlert) this.alert('配置已经重新载入');
+		},
+		buildMenupopup: function() {
 			var popup = $C('menupopup', {
 				id: 'showFlagS-popup',
 				position: 'at_pointer'
 			});
 
 			popup.appendChild($C('menuitem', {
-				label: "刷新",
-				tooltiptext: '重新获取数据',
-				oncommand: "showFlagS.onLocationChange(true);"
-			}));
-
-			popup.appendChild($C('menuitem', {
-				label: "复制",
+				label: "复制信息",
 				oncommand: "showFlagS.copy();"
 			}));
 
-			popup.appendChild($C('menuseparator'));
-
 			popup.appendChild($C('menuitem', {
-				label: "纯真 查询",
-				tooltiptext: 'http://www.cz88.net/ip/index.aspx?ip=',
-				oncommand: 'showFlagS.open(this.tooltipText, "ip");'
-			}));
-
-			popup.appendChild($C('menuitem', {
-				label: "MyIP.cn 查询",
-				tooltiptext: 'http://www.myip.cn/',
-				oncommand: 'showFlagS.open(this.tooltipText, "ip");'
-			}));
-
-			popup.appendChild($C('menuitem', {
-				label: "Whois 查询 Host",
-				tooltiptext: 'http://whois.domaintools.com/',
-				oncommand: 'showFlagS.open(this.tooltipText, "host");'
-			}));
-
-			popup.appendChild($C('menuitem', {
-				label: "Whois 查询 IP",
-				tooltiptext: 'http://whois.domaintools.com/',
-				oncommand: 'showFlagS.open(this.tooltipText, "ip");'
-			}));
+				label: "刷新信息",
+				oncommand: "showFlagS.onLocationChange(true);"
+			}))
 
 			popup.appendChild($C('menuseparator'));
 
-			popup.appendChild($C('menuitem', {
+			var obj, menuitem;
+			for (var i = 0; i < this.showFlagSitem.length; i++) {
+				obj = this.showFlagSitem[i];
+				menuitem = $(obj.id);
+				if (menuitem) {
+					for (let [key, val] in Iterator(obj)) {
+						if (typeof val == "function") obj[key] = val = "(" + val.toSource() + ").call(this, event);";
+						menuitem.setAttribute(key, val);
+					}
+					menuitem.classList.add("showFlagS");
+					menuitem.classList.add("menu-iconic");
+				} else {
+					menuitem = obj.child ? this.newMenu(obj) : this.newMenuitem(obj);
+				}
+				popup.appendChild(menuitem);
+			}
+
+			popup.appendChild($C('menuseparator', {
+				id: "flagsSetLookCZ-menuseparator"
+			}));
+
+			var twmenu = popup.appendChild($C('menu', {
+				id: "showFlagS-Select",
+				label: "查询源选择",
+				image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAWCAYAAADJqhx8AAABlElEQVQ4jaXUSWtUQRQF4M9hYTuEuDAmGl0Yp0QkcQBFRFEXQhB3ATf+gKziwrU/wr8RcK04EY04JuBSQXQRhziEhEDAdDe6qKqkuuiHAQsOvHte3Vv3nlPvwRLqaKCZofEP/jOGxKCJb5jJ8BW/2/BfYs4sjokVv+MS9mU4gze4XPCn8BE/UoFmPG2/1rULkzhc8F14167AwWJjbywwUPDdeL+WDnoqOthRdtCIwTCOZLiIaVwt+PP4lBeoC2q/xpMML7EgCJnzLwTrW1yYxdnYdsJxvIon5vwgPrTT4EAxa3Khv+C7qkT8bxf6io09eIpDBd/WhZ8YEW5ZwhW8xbWCHxau9Jyg04oLz/EQjyKeYV5QPecfC+LeT90lF05ie4aBmHw6xp3Zu050YEOuQenCbqsurENNxVqLCxtxC6PYWVWgdKFbq403BL2m4vNerE8a/MJ1XMgwEjeni3RU+G8sYgK3cQ7+RNSxnKEeE9LXuAl3cQfbsBVb4B4eVGAce7KxxnCz1KCGzRWopTnj6seJPPkvhrmYqehLVdcAAAAASUVORK5CYII=",
+				class: "showFlagS menu-iconic"
+			}));
+
+			var twpopup = twmenu.appendChild(document.createElement("menupopup"));
+
+			twpopup.appendChild($C('menuitem', {
 				label: "纯真 查询源",
 				id: "flagsSetLookCZ",
 				type: "radio",
 				oncommand: 'showFlagS.lookupIP("set","CZ");'
 			}));
 
-			popup.appendChild($C('menuitem', {
+			twpopup.appendChild($C('menuitem', {
 				label: "MyIP 查询源",
 				id: "flagsSetLookMyip",
 				type: "radio",
 				oncommand: 'showFlagS.lookupIP("set","myip");'
 			}));
 
-			popup.appendChild($C('menuitem', {
+			twpopup.appendChild($C('menuitem', {
 				label: "纯真2 查询源",
 				id: "flagsSetLookCZedu",
 				type: "radio",
 				oncommand: 'showFlagS.lookupIP("set","CZedu");'
 			}));
 
-			popup.appendChild($C('menuitem', {
+			twpopup.appendChild($C('menuitem', {
 				label: "新浪 查询源",
 				id: "flagsSetLookSina",
 				type: "radio",
 				oncommand: 'showFlagS.lookupIP("set","sina");'
 			}));
 
-			popup.appendChild($C('menuitem', {
+			twpopup.appendChild($C('menuitem', {
 				label: "淘宝 查询源",
 				id: "flagsSetLookTaobao",
 				type: "radio",
 				oncommand: 'showFlagS.lookupIP("set","taobao");'
 			}));
 
-			popup.appendChild($C('menuseparator'));
+			twpopup.appendChild($C('menuseparator', {
+				id: "flagsNetSrc-menuseparator"
+			}));
 
-			popup.appendChild($C('menuitem', {
+			twpopup.appendChild($C('menuitem', {
 				label: "在线图标",
 				id: "flagsNetSrc",
 				type: "checkbox",
 				oncommand: 'showFlagS.flagsNetSrc();'
 			}));
 
+			popup.appendChild($C('menuitem', {
+				label: "菜单配置",
+				id: "showFlagSitemFile",
+				tooltiptext: "左键：重载配置\n右键：编辑配置",
+				onclick: "if(event.button == 0){showFlagS.reloadShowFlagSitem(true);}else if (event.button == 2) {showFlagS.editFile();}"
+			}));
+
 			$('mainPopupSet').appendChild(popup);
+
 			if (site == "myip")
 				$("flagsSetLookMyip").setAttribute('checked', true);
 			else if (site == "CZ")
@@ -254,6 +305,143 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				$("flagsNetSrc").setAttribute('checked', (($("flagsNetSrc").value != NetSrc) ? true : false));
 			else
 				$("flagsNetSrc").setAttribute('checked', (($("flagsNetSrc").value != NetSrc) ? false : true));
+		},
+		newMenu: function(menuObj) {
+			var menu = document.createElement("menu");
+			var popup = menu.appendChild(document.createElement("menupopup"));
+			for (let [key, val] in Iterator(menuObj)) {
+				if (key === "child") continue;
+				if (typeof val == "function") menuObj[key] = val = "(" + val.toSource() + ").call(this, event);"
+				menu.setAttribute(key, val);
+			}
+
+			menuObj.child.forEach(function(obj) {
+				popup.appendChild(this.newMenuitem(obj));
+			}, this);
+			let cls = menu.classList;
+			cls.add("showFlagS");
+			cls.add("menu-iconic");
+			return menu;
+		},
+		newMenuitem: function(obj) {
+			var menuitem;
+			if (obj.label === "separator" || (!obj.label && !obj.text && !obj.oncommand && !obj.command))
+				menuitem = document.createElement("menuseparator");
+			else
+				menuitem = document.createElement("menuitem");
+
+			for (let [key, val] in Iterator(obj)) {
+				if (typeof val == "function") obj[key] = val = "(" + val.toSource() + ").call(this, event);";
+				menuitem.setAttribute(key, val);
+			}
+			var cls = menuitem.classList;
+			cls.add("showFlagS");
+			cls.add("menuitem-iconic");
+
+			if (obj.oncommand || obj.command) return menuitem;
+
+			if (obj.exec) {
+				obj.exec = this.handleRelativePath(obj.exec);
+			}
+
+			menuitem.setAttribute("oncommand", "showFlagS.onCommand(event);");
+			this.setIcon(menuitem, obj);
+			return menuitem;
+		},
+		setIcon: function(menu, obj) {
+			if (menu.hasAttribute("src") || menu.hasAttribute("image") || menu.hasAttribute("icon")) return;
+
+			if (obj.exec) {
+				var aFile = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
+				try {
+					aFile.initWithPath(obj.exec);
+				} catch (e) {
+					return;
+				}
+				if (!aFile.exists()) {
+					menu.setAttribute("disabled", "true");
+				} else {
+					let fileURL = Services.io.getProtocolHandler("file").QueryInterface(Ci.nsIFileProtocolHandler).getURLSpecFromFile(aFile);
+					menu.setAttribute("image", "moz-icon://" + fileURL + "?size=16");
+				}
+				return;
+			}
+		},
+
+		onCommand: function(event) {
+			var menuitem = event.target;
+			var text = menuitem.getAttribute("text") || "";
+			var exec = menuitem.getAttribute("exec") || "";
+			if (exec) this.exec(exec, this.convertText(text));
+		},
+
+		convertText: function(text) {
+			text = text.toLocaleLowerCase().replace("%u", content.location.href);
+			return text;
+		},
+
+		exec: function(path, arg) {
+			var file = Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsILocalFile);
+			var process = Cc['@mozilla.org/process/util;1'].createInstance(Ci.nsIProcess);
+			try {
+				var a = (typeof arg == 'string' || arg instanceof String) ? arg.split(/\s+/) : [arg];
+				file.initWithPath(path);
+
+				if (!file.exists()) {
+					Cu.reportError('File Not Found: ' + path);
+					return;
+				}
+
+				if (file.isExecutable()) {
+					process.init(file);
+					process.run(false, a, a.length);
+				} else {
+					file.launch();
+				}
+
+			} catch (e) {
+				log(e);
+			}
+		},
+
+		handleRelativePath: function(path) {
+			if (path) {
+				path = path.replace(/\//g, '\\').toLocaleLowerCase();
+				var profD = Cc['@mozilla.org/file/directory_service;1'].getService(Ci.nsIProperties).get("ProfD", Ci.nsILocalFile);
+				if (/^(\\)/.test(path)) {
+					if (path.startsWith('\\..\\')) {
+						return profD.parent.path + path.replace('\\..', '');
+					}
+					return profD.path + path;
+				} else {
+					return path;
+				}
+			}
+		},
+		editFile: function() {
+			var aFile = Cc["@mozilla.org/file/directory_service;1"].getService(Ci.nsIDirectoryService).QueryInterface(Ci.nsIProperties).get('UChrm', Ci.nsILocalFile);
+			aFile.appendRelativePath(showFlagSitemFile);
+			if (!aFile || !aFile.exists() || !aFile.isFile()) return;
+			var editor;
+			try {
+				editor = Services.prefs.getComplexValue("view_source.editor.path", Ci.nsILocalFile);
+			} catch (e) {
+				this.alert("请设置编辑器的路径。\nview_source.editor.path");
+				toOpenWindowByType('pref:pref', 'about:config?filter=view_source.editor.path');
+				return;
+			}
+			var UI = Cc["@mozilla.org/intl/scriptableunicodeconverter"].createInstance(Ci.nsIScriptableUnicodeConverter);
+			UI.charset = window.navigator.platform.toLowerCase().indexOf("win") >= 0 ? "gbk" : "UTF-8";
+			var process = Cc['@mozilla.org/process/util;1'].createInstance(Ci.nsIProcess);
+
+			try {
+				var path = UI.ConvertFromUnicode(aFile.path);
+				var args = [path];
+				process.init(editor);
+				process.run(false, args, args.length);
+			} catch (e) {
+				this.alert("编辑器不正确！")
+			}
 		},
 		flagsNetSrc: function() {
 			if (NetSrc)
@@ -622,9 +810,24 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			obj || (obj = {});
 			var tooltipArr = [];
 			if (!obj.server) obj.server = this.contentDocServer;
+			if (!obj.powered) obj.powered = this.powered;
+			if (!obj.generator) obj.generator = this.generator;
+			if (!obj.contentType) obj.contentType = this.contentType;
 			tooltipArr.push("域名：" + host);
 			tooltipArr.push("网站IP：" + ip);
-			tooltipArr.push("服务器：" + obj.server);
+			if (obj.contentType !== '未知类型') {
+				tooltipArr.push("网站编码：" + obj.contentType);
+			}
+			if (obj.server !== '未知类型') {
+				tooltipArr.push("服务器：" + obj.server);
+			}
+			if (obj.powered !== '未知类型') {
+				tooltipArr.push("网站语言：" + obj.powered);
+			}
+			if (obj.generator !== '未知类型') {
+				tooltipArr.push("网站程序：" + obj.generator);
+			}
+
 
 			if (obj.taobao)
 				tooltipArr.push(obj.taobao);
@@ -646,15 +849,43 @@ location == "chrome://browser/content/browser.xul" && (function() {
 
 			this.icon.tooltipText = tooltipArr.join('\n');
 		},
+		alert: function(aString, aTitle) {
+			Cc['@mozilla.org/alerts-service;1'].getService(Ci.nsIAlertsService).showAlertNotification("", aTitle || "showFlagS", aString, false, "", null);
+		},
 		get contentDoc() {
 			return window.content.document;
 		},
 		get contentDocServer() {
 			var server;
 			try {
-				server = gBrowser.mCurrentBrowser.webNavigation.currentDocumentChannel.QueryInterface(Ci.nsIHttpChannel).getResponseHeader("Server").split(" ", 1)[0];
+				server = gBrowser.mCurrentBrowser.webNavigation.currentDocumentChannel.QueryInterface(Ci.nsIHttpChannel).getResponseHeader("Server").split("\n", 1)[0];
 			} catch (e) {}
 			return server || '未知类型';
+		},
+		get powered() {
+			var powered;
+			try {
+				powered = gBrowser.mCurrentBrowser.webNavigation.currentDocumentChannel.QueryInterface(Ci.nsIHttpChannel).getResponseHeader("X-Powered-By").split("\n", 1)[0];
+			} catch (e) {}
+			return powered || '未知类型';
+		},
+		get generator() {
+			var generator;
+			try {
+				generator = gBrowser.mCurrentBrowser.webNavigation.currentDocumentChannel.QueryInterface(Ci.nsIHttpChannel).getResponseHeader("X-Generator").split("\n", 1)[0];
+			} catch (e) {}
+			return generator || '未知类型';
+		},
+		get contentType() {
+			var contentType;
+			try {
+				contentType = gBrowser.mCurrentBrowser.webNavigation.currentDocumentChannel.QueryInterface(Ci.nsIHttpChannel).getResponseHeader("Content-Type").split("\n", 1)[0];
+				if (contentType.match("=")) {
+					contentType = contentType.replace(/text\/html; charset=/ig, "").toUpperCase();
+				} else contentType = "未知类型";
+
+			} catch (e) {}
+			return contentType || '未知类型';
 		},
 		get dns() {
 			return Cc["@mozilla.org/network/dns-service;1"]
@@ -666,6 +897,10 @@ location == "chrome://browser/content/browser.xul" && (function() {
 	};
 
 	showFlagS.init();
+
+	function log() {
+		Application.console.log("[showFlagS] " + Array.slice(arguments));
+	}
 
 	function $(id) document.getElementById(id);
 
