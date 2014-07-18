@@ -4,7 +4,8 @@ showFlagS
  - 参考 Show Location 扩展、Flagfox 扩展、http://files.cnblogs.com/ziyunfei/showFlag.uc.js 。
  - 显示网站IP地址和国旗，帮助识别网站真实性。
  - 右键菜单外部配置，配置方式和功能都与anoBtn一样，具体请参考配置文件。
- - 更多的网站详细信息；服务器没给出的就不显示。
+ - 脚本设置也移到配置文件中，可以改变数据库文件路径等。
+ - 更多的网站详细信息；服务器没给出的就不显示，具体显示条目可在配置文件设置。
  - 支持flagfox扩展国旗图，直接存放图标，支持实时切换(支持可能不完善，如有问题请反馈)。
  - flagfox扩展国旗图标库
 
@@ -19,7 +20,7 @@ showFlagS
 
  - 菜单配置文件和本地数据库位置：
 
-		Chrome\lib\_showFlagS.js  \\菜单配置文件
+		Chrome\lib\_showFlagS.js  \\菜单和脚本配置文件
 		Chrome\lib\countryflags.js  \\本地数据库
     
     
