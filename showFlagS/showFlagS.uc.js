@@ -5,9 +5,10 @@
 // @homepage       https://github.com/feiruo/userchromejs/
 // @include         chrome://browser/content/browser.xul
 // @charset         UTF-8
-// @version         1.5.7
+// @version         1.5.8
 // @note            Begin 2013-12-16
 // @note            左键点击复制，右键弹出菜单。需要 countryflags.js 数据文件
+// @note            1.5.8 修复菜单重复创建的BUG，查询源外置;可以丢弃旧版lib（不推荐）。
 // @note            1.5.7 修改菜单和图标的创建方式，避免各种不显示，不弹出问题。
 // @note            1.5.6 将脚本设置也移到配置文件中，目前配置文件已经可以设置TIP显示条目，改变数据库文件等了。
 // @note            1.5.5 增加flagfox扩展国旗图标库，相对路径profile\chrome\lib\flagfoxflags下，直接存放图标,支持实时切换。
@@ -28,21 +29,33 @@ location == "chrome://browser/content/browser.xul" && (function() {
 	// 菜单配置文件，相对路径： profile\chrome\lib\_showFlagS.js
 	var showFlagSconfigFile = "lib\\_showFlagS.js";
 
-	// 本地国旗图标库，相对路径： profile\chrome\lib\countryflags.js
-	var localFlagPath = "lib\\countryflags.js";
-
 	// 等待时国旗图标
 	var DEFAULT_Flag = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAACG0lEQVQ4ja2TwW7aQBRF+ZDku0q/qChds5mxkDG2iY3H9jyTBFAWLAgRG7CwCawQi6BEQhgEFkiAuF3VaVXaSlWvdBazuGfx5r1c7n/H9/1rIvpCAUWS5E6S3FFAkU9+wff967+VP1FA6fPzMwaDAcbjMQaDAabTKSggEFEqpcxfLEvp5huNxnmxWGC73SIMQ9Tv6gjqAbrdLqT0Ub+rg4jOUro/S4QQV57nbZMkwel0wvF4xGazQafTgeu5GY1GA8PhEMITqRDiKhM4jnPTbrdxOBxwOByQJAlcz4UQ4heiKILruXAc52smsGzrpd/v4/X1FcPhEBQQ7Jp9kVarhdlsBsu2Xj4E1u3x/v4eRATLuv0tQT3AdDrFcrmEZd2eMoFZNXdm1cSP2DUbZtUEEYECglk1MRqNkKYp3t/fYZjGPhPohh7rhg7d0PH09IQ4jjGbzdBsNtHr9SBcAd3QMZlMMJ/PEYYhdEOPM0G5Ur7RKhoeHx+xWq2wXq+xXq/x9vaGVqsFraJBq2jQDT17l8vljyFyzq9UVd2qqoooirBarTLCMIRds6GqKgzTgOPUoKpqyjn/+MZcLpdTFCVfKpXOlm1huVwiSRIkSYLFYgGzauLh4QHNZhNaRTsrinJ5GxljeUVRUil99Ho9dLtduJ4LKX0QERRFSTnnny+Wv6dYLF4zxgqMsZhzvuec7xljMWOsUCwW/3xM/5JvTakQArDW8fcAAAAASUVORK5CYII=";
 
 	window.showFlagS = {
+		isLibIcon: false,
+		siteNB: null,
+		siteApi: null,
+		siteThx: null,
 		dnsCache: [],
 		isReqHash: [],
 		isReqHash_tooltip: [],
 		showFlagHash: [],
 		showFlagTooltipHash: [],
 
+		get dns() {
+			return Cc["@mozilla.org/network/dns-service;1"]
+				.getService(Components.interfaces.nsIDNSService);
+		},
+		get eventqueue() {
+			return Cc["@mozilla.org/thread-manager;1"].getService().mainThread;
+		},
+		get contentDoc() {
+			return window.content.document;
+		},
+
 		init: function() {
-			this.importLib();
+			this.makePopup();
 			this.reBuild();
 			this.onLocationChange();
 			this.progressListener = {
@@ -63,21 +76,26 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		onDestroy: function() {
 			window.getBrowser().removeProgressListener(this.progressListener);
 		},
-		importLib: function() {
-			localFlagPath = localFlagPath.replace(/\//g, '\\');
-			var fullPath = Cc["@mozilla.org/file/directory_service;1"].getService(Ci.nsIProperties)
-				.get("UChrm", Ci.nsILocalFile).path;
-			if (/^(\\)/.test(localFlagPath)) {
-				fullPath = fullPath + localFlagPath;
-			} else {
-				fullPath = fullPath + "\\" + localFlagPath;
-			}
-
-			var file = Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsILocalFile);
-			file.initWithPath(fullPath);
-			if (file.exists()) {
-				userChrome.import(localFlagPath, "UChrm");
-			}
+		makePopup: function() {
+			let xml = '\
+						<menupopup id="showFlagS-popup">\
+						<menuitem label="复制信息" id="showFlagS-copy" oncommand="showFlagS.copy();" />\
+						<menuitem label="刷新信息" id="showFlagS-reload" oncommand="showFlagS.onLocationChange(true);"/>\
+						<menu label="脚本设置" id="showFlagS-set-config" class="showFlagS menu-iconic" image="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAWCAYAAADJqhx8AAABlElEQVQ4jaXUSWtUQRQF4M9hYTuEuDAmGl0Yp0QkcQBFRFEXQhB3ATf+gKziwrU/wr8RcK04EY04JuBSQXQRhziEhEDAdDe6qKqkuuiHAQsOvHte3Vv3nlPvwRLqaKCZofEP/jOGxKCJb5jJ8BW/2/BfYs4sjokVv+MS9mU4gze4XPCn8BE/UoFmPG2/1rULkzhc8F14167AwWJjbywwUPDdeL+WDnoqOthRdtCIwTCOZLiIaVwt+PP4lBeoC2q/xpMML7EgCJnzLwTrW1yYxdnYdsJxvIon5vwgPrTT4EAxa3Khv+C7qkT8bxf6io09eIpDBd/WhZ8YEW5ZwhW8xbWCHxau9Jyg04oLz/EQjyKeYV5QPecfC+LeT90lF05ie4aBmHw6xp3Zu050YEOuQenCbqsurENNxVqLCxtxC6PYWVWgdKFbq403BL2m4vNerE8a/MJ1XMgwEjeni3RU+G8sYgK3cQ7+RNSxnKEeE9LXuAl3cQfbsBVb4B4eVGAce7KxxnCz1KCGzRWopTnj6seJPPkvhrmYqehLVdcAAAAASUVORK5CYII=">\
+						<menupopup  id="showFlagS-set-popup">\
+							<menuseparator id="showFlagS-sepalator1"/>\
+							<menuitem label="使用本地图标" id="showFlagS-set-foxFlag" type="checkbox" oncommand="showFlagS.showflagSset(\'isFlagFoxFlags\');" />\
+							<menuitem label="脚本菜单配置" id="showFlagS-set-setMenu" tooltiptext="左键：重载配置\r\n右键：编辑配置" onclick="if(event.button == 0){showFlagS.reBuild(true);}else if (event.button == 2) {showFlagS.editFile();}"/>\
+						</menupopup>\
+						</menu>\
+						<menuseparator id="showFlagS-sepalator2"/>\
+						</menupopup>\
+						';
+			let range = document.createRange();
+			range.selectNodeContents(document.getElementById("mainPopupSet"));
+			range.collapse(false);
+			range.insertNode(range.createContextualFragment(xml.replace(/\n|\t/g, "")));
+			range.detach();
 		},
 		reBuild: function(isAlert) {
 			var aFile = Cc["@mozilla.org/file/directory_service;1"].getService(Ci.nsIDirectoryService).QueryInterface(Ci.nsIProperties).get('UChrm', Ci.nsILocalFile);
@@ -112,11 +130,19 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			this.showFlagSmenu = sandbox.showFlagSmenu;
 			this.showFlagStipSet = sandbox.showFlagStipSet;
 			this.showFlagSsiteSource = sandbox.showFlagSsiteSource;
+
+			if (!this.isLibIcon && this.showFlagsPer.libIcon) {
+				this.importLib(this.showFlagsPer.libIconPath);
+				this.isLibIcon = true;
+			}
+
 			this.uninit();
 			this.geitPrefs();
-			this.addIcon();
-			this.onLocationChange(true);
+			this.buildSiteMenu();
 			this.buildMenu();
+			this.addIcon();
+			this.showflagSset();
+			this.onLocationChange(true);
 			if (isAlert) this.alert('配置已经重新载入');
 		},
 		uninit: function() {
@@ -124,10 +150,16 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				var obj = this.showFlagSmenu[i];
 				$("main-menubar").insertBefore($(obj.id), $("main-menubar").childNodes[7]);
 			} catch (e) {}
-			let menu = $("showFlagS-popup");
+
+			let sites = document.querySelectorAll("menuitem[id^='showFlagS-site-']");
+			for (let i = 0; i < sites.length; i++) {
+				sites[i].parentNode.removeChild(sites[i]);
+			}
+
 			let menuitems = document.querySelectorAll("menuitem[id^='showFlagS-item-']");
 			let menus = document.querySelectorAll("menu[id^='showFlagS-menu-']");
-			if (!menu || !menuitems || !menus) return;
+
+			if (!menuitems || !menus) return;
 			for (let i = 0; i < menuitems.length; i++) {
 				menuitems[i].parentNode.removeChild(menuitems[i]);
 			}
@@ -149,12 +181,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				this._prefs.setCharPref("SourceSite", this.showFlagsPer.site);
 			} else {
 				this.showFlagsPer.site = this._prefs.getCharPref("SourceSite");
-			}
-
-			if (!this._prefs.prefHasUserValue("netSrcImage")) {
-				this._prefs.setBoolPref("netSrcImage", this.showFlagsPer.NetSrc);
-			} else {
-				this.showFlagsPer.NetSrc = this._prefs.getBoolPref("netSrcImage");
 			}
 
 			if (!this._prefs.prefHasUserValue("flagFoxFlags")) {
@@ -195,43 +221,12 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				}
 			}, false);
 
-			let xml = '\
-						<menupopup id="showFlagS-popup">\
-						<menuitem label="复制信息" id="showFlagS-copy" oncommand="showFlagS.copy();" />\
-						<menuitem label="刷新信息" id="showFlagS-reload" oncommand="showFlagS.onLocationChange(true);"/>\
-						<menuitem label="菜单配置" id="showFlagS-set-setMenu" tooltiptext="左键：重载配置\r\n右键：编辑配置" onclick="if(event.button == 0){showFlagS.reBuild(true);}else if (event.button == 2) {showFlagS.editFile();}"/>\
-						<menu label="脚本设置" id="showFlagS-set-set" class="showFlagS menu-iconic" image="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAWCAYAAADJqhx8AAABlElEQVQ4jaXUSWtUQRQF4M9hYTuEuDAmGl0Yp0QkcQBFRFEXQhB3ATf+gKziwrU/wr8RcK04EY04JuBSQXQRhziEhEDAdDe6qKqkuuiHAQsOvHte3Vv3nlPvwRLqaKCZofEP/jOGxKCJb5jJ8BW/2/BfYs4sjokVv+MS9mU4gze4XPCn8BE/UoFmPG2/1rULkzhc8F14167AwWJjbywwUPDdeL+WDnoqOthRdtCIwTCOZLiIaVwt+PP4lBeoC2q/xpMML7EgCJnzLwTrW1yYxdnYdsJxvIon5vwgPrTT4EAxa3Khv+C7qkT8bxf6io09eIpDBd/WhZ8YEW5ZwhW8xbWCHxau9Jyg04oLz/EQjyKeYV5QPecfC+LeT90lF05ie4aBmHw6xp3Zu050YEOuQenCbqsurENNxVqLCxtxC6PYWVWgdKFbq403BL2m4vNerE8a/MJ1XMgwEjeni3RU+G8sYgK3cQ7+RNSxnKEeE9LXuAl3cQfbsBVb4B4eVGAce7KxxnCz1KCGzRWopTnj6seJPPkvhrmYqehLVdcAAAAASUVORK5CYII=">\
-						<menupopup  id="showFlagS-set-popup">\
-							<menuitem label="纯真 查询源" id="showFlagS-site-CZ" type="radio" oncommand="showFlagS.showflagSset(\'site\',\'CZ\');" />\
-							<menuitem label="MyIP 查询源" id="showFlagS-site-myip" type="radio" oncommand="showFlagS.showflagSset(\'site\',\'myip\');" />\
-							<menuitem label="新浪 查询源" id="showFlagS-site-sina" type="radio" oncommand="showFlagS.showflagSset(\'site\',\'sina\');" />\
-							<menuitem label="淘宝 查询源" id="showFlagS-site-taobao" type="radio" oncommand="showFlagS.showflagSset(\'site\',\'taobao\');" />\
-							<menuitem label="波士顿大学查询源" id="showFlagS-site-CZedu" type="radio" oncommand="showFlagS.showflagSset(\'site\',\'CZedu\');" />\
-							<menuseparator id="showFlagS-sepalator1"/>\
-							<menuitem label="FlagFox图标" id="showFlagS-set-foxFlag" type="checkbox" value="' + this.showFlagsPer.isFlagFoxFlags + '" oncommand="showFlagS.showflagSset(\'isFlagFoxFlags\');" />\
-							<menuitem label="使用在线图标" id="showFlagS-set-netSrc" type="checkbox" value="' + this.showFlagsPer.NetSrc + '" oncommand="showFlagS.showflagSset(\'NetSrc\');" />\
-						</menupopup>\
-						</menu>\
-						<menuseparator id="showFlagS-sepalator2"/>\
-						</menupopup>\
-						';
-			let range = document.createRange();
-			range.selectNodeContents(document.getElementById("mainPopupSet"));
-			range.collapse(false);
-			range.insertNode(range.createContextualFragment(xml.replace(/\n|\t/g, "")));
-			range.detach();
 			$("showFlagS-popup").setAttribute('position', this.showFlagsPer.iconMenuPosition);
-			$("showFlagS-set-netSrc").setAttribute('checked', this.showFlagsPer.NetSrc);
 			$("showFlagS-set-foxFlag").setAttribute('checked', this.showFlagsPer.isFlagFoxFlags);
+			$("showFlagS-set-foxFlag").setAttribute('value', this.showFlagsPer.isFlagFoxFlags);
 			$("showFlagS-site-" + this.showFlagsPer.site).setAttribute('checked', true);
 		},
-
 		showflagSset: function(tyep, val) {
-			if (tyep == "NetSrc") {
-				this.showFlagsPer.NetSrc = !this.showFlagsPer.NetSrc;
-				this._prefs.setBoolPref("netSrcImage", this.showFlagsPer.NetSrc);
-				$("showFlagS-set-netSrc").setAttribute('checked', this.showFlagsPer.NetSrc);
-			}
 			if (tyep == "isFlagFoxFlags") {
 				this.showFlagsPer.isFlagFoxFlags = !this.showFlagsPer.isFlagFoxFlags;
 				this._prefs.setBoolPref("flagFoxFlags", this.showFlagsPer.isFlagFoxFlags);
@@ -242,6 +237,17 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				this._prefs.setCharPref("SourceSite", this.showFlagsPer.site);
 				$("showFlagS-site-" + this.showFlagsPer.site).setAttribute('checked', true);
 			}
+
+			for (var i = 0; i < this.showFlagSsiteSource.length; i++) {
+				if (this.showFlagSsiteSource[i].id == this.showFlagsPer.site) {
+					this.siteNB = i;
+					this.siteApi = this.showFlagSsiteSource[i].inquireAPI;
+				}
+			}
+
+			if (this.showFlagSsiteSource[this.siteNB].id !== "myip")
+				this.siteThx = Cc["@mozilla.org/network/effective-tld-service;1"].getService(Ci.nsIEffectiveTLDService).getBaseDomain(makeURI(this.siteApi));
+
 			this.onLocationChange(true);
 		},
 		onLocationChange: function(forceRefresh) {
@@ -311,7 +317,8 @@ location == "chrome://browser/content/browser.xul" && (function() {
 
 			var self = this;
 
-			var func = self['lookupIP_' + self.showFlagsPer.site];
+			var nt, api;
+
 
 			var flagFunc = function(checkCache) {
 				if (checkCache && self.showFlagHash[host]) {
@@ -337,7 +344,14 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				// 防止重复获取
 				if (checkCache && self.isReqHash_tooltip[host]) return;
 				self.isReqHash_tooltip[host] = true;
-				func(ip, host);
+
+				if (self.showFlagsPer.site == 'myip')
+					self.lookupIP_myip(ip, host);
+
+				else if (self.showFlagsPer.site == 'taobao')
+					self.lookupIP_taobao(ip, host);
+				else
+					self.lookupIP_Info(ip, host, self.siteApi, self.siteNB);
 			};
 
 			flagFunc(!this.forceRefresh);
@@ -377,10 +391,8 @@ location == "chrome://browser/content/browser.xul" && (function() {
 								this.showFlagHash[host] = contryCode;
 							}
 						}
-					} else if (this.showFlagsPer.NetSrc) {
-						src = src || (this.showFlagsPer.BAK_FLAG_PATH + countryCode + ".gif");
 					} else {
-						src = this.showFlagsPer.Unknown_Flag;
+						src = src || (this.showFlagsPer.BAK_FLAG_PATH + countryCode + ".gif") || this.showFlagsPer.Unknown_Flag;
 					}
 
 					src = src;
@@ -395,7 +407,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			} catch (e) {}
 			return word || '未知类型';
 		},
-		updateTooltipText: function(ip, host, obj) { // obj 为 sina 等获取到的数据
+		updateTooltipText: function(ip, host, obj) {
 			// 跳过后台获取的情况
 			if (host != this.contentDoc.location.host) return;
 
@@ -418,37 +430,47 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			if (!isIpTip)
 				tooltipArr.push("网站IP：" + ip);
 
-			if (obj.taobao) {
-				tooltipArr.push(obj.taobao);
-				tooltipArr.push('感谢 淘宝(www.taobao.com)')
+			if (obj.Site) {
+				tooltipArr.push(obj.Site);
+				tooltipArr.push('感谢：' + this.siteThx);
 			}
-
-			if (obj.CZ) {
-				tooltipArr.push(obj.CZ);
-				tooltipArr.push('我的IP：' + obj.myip);
-				tooltipArr.push('我的地址：' + obj.myAddr);
-				tooltipArr.push('感谢 纯真(www.cz88.net)');
-			}
-
-			if (obj.CZedu) {
-				tooltipArr.push(obj.CZedu);
-				tooltipArr.push('感谢 波士顿大学(www.bu.edu)');
-			}
-
 
 			if (obj.myipS) {
 				tooltipArr.push(obj.myipS);
 				tooltipArr.push('感谢 Myip(www.myip.cn)');
 			}
 
-
-			if (obj.sina) {
-				tooltipArr.push(obj.sina);
-				tooltipArr.push('感谢 新浪(www.sina.com.cn)');
+			if (obj.taobao) {
+				tooltipArr.push(obj.taobao);
+				tooltipArr.push('感谢 淘宝(www.taobao.com)')
 			}
-
-
 			this.icon.tooltipText = tooltipArr.join('\n');
+		},
+
+		lookupIP_Info: function(ip, host, api, i) {
+			var req = new XMLHttpRequest();
+			req.open("GET", api + ip, true);
+			req.send(null);
+			var self = showFlagS;
+			var onerror = function() {
+				self.lookupIP_taobao(ip, host, "other");
+			};
+			req.onerror = onerror;
+			req.timeout = self.showFlagsPer.Inquiry_Delay;
+			req.ontimeout = onerror;
+			req.onload = function() {
+				if (req.status == 200) {
+					var obj = self.showFlagSsiteSource[i].regulation(req.responseText);
+					if (obj) {
+						self.showFlagTooltipHash[host] = obj;
+						self.updateTooltipText(ip, host, obj);
+					} else {
+						onerror();
+					}
+				} else {
+					onerror();
+				}
+			};
 		},
 		lookupIP_taobao: function(ip, host, other) {
 			var self = showFlagS;
@@ -482,83 +504,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 					} else {
 						onerror();
 					}
-				}
-			};
-		},
-		lookupIP_CZ: function(ip, host) {
-			var self = showFlagS;
-			var req = new XMLHttpRequest();
-			req.open("GET", 'http://www.cz88.net/ip/index.aspx?ip=' + ip, true);
-			req.send(null);
-			var onerror = function() {
-				self.lookupIP_taobao(ip, host, "other");
-			};
-			req.onerror = onerror;
-			req.timeout = self.showFlagsPer.Inquiry_Delay;
-			req.ontimeout = onerror;
-			req.onload = function() {
-				if (req.status == 200) {
-					var s_local, myip, myAddr;
-
-					var addr_pos = req.responseText.indexOf("AddrMessage");
-					s_local = req.responseText.substring(addr_pos + 13);
-					s_local = s_local.substring(0, s_local.indexOf("<"));
-
-					var myip_pos = req.responseText.indexOf("cz_ip");
-					myip = req.responseText.substring(myip_pos + 7);
-					myip = myip.substring(0, myip.indexOf("<"));
-
-					var myAddr_pos = req.responseText.indexOf("cz_addr");
-					myAddr = req.responseText.substring(myAddr_pos + 9);
-					myAddr = myAddr.substring(0, myAddr.indexOf("<"));
-
-					s_local = s_local.replace(/ +CZ88.NET ?/g, "");
-
-					var obj = {
-						CZ: s_local
-					};
-					if (s_local) {
-						if (myip) obj.myip = myip;
-						if (myAddr) obj.myAddr = myAddr;
-
-						self.showFlagTooltipHash[host] = obj;
-						self.updateTooltipText(ip, host, obj);
-					} else {
-						onerror();
-					}
-				} else {
-					onerror();
-				}
-			};
-		},
-		lookupIP_CZedu: function(ip, host) {
-			var self = showFlagS;
-			var req = new XMLHttpRequest();
-			req.open("GET", 'http://phyxt8.bu.edu/iptool/qqwry.php?ip=' + ip, true);
-			req.send(null);
-			var onerror = function() {
-				self.lookupIP_taobao(ip, host, "other");
-			};
-			req.onerror = onerror;
-			req.timeout = self.showFlagsPer.Inquiry_Delay;
-			req.ontimeout = onerror;
-			req.onload = function() {
-				if (req.status == 200) {
-					var s_local;
-					s_local = req.responseText;
-					s_local = s_local.replace(/ +CZ88.NET ?/g, "");
-
-					var obj = {
-						CZedu: s_local
-					};
-					if (s_local) {
-						self.showFlagTooltipHash[host] = obj;
-						self.updateTooltipText(ip, host, obj);
-					} else {
-						onerror();
-					}
-				} else {
-					onerror();
 				}
 			};
 		},
@@ -604,49 +549,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				}
 			};
 		},
-		lookupIP_sina: function(ip, host) {
-			var self = showFlagS;
-			var req = new XMLHttpRequest();
-			req.open("GET", 'http://int.dpool.sina.com.cn/iplookup/iplookup.php?format=json&ip=' + ip, true);
-			req.send(null);
-			var onerror = function() {
-				self.lookupIP_taobao(ip, host, "other");
-			};
-			req.onerror = onerror;
-			req.timeout = self.showFlagsPer.Inquiry_Delay;
-			req.ontimeout = onerror;
-			req.onload = function() {
-				if (req.status == 200) {
-					var responseObj = JSON.parse(req.responseText);
-					if (responseObj.ret == 1) {
-						if (responseObj.isp !== '' || responseObj.type !== '' || responseObj.desc !== '')
-							var addr = responseObj.country + responseObj.province + responseObj.city + responseObj.district + '\n' + responseObj.isp + responseObj.type + responseObj.desc;
-						else
-							var addr = responseObj.country + responseObj.province + responseObj.city + responseObj.district;
-						var obj = {
-							sina: addr
-						};
-						self.showFlagTooltipHash[host] = obj;
-						self.updateTooltipText(ip, host, obj);
-						return;
-					} else {
-						onerror();
-					}
-				}
-			};
-		},
-
-		get dns() {
-			return Cc["@mozilla.org/network/dns-service;1"]
-				.getService(Components.interfaces.nsIDNSService);
-		},
-		get eventqueue() {
-			return Cc["@mozilla.org/thread-manager;1"].getService().mainThread;
-		},
-		get contentDoc() {
-			return window.content.document;
-		},
-
 		alert: function(aString, aTitle) {
 			Cc['@mozilla.org/alerts-service;1'].getService(Ci.nsIAlertsService).showAlertNotification("", aTitle || "showFlagS", aString, false, "", null);
 		},
@@ -671,10 +573,34 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				url += ip
 			}
 
-			var tab = gBrowser.addTab(url);
-			if (this.showFlagsPer.TAB_ACTIVE) {
-				gBrowser.selectedTab = tab;
-			}
+			gBrowser.selectedTab = gBrowser.addTab(url);
+		},
+		buildSiteMenu: function() {
+			var menu = $("showFlagS-set-popup");
+			var separator = $("showFlagS-sepalator1");
+			var defmenuitem = menu.appendChild($C("menuitem", {
+				label: "淘宝 查询源",
+				id: "showFlagS-site-taobao",
+				class: "showFlagS-site-item",
+				type: "radio",
+				oncommand: "showFlagS.showflagSset('site','taobao');"
+			}));
+			menu.insertBefore(defmenuitem, separator);
+
+			for (var i = 0; i < this.showFlagSsiteSource.length; i++) {
+				var menuitem = menu.appendChild($C("menuitem", {
+					label: this.showFlagSsiteSource[i].label,
+					id: "showFlagS-site-" + this.showFlagSsiteSource[i].id,
+					class: "showFlagS-site-item",
+					type: "radio",
+					oncommand: "showFlagS.showflagSset('site','" + this.showFlagSsiteSource[i].id + "');"
+				}));
+				if (this.showFlagSsiteSource[i].image) {
+					menuitem.setAttribute("image", this.showFlagSsiteSource[i].image);
+					menuitem.setAttribute("class", "showFlagS-site-item  menuitem-iconic");
+				}
+				menu.insertBefore(menuitem, defmenuitem);
+			};
 		},
 		buildMenu: function() {
 			var popup = $("showFlagS-popup");
@@ -828,6 +754,22 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				process.run(false, args, args.length);
 			} catch (e) {
 				this.alert("编辑器不正确！")
+			}
+		},
+		importLib: function(localFlagPath) {
+			localFlagPath = localFlagPath.replace(/\//g, '\\');
+			var fullPath = Cc["@mozilla.org/file/directory_service;1"].getService(Ci.nsIProperties)
+				.get("UChrm", Ci.nsILocalFile).path;
+			if (/^(\\)/.test(localFlagPath)) {
+				fullPath = fullPath + localFlagPath;
+			} else {
+				fullPath = fullPath + "\\" + localFlagPath;
+			}
+
+			var file = Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsILocalFile);
+			file.initWithPath(fullPath);
+			if (file.exists()) {
+				userChrome.import(localFlagPath, "UChrm");
 			}
 		},
 	};

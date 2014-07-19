@@ -6,14 +6,30 @@ var showFlagsPer={
 showLocationPos:"identity-box",
 iconType:"toolbarbutton",//按钮的类型，如：statusbarpanel、menu、image等
 iconClass:"toolbarbutton-1 chromeclass-toolbar-additional",//Class设置，如：statusbarpanel-iconic等
-iconMenuPosition:"at_pointer",//菜单弹出方向，不设置就默认,参考 https://developer.mozilla.org/en-US/docs/XUL/PopupGuide/Positioning
-isFlagFoxFlags :false,// 是否启用flagfox扩展国旗图标存入perfs
-flagFoxFlags :"/lib/flagfoxflags/",// flagfox扩展国旗图标库，相对路径： profile\chrome\lib\flagfoxflags  注意格式
-TAB_ACTIVE:true,// 打开查询网站是否激活（前台打开）
-Inquiry_Delay:3500,//毫秒,延迟时间，时间内未取得所选择查询源数据，就使用新浪查询源
-BAK_FLAG_PATH:'http://www.razerzone.com/asset/images/icons/flags/',// 备用国旗地址，还有一个：http://www.1108.hk/images/ext/
-NetSrc:true,//是否使用备用图标(如果本地找不到则使用在线图标),存入perfs
-site:'CZ',//默认API，存入perfs，CZ：纯真、CZedu：波士顿大学、myip：MYIP.CN、sina：新浪、taobao：淘宝...
+
+//菜单弹出方向，不设置就默认,参考 https://developer.mozilla.org/en-US/docs/XUL/PopupGuide/Positioning
+iconMenuPosition:"at_pointer",
+
+// 是否启用本地图标
+isFlagFoxFlags :false,
+
+// 本地图标路径： profile\chrome\lib\flagfoxflags  注意格式（感谢flagfox扩展）
+flagFoxFlags :"/lib/flagfoxflags/",
+
+// 是否启用旧版本地国旗图标库，启用此项之后，使用网络图标的时候，会优先读取旧版lib图标库
+libIcon:false,
+
+// 旧版本地国旗图标库，相对路径： profile\chrome\lib\countryflags.js
+libIconPath:"lib\\countryflags.js",
+
+//毫秒,延迟时间，时间内未取得所选择查询源数据，就使用新淘宝询源
+Inquiry_Delay:3500,
+
+//网络图标地址，还有一个：http://www.1108.hk/images/ext/
+BAK_FLAG_PATH:'http://www.razerzone.com/asset/images/icons/flags/',
+
+//默认API，存入perfs，CZ：纯真、CZedu：波士顿大学、myip：MYIP.CN、sina：新浪、taobao：淘宝...
+site:'CZ',
 
 // 未知的国旗图标
 Unknown_Flag:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABwUlEQVQ4jZWRMahScRjFL40REW9ojqaGhoaGprg0eL3//3fkj0pCDrYp2hARmRItjk4ND0EuSFMgSEQIiuMjEjdnwUGIvLdF+bxc/j6ut8X3eM9X7z3P+vE7nPMdw9gRgPdEdCSlPJRS3t+9Xyrbtp8A4FqtFmQyGQbARHRERAXLsg6uNADwMZ1O83q9jpbLZdjtdnW5XPa3Rksi+iqEeA7g5j8NFosFu64bRjuaz+dhu93WhULBB8AAXCll3TTNO6fweDx+qLWOwvACf06TySR0HCdQSjGAt2fjKwA8m83+6zCdTsNWqxXkcjkG4Nq2/ezUgIg+ZbNZ3mw25yDP88JOp6NLpdLJL/4AaAkhnu4+cFyv14MoiiJmjvr9vq5Wq34ikeBt7+8AXpimeevC8+Lx+D0APBgMdK/X08lk8gT6KaV8HYvF7l46nxDiJQD2PC+sVCo+Ef0A8ODK3c/0/5zP5/0gCCKlFBPRu2vD2/6/ms1mMBqNjgGwEOLxtWEhxCMAPBwOjx3H0UT02zCMG/vEf6OU4tVqFRWLRZ+IvuwVn4g+pFIpbjQawXbnV3sZWJZ1IKU8BDAhom+2bd/eh/8LEFU+M9Rx2boAAAAASUVORK5CYII=",
@@ -167,4 +183,76 @@ var showFlagSmenu = [{
 	label: "安全浏览",
 	oncommand: "getBrowser().selectedTab = getBrowser().addTab ('http://google.com/safebrowsing/diagnostic?site=' +content.document.domain.replace('www.', ''));",
 	image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABWUlEQVQ4jaXTPUvDQBgH8HyzkiCVdlBcFD+CDgUn0bU5rUMRS6mD4BuCVgfFKmitCl0s+FKhvoEgVvsyWKuRS9JLcvm7tcplSHW44e6e5/c8x91JAaKFZJXWFELRzZBVWgsQLST9JfknInlt9ExRJLMMqSOG67ID7gLb5xbG100h1hNIFyzM51gbu61wnN7Znl14Al+GC7LTas9nMi20bPgHPnUXmatOxbE1E89v3D8wd8DAbGBiw0R/XMfupY3RJcM/oBCKkUUDiUMGF/h1HN+AQiiC0xSa4aL04mBgVvcPTKZNbBYspHIMy3mGJnXx+s4xmBARAVg4Ybh4ctAb66wNJXSUGxx7RfEqBaDa5EgdMSEwmWXIlnwA+Qcb5QbHcLLTbjBGcfboILLq4yX2xXVsFSzUP1zcVzmOb2zsF21EVsRkhVD89zPVJTmqhWWV1rsGVFqRo1r4G6iM33AbQTj+AAAAAElFTkSuQmCC"
-}]
+}];
+/******************************************************************************************************************
+*这里是查询源设置，可以自行按照示例添加，不限定于IP，可以是其他相关的API，只要是你想要显示的都可以
+*myip和taobao为脚本内置，目前只支持myip菜单更换位置。
+*另外可以设定image属性为菜单增加图标。
+*******************************************************************************************************************/
+var showFlagSsiteSource=[{
+label:"纯真 查询源",//菜单中显示的文字
+id:"CZ",//必须设定一个ID，以便脚本读取
+inquireAPI:"http://www.cz88.net/ip/index.aspx?ip=",//查询接口
+//docum是一个XMLHttpRequest();的req.responseText，（具体可以百度	XMLHttpRequest()）。传回的obj为最终要显示的结果样式等
+regulation:function(docum) {
+					var s_local, myip, myAddr;
+					var addr_pos = docum.indexOf("AddrMessage");
+					s_local = docum.substring(addr_pos + 13);
+					s_local = s_local.substring(0, s_local.indexOf("<"));
+
+					var myip_pos = docum.indexOf("cz_ip");
+					myip = docum.substring(myip_pos + 7);
+					myip = myip.substring(0, myip.indexOf("<"));
+
+					var myAddr_pos = docum.indexOf("cz_addr");
+					myAddr = docum.substring(myAddr_pos + 9);
+					myAddr = myAddr.substring(0, myAddr.indexOf("<"));
+
+					s_local = s_local.replace(/ +CZ88.NET ?/g, "");
+
+
+					if (s_local) {
+						if (myip) s_local = s_local+'\n'+'我的IP：' + myip;
+						if (myAddr) s_local = s_local+'\n'+'我的地址：' +myAddr;
+											var obj = {
+						Site: s_local
+					};
+return obj;
+					}else return null;
+		}		
+},{
+label:"MyIP 查询源",
+id:"myip",
+},{
+label:"新浪 查询源",
+id:"sina",
+inquireAPI:"http://int.dpool.sina.com.cn/iplookup/iplookup.php?format=json&ip=",
+regulation:function(docum){
+					var responseObj = JSON.parse(docum);
+					if (responseObj.ret == 1) {
+						if (responseObj.isp !== '' || responseObj.type !== '' || responseObj.desc !== '')
+							var addr = responseObj.country + responseObj.province + responseObj.city + responseObj.district + '\n' + responseObj.isp + responseObj.type + responseObj.desc;
+						else
+							var addr = responseObj.country + responseObj.province + responseObj.city + responseObj.district;
+						var obj = {
+							Site: addr
+						};
+return obj;
+					}else return null;
+					}
+},{
+label:"波士顿大学",
+id:"CZedu",
+inquireAPI:"http://phyxt8.bu.edu/iptool/qqwry.php?ip=",
+regulation:function(docum){
+					var s_local = docum;
+					s_local = s_local.replace(/ +CZ88.NET ?/g, "");
+
+					var obj = {
+						Site: s_local
+					};
+					if (s_local) {
+return obj;
+					}else return null;
+		}
+},]
