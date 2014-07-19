@@ -5,9 +5,10 @@
 // @homepage       https://github.com/feiruo/userchromejs/
 // @include         chrome://browser/content/browser.xul
 // @charset         UTF-8
-// @version         1.5.8
+// @version         1.5.8.1
 // @note            Begin 2013-12-16
 // @note            左键点击复制，右键弹出菜单。需要 countryflags.js 数据文件
+// @note            1.5.8.1 配置文件加入一个图标大小的参数。
 // @note            1.5.8 修复菜单重复创建的BUG，查询源外置;可以丢弃旧版lib（不推荐）。
 // @note            1.5.7 修改菜单和图标的创建方式，避免各种不显示，不弹出问题。
 // @note            1.5.6 将脚本设置也移到配置文件中，目前配置文件已经可以设置TIP显示条目，改变数据库文件等了。
@@ -208,7 +209,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				this.icon.style.marginLeft = "4px";
 				this.icon.style.marginRight = "2px";
 			}
-			this.icon.style.width = "16px";
+			this.icon.style.width = this.showFlagsPer.iconStyleWidth;
 
 			this.icon.src = this.icon.image = DEFAULT_Flag;
 

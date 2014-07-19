@@ -4,6 +4,7 @@
 var showFlagsPer={
 // 显示国旗图标/IP位置  如：urlbar-icons、identity-box、TabsToolbar、nav-bar-customization-target等等
 showLocationPos:"identity-box",
+iconStyleWidth:"100%",//图标宽度限制(等比例限制高度)，原始大小请用 "100%",其他规格化大小：16px 24px 32px ......
 iconType:"toolbarbutton",//按钮的类型，如：statusbarpanel、menu、image等
 iconClass:"toolbarbutton-1 chromeclass-toolbar-additional",//Class设置，如：statusbarpanel-iconic等
 
