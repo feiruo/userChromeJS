@@ -5,18 +5,19 @@
 // @compatibility	Firefox 16
 // @include			chrome://browser/content/browser.xul
 // @charset			UTF-8
-// @version			1.5.8.2
+// @version			1.5.8.3
 // @update 			2014-07-20
 // @note            Begin 2013-12-16
 // @note            左键点击复制，右键弹出菜单。需要 _showFlagS.js 配置文件
 // @reviewURL		http://bbs.kafan.cn/thread-1666483-1-1.html
 // @homepageURL		https://github.com/feiruo/userChromeJS/tree/master/showFlagS
 // @optionsURL		about:config?filter=showFlagS.
-// @note            1.5.8.2 	修复了FlagFox图标下，找不到图标就消失的问题，其他修改。
+// @note            1.5.8.3 	修复图标切换错误的问题。
+// @note            1.5.8.2 	修复FlagFox图标下，找不到图标就消失的问题，其他修改。
 // @note            1.5.8.1 	配置文件加入一个图标大小的参数。
 // @note            1.5.8 		修复菜单重复创建的BUG，查询源外置;可以丢弃旧版lib（不推荐）。
 // @note            1.5.7		修改菜单和图标的创建方式，避免各种不显示，不弹出问题。
-// @note            1.5.6 		将脚本设置也移到配置文件中，目前配置文件已经可以设置TIP显示条目，改变数据库文件等了。
+// @note            1.5.6 		将脚本设置也移到配置文件中，配置文件可以设置TIP显示条目，改变数据库文件等。
 // @note            1.5.5 		增加flagfox扩展国旗图标库，相对路径profile\chrome\lib\flagfoxflags下，直接存放图标,支持实时切换。
 // @note            1.5 		增体加右键菜单外部配置，配置方式和anoBtn一样，具请参考配置文件。
 // @note            1.4 		增加几个详细信息；服务器没给出的就不显示。
@@ -384,22 +385,23 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				} else if (countryCode === 'iana') {
 					src = this.showFlagsPer.Unknown_Flag;
 				} else {
-					//  如果 countryCode 无法找到图标，再次用 countryName 查找					
 					if (window.CountryFlags || this.showFlagsPer.isFlagFoxFlags) {
 
 						if (this.showFlagsPer.isFlagFoxFlags)
 							src = this.getFlagFoxIconPath(countryCode) || CountryFlags[countryCode];
+						else
+							src = CountryFlags[countryCode];
 
 						if (!src && window.CountryFlags && countryName) {
+							//如果 countryCode 无法找到图标，再次用 countryName 查找
 							contryCode = window.CountryNames && CountryNames[countryName];
 							if (contryCode in CountryFlags) {
 								src = CountryFlags[contryCode];
 								this.showFlagHash[host] = contryCode;
 							}
-						} else
-							src = src || (this.showFlagsPer.BAK_FLAG_PATH + countryCode + ".gif") || this.showFlagsPer.Unknown_Flag;
+						}
 					}
-					src = src;
+					src = src || (this.showFlagsPer.BAK_FLAG_PATH + countryCode + ".gif") || this.showFlagsPer.Unknown_Flag;
 				}
 				this.icon.src = this.icon.image = src;
 			}
