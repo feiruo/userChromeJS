@@ -1,24 +1,29 @@
 // ==UserScript==
-// @name            showFlagS.uc.js
-// @description     显示国旗与IP
-// @author          ywzhaiqi、feiruo
-// @homepage       https://github.com/feiruo/userchromejs/
-// @include         chrome://browser/content/browser.xul
-// @charset         UTF-8
-// @version         1.5.8.1
+// @name 			showFlagS.uc.js
+// @description		显示国旗与IP
+// @author			ywzhaiqi、feiruo
+// @compatibility	Firefox 16
+// @include			chrome://browser/content/browser.xul
+// @charset			UTF-8
+// @version			1.5.8.2
+// @update 			2014-07-20
 // @note            Begin 2013-12-16
-// @note            左键点击复制，右键弹出菜单。需要 countryflags.js 数据文件
-// @note            1.5.8.1 配置文件加入一个图标大小的参数。
-// @note            1.5.8 修复菜单重复创建的BUG，查询源外置;可以丢弃旧版lib（不推荐）。
-// @note            1.5.7 修改菜单和图标的创建方式，避免各种不显示，不弹出问题。
-// @note            1.5.6 将脚本设置也移到配置文件中，目前配置文件已经可以设置TIP显示条目，改变数据库文件等了。
-// @note            1.5.5 增加flagfox扩展国旗图标库，相对路径profile\chrome\lib\flagfoxflags下，直接存放图标,支持实时切换。
-// @note            1.5 增体加右键菜单外部配置，配置方式和anoBtn一样，具请参考配置文件。
-// @note            1.4 增加几个详细信息；服务器没给出的就不显示。
-// @note            1.3 增加淘宝查询源，修复不显示图标，刷新、切换查询源时可能出现的图标提示消失等BUG
-// @note            1.2.1 修复identity-box时page-proxy-favicon的问题
-// @note            1.2 位置为identity-box时自动隐藏page-proxy-favicon，https显示
-// @note            1.1 设置延迟，增加本地文件图标。
+// @note            左键点击复制，右键弹出菜单。需要 _showFlagS.js 配置文件
+// @reviewURL		http://bbs.kafan.cn/thread-1666483-1-1.html
+// @homepageURL		https://github.com/feiruo/userChromeJS/tree/master/showFlagS
+// @optionsURL		about:config?filter=showFlagS.
+// @note            1.5.8.2 	修复了FlagFox图标下，找不到图标就消失的问题，其他修改。
+// @note            1.5.8.1 	配置文件加入一个图标大小的参数。
+// @note            1.5.8 		修复菜单重复创建的BUG，查询源外置;可以丢弃旧版lib（不推荐）。
+// @note            1.5.7		修改菜单和图标的创建方式，避免各种不显示，不弹出问题。
+// @note            1.5.6 		将脚本设置也移到配置文件中，目前配置文件已经可以设置TIP显示条目，改变数据库文件等了。
+// @note            1.5.5 		增加flagfox扩展国旗图标库，相对路径profile\chrome\lib\flagfoxflags下，直接存放图标,支持实时切换。
+// @note            1.5 		增体加右键菜单外部配置，配置方式和anoBtn一样，具请参考配置文件。
+// @note            1.4 		增加几个详细信息；服务器没给出的就不显示。
+// @note            1.3 		增加淘宝查询源，修复不显示图标，刷新、切换查询源时可能出现的图标提示消失等BUG
+// @note            1.2.1 		修复identity-box时page-proxy-favicon的问题
+// @note            1.2 		位置为identity-box时自动隐藏page-proxy-favicon，https显示
+// @note            1.1 		设置延迟，增加本地文件图标。
 // ==/UserScript==
 
 /**
@@ -381,21 +386,19 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				} else {
 					//  如果 countryCode 无法找到图标，再次用 countryName 查找					
 					if (window.CountryFlags || this.showFlagsPer.isFlagFoxFlags) {
+
 						if (this.showFlagsPer.isFlagFoxFlags)
-							src = this.getFlagFoxIconPath(countryCode);
-						else
-							src = CountryFlags[countryCode];
-						if (!src && countryName) {
+							src = this.getFlagFoxIconPath(countryCode) || CountryFlags[countryCode];
+
+						if (!src && window.CountryFlags && countryName) {
 							contryCode = window.CountryNames && CountryNames[countryName];
 							if (contryCode in CountryFlags) {
 								src = CountryFlags[contryCode];
 								this.showFlagHash[host] = contryCode;
 							}
-						}
-					} else {
-						src = src || (this.showFlagsPer.BAK_FLAG_PATH + countryCode + ".gif") || this.showFlagsPer.Unknown_Flag;
+						} else
+							src = src || (this.showFlagsPer.BAK_FLAG_PATH + countryCode + ".gif") || this.showFlagsPer.Unknown_Flag;
 					}
-
 					src = src;
 				}
 				this.icon.src = this.icon.image = src;
@@ -554,9 +557,20 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			Cc['@mozilla.org/alerts-service;1'].getService(Ci.nsIAlertsService).showAlertNotification("", aTitle || "showFlagS", aString, false, "", null);
 		},
 		getFlagFoxIconPath: function(filename) {
-			var Path = "file:///" + Cc["@mozilla.org/file/directory_service;1"].getService(Ci.nsIProperties).
-			get('UChrm', Ci.nsILocalFile).path + this.showFlagsPer.flagFoxFlags;
-			return Path + filename + ".png";
+			localFlagPath = (this.showFlagsPer.flagFoxFlags + filename + ".png").replace(/\//g, '\\');
+			var fullPath = Cc["@mozilla.org/file/directory_service;1"].getService(Ci.nsIProperties)
+				.get("UChrm", Ci.nsILocalFile).path;
+			if (/^(\\)/.test(localFlagPath)) {
+				fullPath = fullPath + localFlagPath;
+			} else {
+				fullPath = fullPath + "\\" + localFlagPath;
+			}
+
+			var file = Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsILocalFile);
+			file.initWithPath(fullPath);
+			if (file.exists()) {
+				return "file:///" + fullPath;
+			}
 		},
 		copy: function(str) {
 			str || (str = this.icon.tooltipText)
@@ -565,15 +579,23 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				.copyString(str);
 		},
 		open: function(url, type) {
-			var host = this.contentDoc.location.host,
+			var uri = this.contentDoc.location.href,
+				host = this.contentDoc.location.host,
 				ip = this.dnsCache[host];
 
-			if (type == 'host') {
+			if (type == 'host')
 				url += host;
-			} else if (type == 'ip' && ip) {
+			else if (type == 'ip' && ip)
 				url += ip
-			}
-
+			else if (type == "basedomain") {
+				var eTLDService = Components.classes["@mozilla.org/network/effective-tld-service;1"].
+				getService(Components.interfaces.nsIEffectiveTLDService);
+				var basedomain = eTLDService.getBaseDomain(makeURI(uri));
+				url += basedomain
+			} else if (type == 'url')
+				url += uri
+			else
+				url += type
 			gBrowser.selectedTab = gBrowser.addTab(url);
 		},
 		buildSiteMenu: function() {
@@ -596,10 +618,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 					type: "radio",
 					oncommand: "showFlagS.showflagSset('site','" + this.showFlagSsiteSource[i].id + "');"
 				}));
-				if (this.showFlagSsiteSource[i].image) {
-					menuitem.setAttribute("image", this.showFlagSsiteSource[i].image);
-					menuitem.setAttribute("class", "showFlagS-site-item  menuitem-iconic");
-				}
 				menu.insertBefore(menuitem, defmenuitem);
 			};
 		},
@@ -787,4 +805,4 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		Application.console.log("[showFlagS] " + Array.slice(arguments));
 	}
 })()
-showFlagS.init();
+window.showFlagS.init();
