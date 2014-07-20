@@ -5,13 +5,14 @@
 // @compatibility	Firefox 16
 // @include			chrome://browser/content/browser.xul
 // @charset			UTF-8
-// @version			1.5.8.3.1
-// @update 			2014-07-20
+// @version			1.5.8.3.2
+// @update 			2014-07-21
 // @note            Begin 2013-12-16
 // @note            左键点击复制，右键弹出菜单。需要 _showFlagS.js 配置文件
 // @reviewURL		http://bbs.kafan.cn/thread-1666483-1-1.html
 // @homepageURL		https://github.com/feiruo/userChromeJS/tree/master/showFlagS
 // @optionsURL		about:config?filter=showFlagS.
+// @note            1.5.8.3.2 	identity-box时错误页面智能隐藏，已查询到便显示，每查询到便隐藏。
 // @note            1.5.8.3.1 	配置文件增加图标高度设置，identity-box时错误页面自动隐藏。
 // @note            1.5.8.3 	修复图标切换错误的问题。
 // @note            1.5.8.2 	修复FlagFox图标下，找不到图标就消失的问题，其他修改。
@@ -270,16 +271,16 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				if (this.showFlagsPer.showLocationPos == 'identity-box') {
 					var wrong = "chrome://global/skin/icons/warning-16.png#-moz-resolution=16,16";
 
-					if ((aLocation.protocol !== "about:") && (aLocation.protocol !== "chrome:") && (gBrowser.mCurrentTab.image !== wrong))
+					if ((aLocation.protocol !== "about:") && (aLocation.protocol !== "chrome:"))
 						$('page-proxy-favicon').style.visibility = 'collapse';
 					else
 						$('page-proxy-favicon').style.visibility = 'visible';
-					this.icon.hidden = ((aLocation.protocol == "about:") || (aLocation.protocol == "chrome:") || (gBrowser.mCurrentTab.image == wrong));
+					this.icon.hidden = ((aLocation.protocol == "about:") || (aLocation.protocol == "chrome:"));
 				}
 				if (aLocation && aLocation.host && /tp/.test(aLocation.protocol)) {
 					this.updateState(aLocation.host);
 				} else if (aLocation && /file/.test(aLocation.protocol)) {
-					this.icon.src = this.showFlagsPer.File_Flag;
+					this.icon.src = this.icon.image = this.showFlagsPer.File_Flag;
 					this.icon.tooltipText = '本地文件' + "\n" + aLocation;
 				} else {
 					this.resetState();
@@ -407,6 +408,14 @@ location == "chrome://browser/content/browser.xul" && (function() {
 						}
 					}
 					src = src || (this.showFlagsPer.BAK_FLAG_PATH + countryCode + ".gif") || this.showFlagsPer.Unknown_Flag;
+
+					if (showFlagS.showFlagsPer.showLocationPos == 'identity-box') {
+						if (src = this.showFlagsPer.Unknown_Flag) {
+							$('page-proxy-favicon').style.visibility = 'visible';
+							this.icon.hidden = true;
+						} else
+							$('page-proxy-favicon').style.visibility = 'collapse';
+					}
 				}
 				this.icon.src = this.icon.image = src;
 			}
@@ -502,7 +511,9 @@ location == "chrome://browser/content/browser.xul" && (function() {
 					var responseObj = JSON.parse(req.responseText);
 					if (responseObj.code == 0) {
 						var country_id = responseObj.data.country_id.toLocaleLowerCase();
-						var addr = responseObj.data.country + responseObj.data.area + '\n' + responseObj.data.region + responseObj.data.city + responseObj.data.county + responseObj.data.isp;
+						var addr = responseObj.data.country + responseObj.data.area;
+						if (responseObj.data.region || responseObj.data.city || responseObj.data.county || responseObj.data.isp)
+							addr = addr + '\n' + responseObj.data.region + responseObj.data.city + responseObj.data.county + responseObj.data.isp;
 						var obj = {
 							taobao: addr
 						};
