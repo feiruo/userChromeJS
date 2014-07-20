@@ -4,11 +4,13 @@
 var showFlagsPer = {
 	//显示国旗图标位置  如：urlbar-icons、identity-box、TabsToolbar、nav-bar-customization-target等等
 	showLocationPos: "identity-box",
-	iconStyleWidth: "16px", //图标宽度限制(等比例限制高度)，原始大小请用 "100%"，标准大小有:16px 24px 32px等
+
+	//图标高款(等比例限制高度)，原始大小请用 "100%"，标准大小有:16px 24px 32px等
+	iconStyleWidth: "100%", //图标款
+	iconStyleHeight: "", //图标高,没有就是100%
+
 	iconType: "toolbarbutton", //按钮的类型，如：statusbarpanel、menu、image等，请视图标位置而定
 	iconClass: "toolbarbutton-1 chromeclass-toolbar-additional", //Class类设置，如：statusbarpanel-iconic等，会影响整体效果，请注意
-
-
 	//菜单弹出方向，不设置就默认,参考 https://developer.mozilla.org/en-US/docs/XUL/PopupGuide/Positioning
 	iconMenuPosition: "at_pointer",
 

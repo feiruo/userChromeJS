@@ -5,13 +5,14 @@
 // @compatibility	Firefox 16
 // @include			chrome://browser/content/browser.xul
 // @charset			UTF-8
-// @version			1.5.8.3
+// @version			1.5.8.3.1
 // @update 			2014-07-20
 // @note            Begin 2013-12-16
 // @note            左键点击复制，右键弹出菜单。需要 _showFlagS.js 配置文件
 // @reviewURL		http://bbs.kafan.cn/thread-1666483-1-1.html
 // @homepageURL		https://github.com/feiruo/userChromeJS/tree/master/showFlagS
 // @optionsURL		about:config?filter=showFlagS.
+// @note            1.5.8.3.1 	配置文件增加图标高度设置，identity-box时错误页面自动隐藏。
 // @note            1.5.8.3 	修复图标切换错误的问题。
 // @note            1.5.8.2 	修复FlagFox图标下，找不到图标就消失的问题，其他修改。
 // @note            1.5.8.1 	配置文件加入一个图标大小的参数。
@@ -216,6 +217,8 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				this.icon.style.marginRight = "2px";
 			}
 			this.icon.style.width = this.showFlagsPer.iconStyleWidth;
+			if (this.showFlagsPer.iconStyleHeight)
+				this.icon.style.height = this.showFlagsPer.iconStyleHeight;
 
 			this.icon.src = this.icon.image = DEFAULT_Flag;
 
@@ -265,11 +268,13 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			try {
 				var aLocation = this.contentDoc.location;
 				if (this.showFlagsPer.showLocationPos == 'identity-box') {
-					if ((aLocation.protocol !== "about:") && (aLocation.protocol !== "chrome:"))
+					var wrong = "chrome://global/skin/icons/warning-16.png#-moz-resolution=16,16";
+
+					if ((aLocation.protocol !== "about:") && (aLocation.protocol !== "chrome:") && (gBrowser.mCurrentTab.image !== wrong))
 						$('page-proxy-favicon').style.visibility = 'collapse';
 					else
 						$('page-proxy-favicon').style.visibility = 'visible';
-					this.icon.hidden = ((aLocation.protocol == "about:") || (aLocation.protocol == "chrome:"));
+					this.icon.hidden = ((aLocation.protocol == "about:") || (aLocation.protocol == "chrome:") || (gBrowser.mCurrentTab.image == wrong));
 				}
 				if (aLocation && aLocation.host && /tp/.test(aLocation.protocol)) {
 					this.updateState(aLocation.host);
