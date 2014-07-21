@@ -58,8 +58,9 @@ var showFlagStipSet = [{
 	label: "服务器：",
 	words: "Server"
 }, {
-	label: "网站编码：",
-	words: "Content-Type",
+	label: "网站编码：",//项目名
+	words: "Content-Type",//http头信息关键字
+	//截取或替换的函数
 	regx: function(word) {
 		if (word.match("=")) {
 			word = word.replace(/text\/html;| |charset=/ig, "").toUpperCase();

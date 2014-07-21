@@ -269,8 +269,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			try {
 				var aLocation = this.contentDoc.location;
 				if (this.showFlagsPer.showLocationPos == 'identity-box') {
-					var wrong = "chrome://global/skin/icons/warning-16.png#-moz-resolution=16,16";
-
 					if ((aLocation.protocol !== "about:") && (aLocation.protocol !== "chrome:"))
 						$('page-proxy-favicon').style.visibility = 'collapse';
 					else
@@ -409,12 +407,11 @@ location == "chrome://browser/content/browser.xul" && (function() {
 					}
 					src = src || (this.showFlagsPer.BAK_FLAG_PATH + countryCode + ".gif") || this.showFlagsPer.Unknown_Flag;
 
-					if (showFlagS.showFlagsPer.showLocationPos == 'identity-box') {
-						if (src = this.showFlagsPer.Unknown_Flag) {
-							$('page-proxy-favicon').style.visibility = 'visible';
-							this.icon.hidden = true;
-						} else
-							$('page-proxy-favicon').style.visibility = 'collapse';
+					if (src && (showFlagS.showFlagsPer.showLocationPos == 'identity-box'))
+						$('page-proxy-favicon').style.visibility = 'collapse';
+					else {
+						$('page-proxy-favicon').style.visibility = 'visible';
+						this.icon.hidden = true;
 					}
 				}
 				this.icon.src = this.icon.image = src;
