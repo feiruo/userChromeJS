@@ -5,13 +5,14 @@
 // @compatibility	Firefox 16
 // @include			chrome://browser/content/browser.xul
 // @charset			UTF-8
-// @version			1.5.8.3.2
+// @version			1.5.8.3.3
 // @update 			2014-07-21
 // @note            Begin 2013-12-16
 // @note            左键点击复制，右键弹出菜单。需要 _showFlagS.js 配置文件
 // @reviewURL		http://bbs.kafan.cn/thread-1666483-1-1.html
 // @homepageURL		https://github.com/feiruo/userChromeJS/tree/master/showFlagS
 // @optionsURL		about:config?filter=showFlagS.
+// @note            1.5.8.3.3 	修复因临时删除数据文件导致的错误。
 // @note            1.5.8.3.2 	identity-box时错误页面智能隐藏，已查询到便显示，每查询到便隐藏。
 // @note            1.5.8.3.1 	配置文件增加图标高度设置，identity-box时错误页面自动隐藏。
 // @note            1.5.8.3 	修复图标切换错误的问题。
@@ -42,7 +43,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 	var DEFAULT_Flag = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAACG0lEQVQ4ja2TwW7aQBRF+ZDku0q/qChds5mxkDG2iY3H9jyTBFAWLAgRG7CwCawQi6BEQhgEFkiAuF3VaVXaSlWvdBazuGfx5r1c7n/H9/1rIvpCAUWS5E6S3FFAkU9+wff967+VP1FA6fPzMwaDAcbjMQaDAabTKSggEFEqpcxfLEvp5huNxnmxWGC73SIMQ9Tv6gjqAbrdLqT0Ub+rg4jOUro/S4QQV57nbZMkwel0wvF4xGazQafTgeu5GY1GA8PhEMITqRDiKhM4jnPTbrdxOBxwOByQJAlcz4UQ4heiKILruXAc52smsGzrpd/v4/X1FcPhEBQQ7Jp9kVarhdlsBsu2Xj4E1u3x/v4eRATLuv0tQT3AdDrFcrmEZd2eMoFZNXdm1cSP2DUbZtUEEYECglk1MRqNkKYp3t/fYZjGPhPohh7rhg7d0PH09IQ4jjGbzdBsNtHr9SBcAd3QMZlMMJ/PEYYhdEOPM0G5Ur7RKhoeHx+xWq2wXq+xXq/x9vaGVqsFraJBq2jQDT17l8vljyFyzq9UVd2qqoooirBarTLCMIRds6GqKgzTgOPUoKpqyjn/+MZcLpdTFCVfKpXOlm1huVwiSRIkSYLFYgGzauLh4QHNZhNaRTsrinJ5GxljeUVRUil99Ho9dLtduJ4LKX0QERRFSTnnny+Wv6dYLF4zxgqMsZhzvuec7xljMWOsUCwW/3xM/5JvTakQArDW8fcAAAAASUVORK5CYII=";
 
 	window.showFlagS = {
-		isLibIcon: false,
 		siteNB: null,
 		siteApi: null,
 		siteThx: null,
@@ -140,10 +140,8 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			this.showFlagStipSet = sandbox.showFlagStipSet;
 			this.showFlagSsiteSource = sandbox.showFlagSsiteSource;
 
-			if (!this.isLibIcon && this.showFlagsPer.libIcon) {
+			if (this.showFlagsPer.libIcon)
 				this.importLib(this.showFlagsPer.libIconPath);
-				this.isLibIcon = true;
-			}
 
 			this.uninit();
 			this.geitPrefs();
@@ -389,14 +387,14 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				} else if (countryCode === 'iana') {
 					src = this.showFlagsPer.Unknown_Flag;
 				} else {
-					if (window.CountryFlags || this.showFlagsPer.isFlagFoxFlags) {
+					if ((window.CountryFlags && this.showFlagsPer.libIcon) || this.showFlagsPer.isFlagFoxFlags) {
 
 						if (this.showFlagsPer.isFlagFoxFlags)
-							src = this.getFlagFoxIconPath(countryCode) || CountryFlags[countryCode];
+							src = (window.CountryFlags && this.showFlagsPer.libIcon) ? (this.getFlagFoxIconPath(countryCode) || CountryFlags[countryCode]) : this.getFlagFoxIconPath(countryCode);
 						else
 							src = CountryFlags[countryCode];
 
-						if (!src && window.CountryFlags && countryName) {
+						if (!src && window.CountryFlags && this.showFlagsPer.libIcon && countryName) {
 							//如果 countryCode 无法找到图标，再次用 countryName 查找
 							contryCode = window.CountryNames && CountryNames[countryName];
 							if (contryCode in CountryFlags) {
