@@ -5,14 +5,15 @@
 // @compatibility	Firefox 16
 // @include			chrome://browser/content/browser.xul
 // @charset			UTF-8
-// @version			1.5.8.3.3
+// @version			1.5.8.3.4
 // @update 			2014-07-21
 // @note            Begin 2013-12-16
 // @note            左键点击复制，右键弹出菜单。需要 _showFlagS.js 配置文件
 // @reviewURL		http://bbs.kafan.cn/thread-1666483-1-1.html
 // @homepageURL		https://github.com/feiruo/userChromeJS/tree/master/showFlagS
 // @optionsURL		about:config?filter=showFlagS.
-// @note            1.5.8.3.3 	修复因临时删除数据文件导致的错误。
+// @note            1.5.8.3.4 	将存入perfs的选项移至脚本内，便于配置文件的理解,其他修复。
+// @note            1.5.8.3.3 	修复因临时删除文件导致的错误。
 // @note            1.5.8.3.2 	identity-box时错误页面智能隐藏，已查询到便显示，每查询到便隐藏。
 // @note            1.5.8.3.1 	配置文件增加图标高度设置，identity-box时错误页面自动隐藏。
 // @note            1.5.8.3 	修复图标切换错误的问题。
@@ -43,6 +44,8 @@ location == "chrome://browser/content/browser.xul" && (function() {
 	var DEFAULT_Flag = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAACG0lEQVQ4ja2TwW7aQBRF+ZDku0q/qChds5mxkDG2iY3H9jyTBFAWLAgRG7CwCawQi6BEQhgEFkiAuF3VaVXaSlWvdBazuGfx5r1c7n/H9/1rIvpCAUWS5E6S3FFAkU9+wff967+VP1FA6fPzMwaDAcbjMQaDAabTKSggEFEqpcxfLEvp5huNxnmxWGC73SIMQ9Tv6gjqAbrdLqT0Ub+rg4jOUro/S4QQV57nbZMkwel0wvF4xGazQafTgeu5GY1GA8PhEMITqRDiKhM4jnPTbrdxOBxwOByQJAlcz4UQ4heiKILruXAc52smsGzrpd/v4/X1FcPhEBQQ7Jp9kVarhdlsBsu2Xj4E1u3x/v4eRATLuv0tQT3AdDrFcrmEZd2eMoFZNXdm1cSP2DUbZtUEEYECglk1MRqNkKYp3t/fYZjGPhPohh7rhg7d0PH09IQ4jjGbzdBsNtHr9SBcAd3QMZlMMJ/PEYYhdEOPM0G5Ur7RKhoeHx+xWq2wXq+xXq/x9vaGVqsFraJBq2jQDT17l8vljyFyzq9UVd2qqoooirBarTLCMIRds6GqKgzTgOPUoKpqyjn/+MZcLpdTFCVfKpXOlm1huVwiSRIkSYLFYgGzauLh4QHNZhNaRTsrinJ5GxljeUVRUil99Ho9dLtduJ4LKX0QERRFSTnnny+Wv6dYLF4zxgqMsZhzvuec7xljMWOsUCwW/3xM/5JvTakQArDW8fcAAAAASUVORK5CYII=";
 
 	window.showFlagS = {
+		isFlagFoxFlags: true, //是否启用本地图标，存入perfs
+		site: null, //如:"CZ" 默认API，存入perfs，视查询源而定，可以在配置文件内自行编辑
 		siteNB: null,
 		siteApi: null,
 		siteThx: null,
@@ -64,6 +67,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		},
 
 		init: function() {
+			this.geitPrefs();
 			this.makePopup();
 			this.reBuild();
 			this.onLocationChange();
@@ -84,6 +88,25 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		},
 		onDestroy: function() {
 			window.getBrowser().removeProgressListener(this.progressListener);
+		},
+		geitPrefs: function() {
+			this._prefs = Components.classes["@mozilla.org/preferences-service;1"]
+				.getService(Components.interfaces.nsIPrefService)
+				.getBranch("userChromeJS.showFlagS.");
+			this._prefs.QueryInterface(Components.interfaces.nsIPrefBranch2);
+			var siteVal, flagFoxVal;
+			try {
+				siteVal = this._prefs.getCharPref("SourceSite");
+			} catch (e) {}
+			try {
+				flagFoxVal = this._prefs.getBoolPref("flagFoxFlags");
+			} catch (e) {}
+			if (!this._prefs.prefHasUserValue("SourceSite") || !siteVal)
+				this._prefs.setCharPref("SourceSite", (this.showFlagSsiteSource[0] ? this.showFlagSsiteSource[0].id : "taobao"));
+			if (!this._prefs.prefHasUserValue("flagFoxFlags") || !flagFoxVal)
+				this._prefs.setBoolPref("flagFoxFlags", this.isFlagFoxFlags);
+			this.site = this._prefs.getCharPref("SourceSite");
+			this.isFlagFoxFlags = this._prefs.getBoolPref("flagFoxFlags");
 		},
 		makePopup: function() {
 			let xml = '\
@@ -144,7 +167,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				this.importLib(this.showFlagsPer.libIconPath);
 
 			this.uninit();
-			this.geitPrefs();
 			this.buildSiteMenu();
 			this.buildMenu();
 			this.addIcon();
@@ -178,77 +200,20 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			} catch (e) {}
 
 		},
-		geitPrefs: function() {
-			this._prefs = Components.classes["@mozilla.org/preferences-service;1"]
-				.getService(Components.interfaces.nsIPrefService)
-				.getBranch("userChromeJS.showFlagS.");
-			this._prefs.QueryInterface(Components.interfaces.nsIPrefBranch2);
-
-			if (!this._prefs.prefHasUserValue("SourceSite")) {
-				this._prefs.setCharPref("SourceSite", this.showFlagsPer.site);
-			} else {
-				this.showFlagsPer.site = this._prefs.getCharPref("SourceSite");
-			}
-
-			if (!this._prefs.prefHasUserValue("flagFoxFlags")) {
-				this._prefs.setBoolPref("flagFoxFlags", this.showFlagsPer.isFlagFoxFlags);
-			} else {
-				this.showFlagsPer.isFlagFoxFlags = this._prefs.getBoolPref("flagFoxFlags");
-			}
-		},
-		addIcon: function() {
-			if (this.showFlagsPer.showLocationPos == 'identity-box' || this.showFlagsPer.showLocationPos == 'urlbar-icons') {
-				this.icon = $(this.showFlagsPer.showLocationPos).appendChild($C('image', {
-					id: 'showFlagS-icon',
-					context: 'showFlagS-popup'
-				}));
-			} else {
-				this.icon = $(this.showFlagsPer.showLocationPos).appendChild($C(this.showFlagsPer.iconType, {
-					id: "showFlagS-icon",
-					class: this.showFlagsPer.iconClass,
-					removable: true,
-					context: "showFlagS-popup",
-				}));
-			}
-
-			if (this.showFlagsPer.showLocationPos == "identity-box") {
-				this.icon.style.marginLeft = "4px";
-				this.icon.style.marginRight = "2px";
-			}
-			this.icon.style.width = this.showFlagsPer.iconStyleWidth;
-			if (this.showFlagsPer.iconStyleHeight)
-				this.icon.style.height = this.showFlagsPer.iconStyleHeight;
-
-			this.icon.src = this.icon.image = DEFAULT_Flag;
-
-			// 点击复制
-			this.icon.addEventListener("click", function(event) {
-				if (event.button == 0) {
-					showFlagS.copy();
-				} else if (event.button == 1) {
-					showFlagS.onLocationChange(true);
-				}
-			}, false);
-
-			$("showFlagS-popup").setAttribute('position', this.showFlagsPer.iconMenuPosition);
-			$("showFlagS-set-foxFlag").setAttribute('checked', this.showFlagsPer.isFlagFoxFlags);
-			$("showFlagS-set-foxFlag").setAttribute('value', this.showFlagsPer.isFlagFoxFlags);
-			$("showFlagS-site-" + this.showFlagsPer.site).setAttribute('checked', true);
-		},
 		showflagSset: function(tyep, val) {
 			if (tyep == "isFlagFoxFlags") {
-				this.showFlagsPer.isFlagFoxFlags = !this.showFlagsPer.isFlagFoxFlags;
-				this._prefs.setBoolPref("flagFoxFlags", this.showFlagsPer.isFlagFoxFlags);
-				$("showFlagS-set-foxFlag").setAttribute('checked', this.showFlagsPer.isFlagFoxFlags);
+				this.isFlagFoxFlags = !this.isFlagFoxFlags;
+				this._prefs.setBoolPref("flagFoxFlags", this.isFlagFoxFlags);
+				$("showFlagS-set-foxFlag").setAttribute('checked', this.isFlagFoxFlags);
 			}
 			if (tyep == "site") {
-				this.showFlagsPer.site = val;
-				this._prefs.setCharPref("SourceSite", this.showFlagsPer.site);
-				$("showFlagS-site-" + this.showFlagsPer.site).setAttribute('checked', true);
+				this.site = val;
+				this._prefs.setCharPref("SourceSite", this.site);
+				$("showFlagS-site-" + this.site).setAttribute('checked', true);
 			}
 
 			for (var i = 0; i < this.showFlagSsiteSource.length; i++) {
-				if (this.showFlagSsiteSource[i].id == this.showFlagsPer.site) {
+				if (this.showFlagSsiteSource[i].id == this.site) {
 					this.siteNB = i;
 					this.siteApi = this.showFlagSsiteSource[i].inquireAPI;
 				}
@@ -387,9 +352,9 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				} else if (countryCode === 'iana') {
 					src = this.showFlagsPer.Unknown_Flag;
 				} else {
-					if ((window.CountryFlags && this.showFlagsPer.libIcon) || this.showFlagsPer.isFlagFoxFlags) {
+					if ((window.CountryFlags && this.showFlagsPer.libIcon) || this.isFlagFoxFlags) {
 
-						if (this.showFlagsPer.isFlagFoxFlags)
+						if (this.isFlagFoxFlags)
 							src = (window.CountryFlags && this.showFlagsPer.libIcon) ? (this.getFlagFoxIconPath(countryCode) || CountryFlags[countryCode]) : this.getFlagFoxIconPath(countryCode);
 						else
 							src = CountryFlags[countryCode];
@@ -610,6 +575,45 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			else
 				url += type
 			gBrowser.selectedTab = gBrowser.addTab(url);
+		},
+		addIcon: function() {
+			if (this.showFlagsPer.showLocationPos == 'identity-box' || this.showFlagsPer.showLocationPos == 'urlbar-icons') {
+				this.icon = $(this.showFlagsPer.showLocationPos).appendChild($C('image', {
+					id: 'showFlagS-icon',
+					context: 'showFlagS-popup'
+				}));
+			} else {
+				this.icon = $(this.showFlagsPer.showLocationPos).appendChild($C(this.showFlagsPer.iconType, {
+					id: "showFlagS-icon",
+					class: this.showFlagsPer.iconClass,
+					removable: true,
+					context: "showFlagS-popup",
+				}));
+			}
+
+			if (this.showFlagsPer.showLocationPos == "identity-box") {
+				this.icon.style.marginLeft = "4px";
+				this.icon.style.marginRight = "2px";
+			}
+			this.icon.style.width = this.showFlagsPer.iconStyleWidth;
+			if (this.showFlagsPer.iconStyleHeight)
+				this.icon.style.height = this.showFlagsPer.iconStyleHeight;
+
+			this.icon.src = this.icon.image = DEFAULT_Flag;
+
+			// 点击复制
+			this.icon.addEventListener("click", function(event) {
+				if (event.button == 0) {
+					showFlagS.copy();
+				} else if (event.button == 1) {
+					showFlagS.onLocationChange(true);
+				}
+			}, false);
+
+			$("showFlagS-popup").setAttribute('position', this.showFlagsPer.iconMenuPosition);
+			$("showFlagS-set-foxFlag").setAttribute('checked', this.isFlagFoxFlags);
+			$("showFlagS-set-foxFlag").setAttribute('value', this.isFlagFoxFlags);
+			$("showFlagS-site-" + this.site).setAttribute('checked', true);
 		},
 		buildSiteMenu: function() {
 			var menu = $("showFlagS-set-popup");

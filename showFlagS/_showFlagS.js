@@ -14,9 +14,6 @@ var showFlagsPer = {
 	//菜单弹出方向，不设置就默认,参考 https://developer.mozilla.org/en-US/docs/XUL/PopupGuide/Positioning
 	iconMenuPosition: "at_pointer",
 
-	//是否启用本地图标，存入perfs
-	isFlagFoxFlags: false,
-
 	//本地图标路径： profile\chrome\lib\flagfoxflags  注意格式（感谢flagfox扩展）
 	flagFoxFlags: "/lib/flagfoxflags/",
 
@@ -31,9 +28,6 @@ var showFlagsPer = {
 
 	//网络图标地址，还有一个：http://www.1108.hk/images/ext/
 	BAK_FLAG_PATH: 'http://www.razerzone.com/asset/images/icons/flags/',
-
-	//默认API，存入perfs，视查询源而定，可以再下面自行编辑
-	site: 'CZ',
 
 	//未知的国旗图标
 	Unknown_Flag: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABwUlEQVQ4jZWRMahScRjFL40REW9ojqaGhoaGprg0eL3//3fkj0pCDrYp2hARmRItjk4ND0EuSFMgSEQIiuMjEjdnwUGIvLdF+bxc/j6ut8X3eM9X7z3P+vE7nPMdw9gRgPdEdCSlPJRS3t+9Xyrbtp8A4FqtFmQyGQbARHRERAXLsg6uNADwMZ1O83q9jpbLZdjtdnW5XPa3Rksi+iqEeA7g5j8NFosFu64bRjuaz+dhu93WhULBB8AAXCll3TTNO6fweDx+qLWOwvACf06TySR0HCdQSjGAt2fjKwA8m83+6zCdTsNWqxXkcjkG4Nq2/ezUgIg+ZbNZ3mw25yDP88JOp6NLpdLJL/4AaAkhnu4+cFyv14MoiiJmjvr9vq5Wq34ikeBt7+8AXpimeevC8+Lx+D0APBgMdK/X08lk8gT6KaV8HYvF7l46nxDiJQD2PC+sVCo+Ef0A8ODK3c/0/5zP5/0gCCKlFBPRu2vD2/6/ms1mMBqNjgGwEOLxtWEhxCMAPBwOjx3H0UT02zCMG/vEf6OU4tVqFRWLRZ+IvuwVn4g+pFIpbjQawXbnV3sZWJZ1IKU8BDAhom+2bd/eh/8LEFU+M9Rx2boAAAAASUVORK5CYII=",
