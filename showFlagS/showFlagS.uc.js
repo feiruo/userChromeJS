@@ -1,39 +1,38 @@
 // ==UserScript==
-// @name 			showFlagS.uc.js
+// @name 			showFlagS
 // @description		显示国旗与IP
 // @author			ywzhaiqi、feiruo
-// @version			1.6.0
-// @update 			2014-07-31
 // @compatibility	Firefox 16
 // @charset			UTF-8
 // @include			chrome://browser/content/browser.xul
 // @id 				[FE89584D]
-// @idNote 			ID用于识别,请勿更改!(为原始文件CRC32)
-// @optionsURL		about:config?filter=showFlagS.
 // @startup         window.showFlagS.init();
 // @shutdown        window.showFlagS.onDestroy(true);
+// @optionsURL		about:config?filter=showFlagS.
 // @reviewURL		http://bbs.kafan.cn/thread-1666483-1-1.html
 // @homepageURL		https://github.com/feiruo/userChromeJS/tree/master/showFlagS
 // @note            Begin 2013-12-16
-// @note            左键点击复制，右键弹出菜单。需要 _showFlagS.js 配置文件
-// @note            1.6.0 		ReBuild。
-// @note            1.5.8.3.4 	将存入perfs的选项移至脚本内，便于配置文件的理解,其他修复。
-// @note            1.5.8.3.3 	修复因临时删除文件导致的错误。
-// @note            1.5.8.3.2 	identity-box时错误页面智能隐藏，已查询到便显示，每查询到便隐藏。
-// @note            1.5.8.3.1 	配置文件增加图标高度设置，identity-box时错误页面自动隐藏。
-// @note            1.5.8.3 	修复图标切换错误的问题。
-// @note            1.5.8.2 	修复FlagFox图标下，找不到图标就消失的问题，其他修改。
-// @note            1.5.8.1 	配置文件加入一个图标大小的参数。
-// @note            1.5.8 		修复菜单重复创建的BUG，查询源外置;可以丢弃旧版lib（不推荐）。
-// @note            1.5.7		修改菜单和图标的创建方式，避免各种不显示，不弹出问题。
-// @note            1.5.6 		将脚本设置也移到配置文件中，配置文件可以设置TIP显示条目，改变数据库文件等。
-// @note            1.5.5 		增加flagfox扩展国旗图标库，相对路径profile\chrome\lib\isLocalFlags下，直接存放图标,支持实时切换。
-// @note            1.5 		增体加右键菜单外部配置，配置方式和anoBtn一样，具请参考配置文件。
-// @note            1.4 		增加几个详细信息；服务器没给出的就不显示。
-// @note            1.3 		增加淘宝查询源，修复不显示图标，刷新、切换查询源时可能出现的图标提示消失等BUG
-// @note            1.2.1 		修复identity-box时page-proxy-favicon的问题
-// @note            1.2 		位置为identity-box时自动隐藏page-proxy-favicon，https显示
-// @note            1.1 		设置延迟，增加本地文件图标。
+// @note            左键点击复制，中间刷新，右键弹出菜单
+// @note            支持菜单和脚本设置重载
+// @note            需要 _showFlagS.js 配置文件
+// @version         1.6.0 		ReBuild。
+// @version         1.5.8.3.4 	将存入perfs的选项移至脚本内，便于配置文件的理解,其他修复。
+// @version         1.5.8.3.3 	修复因临时删除文件导致的错误。
+// @version         1.5.8.3.2 	identity-box时错误页面智能隐藏，已查询到便显示，每查询到便隐藏。
+// @version         1.5.8.3.1 	配置文件增加图标高度设置，identity-box时错误页面自动隐藏。
+// @version         1.5.8.3 	修复图标切换错误的问题。
+// @version         1.5.8.2 	修复FlagFox图标下，找不到图标就消失的问题，其他修改。
+// @version         1.5.8.1 	配置文件加入一个图标大小的参数。
+// @version         1.5.8 		修复菜单重复创建的BUG，查询源外置;可以丢弃旧版lib（不推荐）。
+// @version         1.5.7		修改菜单和图标的创建方式，避免各种不显示，不弹出问题。
+// @version         1.5.6 		将脚本设置也移到配置文件中，配置文件可以设置TIP显示条目，改变数据库文件等。
+// @version         1.5.5 		增加flagfox扩展国旗图标库，相对路径profile\chrome\lib\isLocalFlags下，直接存放图标,支持实时切换。
+// @version         1.5 		增体加右键菜单外部配置，配置方式和anoBtn一样，具请参考配置文件。
+// @version         1.4 		增加几个详细信息；服务器没给出的就不显示。
+// @version         1.3 		增加淘宝查询源，修复不显示图标，刷新、切换查询源时可能出现的图标提示消失等BUG
+// @version         1.2.1 		修复identity-box时page-proxy-favicon的问题
+// @version         1.2 		位置为identity-box时自动隐藏page-proxy-favicon，https显示
+// @version         1.1 		设置延迟，增加本地文件图标。
 // ==/UserScript==
 
 /**

@@ -1,491 +1,452 @@
 // ==UserScript==
-// @name            Saying.uc.js
+// @name            Saying
 // @description     地址栏自定义语句
 // @author          feiruo
-// @version         1.2
-// @charset      	utf-8
 // @compatibility	Firefox 16
+// @charset      	UTF-8
 // @include         chrome://browser/content/browser.xul
 // @id 				[09BD42EC]
-// @idNote 			ID用于识别,请勿更改!(为原始文件CRC32)
-// @optionsURL		about:config?filter=saying.
-// @startup         window.saying.init();
-// @shutdown        window.saying.onDestroy(true);
+// @startup         window.Saying.init();
+// @shutdown        window.Saying.onDestroy(true);
+// @optionsURL		about:config?filter=Saying.
 // @reviewURL		http://bbs.kafan.cn/thread-1654067-1-1.html
-// @namespace       https://github.com/feiruo/userChromeJS/tree/master/Saying
+// @homepageURL     https://github.com/feiruo/userChromeJS/tree/master/Saying
 // @note            地址栏显示自定义语句，根据网址切换。
 // @note            目前可自动获取的有VeryCD标题上的，和hitokoto API。
 // @note            每次关闭浏览器后数据库添加获取过的内容，并去重复。
 // @note            左键图标复制内容，中键重新获取，右键弹出菜单。
-// @note            1.1 增加地址栏文字长度设置，避免撑长地址栏。
+// @version         1.2
+// @version         1.1 增加地址栏文字长度设置，避免撑长地址栏。
 // ==/UserScript==
 location == "chrome://browser/content/browser.xul" && (function() {
-	if (window.saying) {
-		window.saying.onDestroy();
-		delete window.saying;
+	if (window.Saying) {
+		window.Saying.onDestroy();
+		delete window.Saying;
 	}
-	//VeryCD(名言名句)或hitokoto。
-	sayingType = 'veryCD',
 
-	//0为地址栏文字显示，1为自动弹出
-	autotip = 0,
+	var Saying = {
+		//VeryCD(名言名句)或hitokoto。
+		SayingType: 'VeryCD',
 
-	//如果是地址栏文字，文字长度（个数，包括标点符号），留空或0则全部显示
-	SayingLong = 0,
+		//是否自动弹出文字
+		autotip: false,
 
-	//autotip=1时有效，设置自动弹出时，多少秒后关闭弹窗
-	autotiptime = 5000,
+		//如果是地址栏文字，文字长度（个数，包括标点符号），留空或0则全部显示
+		SayingLong: 0,
 
-	//是否混合随机显示
-	random = true,
+		//autotip=true时有效，设置自动弹出时，多少秒后关闭弹窗
+		autotiptime: 5000,
 
-	//数据库文件位置
-	saying_Path = 'lib\\saying.json', //此数据库为自定义数据库，不更新只读取。
-	hitokoto_Path = 'lib\\hitokoto.json',
-	veryCD_Path = 'lib\\veryCD.json',
+		//是否混合随机显示
+		Random: true,
 
-	//毫秒， 延迟时间，时间内未取得hitokoto在线数据，则使用本地数据库
-	Local_Delay = 2500,
+		//毫秒， 延迟时间，时间内未取得在线数据，则使用本地数据库
+		Local_Delay: 2500,
 
-	saying_lib = false,
-	saying_json = [],
-	hitokoto_lib = false,
-	hitokoto_json = [],
-	veryCD_lib = false,
-	veryCD_json = [];
+		//数据库文件位置		
+		hitokoto_Path: 'lib\\hitokoto.json',
+		VeryCD_Path: 'lib\\VeryCD.json',
+		Saying_Path: 'lib\\Saying.json', //此数据库为自定义数据库，不更新只读取。
 
-	window.saying = {
-		debug: true,
+		isFirestRun: true,
+		hitokoto_lib: null,
+		VeryCD_lib: null,
+		Saying_lib: null,
+		hitokoto_json: [],
+		VeryCD_json: [],
+		Saying_json: [],
+		SayingHash: [],
 		isReqHash: [],
-		sayingHash: [],
+	};
+	Saying.init = function() {
+		this.getPrefs();
+		this.addIcon();
+		this.getVeryCD();
+		this.onLocationChange();
 
-		init: function() {
-			var self = this;
+		if (!this.autotip)
+			this.addlabel();
 
-			this._prefs = Components.classes["@mozilla.org/preferences-service;1"]
-				.getService(Components.interfaces.nsIPrefService)
-				.getBranch("userChromeJS.saying.");
-			this._prefs.QueryInterface(Components.interfaces.nsIPrefBranch2);
+		if (this.isFirestRun) {
+			this.hitokoto_lib = this.loadFile(this.hitokoto_Path);
+			if (this.hitokoto_lib) this.hitokoto_json = JSON.parse(this.hitokoto_lib);
 
-			if (!this._prefs.prefHasUserValue("type")) {
-				this._prefs.setCharPref("type", sayingType);
-			} else {
-				sayingType = this._prefs.getCharPref("type");
+			this.VeryCD_lib = this.loadFile(this.VeryCD_Path);
+			if (this.VeryCD_lib) this.veryCD_json = JSON.parse(this.VeryCD_lib);
+
+			this.Saying_lib = this.loadFile(this.Saying_Path);
+			if (this.Saying_lib) this.saying_json = JSON.parse(this.Saying_lib);
+		}
+
+		Saying.progressListener = {
+			onLocationChange: function() {
+				Saying.onLocationChange();
+			},
+			onProgressChange: function() {},
+			onSecurityChange: function() {},
+			onStateChange: function() {},
+			onStatusChange: function() {}
+		};
+		window.getBrowser().addProgressListener(Saying.progressListener);
+
+		window.addEventListener("unload", function() {
+			Saying.finsh('all');
+			Saying.onDestroy();
+		}, false);
+	};
+	Saying.onDestroy = function(isAlert) {
+		window.getBrowser().removeProgressListener(Saying.progressListener);
+		if (isAlert) {
+			Saying.finsh('all');
+			$("Saying-popup").parentNode.removeChild($("Saying-popup"));
+			$("Saying-icon").parentNode.removeChild($("Saying-icon"));
+			$("SayingTip").parentNode.removeChild($("SayingTip"));
+			$("Saying-statusbarpanel").parentNode.removeChild($("Saying-statusbarpanel"));
+		}
+	};
+	Saying.getPrefs = function() {
+		this._prefs = Components.classes["@mozilla.org/preferences-service;1"]
+			.getService(Components.interfaces.nsIPrefService)
+			.getBranch("userChromeJS.Saying.");
+		this._prefs.QueryInterface(Components.interfaces.nsIPrefBranch2);
+
+		if (!this._prefs.prefHasUserValue("SayingType") || this._prefs.getPrefType("SayingType") != Ci.nsIPrefBranch.PREF_STRING)
+			this._prefs.setCharPref("SayingType", this.SayingType);
+
+		if (!this._prefs.prefHasUserValue("Random") || this._prefs.getPrefType("Random") != Ci.nsIPrefBranch.PREF_BOOL)
+			this._prefs.setBoolPref("Random", this.Random)
+
+		this.SayingType = this._prefs.getCharPref("SayingType");
+		this.Random = this._prefs.getBoolPref("Random");
+	};
+	Saying.addIcon = function() {
+		this.icon = $('urlbar-icons').appendChild($C('image', {
+			id: 'Saying-icon',
+			context: 'Saying-popup',
+			src: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAADbklEQVQ4jTWKW0ybZQBA/8Rnn40PvhgfNIsajTHenozTZMZb9MlF4+XBYGam28wWXBySMfkCImxcZMKADGqhgVK0XAstLRRKaQcUKLRQWqAttD8t/bmW9uP44DzJeTpHOcjnz0kphZRSNLjj4rW7S+JsQ0C8fHNE6G0zQspjkZNSZB8+UuZE7jAlpNwXUkqhqMf5ah5SNx7jzC037xmSvNUa5+2GAN0Pov9n8kA6k2IptkWTN40jAUpS00Q+f4Q8PeHusJ9HP2vmyctdvFlu5ePGWT6snaS0x8P1xkGe+Lwa04iN33pcvFgX5JnyWZRtTRNoEdDW+aXdyRtXdDRMbGCJZLGu57BuSIyBY+pdO1ztmOXBtJ22PgvPFVl4vzOFEt8/FKe7a2zNOen1q4wnwZUE2+Z/WiJ5rFFwxU9Y3NplL70Ch8tcqrzPmbI5FFVdEcdLI0z7Anh2wbUNjugptk1Jf+gEvW+XuskYo5FDdnbWOEj6ON3zc6P8T54vNKNoc2aRXnCwmJEs7Erc21kGw3s4onk65lUM8yrf66dp9u4yE02T14LAJj+3/MPTP5pRVLtepNNx1rIwqx5gj+1hCKiMRY+od4Xp8ie5ZJiiqHcRdyLHxPIqairM/lGCL6rMKAGHWfi1fTypHMPrGRrdMX4fC9Mb0Ljc5qKkd4mS1iEK6ocxL2cwrRxT2jUOchvIonhGTGIgnKHFl6TSuU5xl5syk5vW6TiFTUOUdE1hMhr5qeIe3VMhrFtQcN/LnR4HAMpMf7todYW52DXPN21efm3txzAwStVQAKPDzfWKJi58fZHHHn8dUdPGSALEUIiXrnWyEIujRGx6oR+Y5FyFjfOVgzgmxkmpIVrtPjZjAabdDj658RdPnb/NHx1DGINZKkbWeOFaN6X9ARTNrhOhlQAfVFh495aZ7uYavFYDCXUNUIE9+kedjI/b+XvKT+1kku90Hp69YuCCbg4ladMJkNwZnOfVIjPN99rIL9g4TQfQNnyo3lEIumDVSV2vhx+My7xzs4dhX5iKXh+K9JhEd0cfHxV38q3eR0F1Pwn/FGhBovoW9i095OPzRPyTfFkzyFe1Y1gmggD0eUIoxaU68cgrVzlb2M5ta4Qm4yxVOhvmqWmWPGNoc3aOVu14B9r5tKyHPucKZHPAKZmDE/4FfP05vqO/HLUAAAAASUVORK5CYII=',
+			tooltip: 'SayingTip',
+			style: 'padding: 0px 2px'
+		}));
+
+		this.icon.addEventListener("click", function(event) {
+			if (event.button == 0) {
+				Cc['@mozilla.org/widget/clipboardhelper;1'].createInstance(Ci.nsIClipboardHelper).copyString($("SayingPopupLabel").textContent);
+			} else if (event.button == 1) {
+				Saying.onLocationChange(true);
 			}
+		}, false);
 
-			if (!this._prefs.prefHasUserValue("random")) {
-				this._prefs.setIntPref("random", random);
-			} else {
-				random = this._prefs.getIntPref("random");
-			}
+		var popup = $C('menupopup', {
+			id: 'Saying-popup',
+			position: 'at_pointer'
+		});
 
-			saying_lib = this.loadFile(saying_Path);
-			hitokoto_lib = this.loadFile(hitokoto_Path);
-			veryCD_lib = this.loadFile(veryCD_Path);
+		popup.appendChild($C('menuitem', {
+			label: "复制内容",
+			oncommand: "Saying.copy();"
+		}));
 
-			if (saying_lib) saying_json = JSON.parse(saying_lib);
-			if (hitokoto_lib) hitokoto_json = JSON.parse(hitokoto_lib);
-			if (veryCD_lib) veryCD_json = JSON.parse(veryCD_lib);
+		popup.appendChild($C('menuitem', {
+			label: "重新获取",
+			oncommand: "Saying.onLocationChange(true);"
+		}));
 
-			if (autotip == 0)
-				this.addlabel();
+		popup.appendChild($C('menuitem', {
+			label: "去重保存",
+			oncommand: "Saying.finsh('all');"
+		}));
 
-			this.addIcon();
-			this.getVeryCD();
-			this.onLocationChange();
-			this.progressListener = {
-				onLocationChange: function() {
-					self.onLocationChange();
-				},
-				onProgressChange: function() {},
-				onSecurityChange: function() {},
-				onStateChange: function() {},
-				onStatusChange: function() {}
-			};
-			window.getBrowser().addProgressListener(this.progressListener);
+		popup.appendChild($C('menuseparator'));
 
-			window.addEventListener("unload", function() {
-				saying.finsh('all');
-				saying.onDestroy();
-			}, false);
-		},
+		popup.appendChild($C('menuitem', {
+			label: "hitokoto",
+			id: "Saying-look-hitokoto",
+			type: "radio",
+			oncommand: 'Saying.lookup("set","hitokoto");'
+		}));
 
-		onDestroy: function(isAlert) {
-			window.getBrowser().removeProgressListener(this.progressListener);
-			if (isAlert) {
-				$("saying-popup").parentNode.removeChild($("saying-popup"));
-				$("saying-icon").parentNode.removeChild($("saying-icon"));
-				$("sayingtip").parentNode.removeChild($("sayingtip"));
-				$("saying-statusbarpanel").parentNode.removeChild($("saying-statusbarpanel"));
-			}
-		},
+		popup.appendChild($C('menuitem', {
+			label: "名言名句",
+			id: "Saying-look-VeryCD",
+			type: "radio",
+			oncommand: 'Saying.lookup("set","VeryCD");'
+		}));
 
-		addIcon: function() {
-			this.icon = $('urlbar-icons').appendChild($C('image', {
-				id: 'saying-icon',
-				context: 'saying-popup',
-				src: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAADbklEQVQ4jTWKW0ybZQBA/8Rnn40PvhgfNIsajTHenozTZMZb9MlF4+XBYGam28wWXBySMfkCImxcZMKADGqhgVK0XAstLRRKaQcUKLRQWqAttD8t/bmW9uP44DzJeTpHOcjnz0kphZRSNLjj4rW7S+JsQ0C8fHNE6G0zQspjkZNSZB8+UuZE7jAlpNwXUkqhqMf5ah5SNx7jzC037xmSvNUa5+2GAN0Pov9n8kA6k2IptkWTN40jAUpS00Q+f4Q8PeHusJ9HP2vmyctdvFlu5ePGWT6snaS0x8P1xkGe+Lwa04iN33pcvFgX5JnyWZRtTRNoEdDW+aXdyRtXdDRMbGCJZLGu57BuSIyBY+pdO1ztmOXBtJ22PgvPFVl4vzOFEt8/FKe7a2zNOen1q4wnwZUE2+Z/WiJ5rFFwxU9Y3NplL70Ch8tcqrzPmbI5FFVdEcdLI0z7Anh2wbUNjugptk1Jf+gEvW+XuskYo5FDdnbWOEj6ON3zc6P8T54vNKNoc2aRXnCwmJEs7Erc21kGw3s4onk65lUM8yrf66dp9u4yE02T14LAJj+3/MPTP5pRVLtepNNx1rIwqx5gj+1hCKiMRY+od4Xp8ie5ZJiiqHcRdyLHxPIqairM/lGCL6rMKAGHWfi1fTypHMPrGRrdMX4fC9Mb0Ljc5qKkd4mS1iEK6ocxL2cwrRxT2jUOchvIonhGTGIgnKHFl6TSuU5xl5syk5vW6TiFTUOUdE1hMhr5qeIe3VMhrFtQcN/LnR4HAMpMf7todYW52DXPN21efm3txzAwStVQAKPDzfWKJi58fZHHHn8dUdPGSALEUIiXrnWyEIujRGx6oR+Y5FyFjfOVgzgmxkmpIVrtPjZjAabdDj658RdPnb/NHx1DGINZKkbWeOFaN6X9ARTNrhOhlQAfVFh495aZ7uYavFYDCXUNUIE9+kedjI/b+XvKT+1kku90Hp69YuCCbg4ladMJkNwZnOfVIjPN99rIL9g4TQfQNnyo3lEIumDVSV2vhx+My7xzs4dhX5iKXh+K9JhEd0cfHxV38q3eR0F1Pwn/FGhBovoW9i095OPzRPyTfFkzyFe1Y1gmggD0eUIoxaU68cgrVzlb2M5ta4Qm4yxVOhvmqWmWPGNoc3aOVu14B9r5tKyHPucKZHPAKZmDE/4FfP05vqO/HLUAAAAASUVORK5CYII=',
-				tooltip: 'sayingtip',
-				style: 'padding: 0px 2px'
-			}));
+		popup.appendChild($C('menuitem', {
+			label: "手动设定",
+			id: "Saying-look-Saying",
+			type: "radio",
+			oncommand: 'Saying.lookup("set","Saying");'
+		}));
 
-			this.icon.addEventListener("click", function(event) {
-				if (event.button == 0) {
-					Cc['@mozilla.org/widget/clipboardhelper;1'].createInstance(Ci.nsIClipboardHelper).copyString($("sayingPopupLabel").textContent);
-				} else if (event.button == 1) {
-					saying.onLocationChange(true);
-				}
-			}, false);
+		popup.appendChild($C('menuseparator'));
 
-			var popup = $C('menupopup', {
-				id: 'saying-popup',
-				position: 'at_pointer'
-			});
+		popup.appendChild($C('menuitem', {
+			label: "混合随机",
+			id: "Saying-Random",
+			type: "checkbox",
+			oncommand: 'Saying.Randoms();'
+		}));
 
-			popup.appendChild($C('menuitem', {
-				label: "复制内容",
-				oncommand: "saying.copy();"
-			}));
+		$('mainPopupSet').appendChild(popup);
 
-			popup.appendChild($C('menuitem', {
-				label: "重新获取",
-				oncommand: "saying.onLocationChange(true);"
-			}));
+		$("Saying-look-" + this.SayingType).setAttribute('checked', true);
+		$("Saying-Random").setAttribute('checked', this.Random);
 
-			popup.appendChild($C('menuitem', {
-				label: "去重保存",
-				oncommand: "saying.finsh('all');"
-			}));
-
-			popup.appendChild($C('menuseparator'));
-
-			popup.appendChild($C('menuitem', {
-				label: "hitokoto",
-				id: "sayinghitokoto",
-				type: "radio",
-				oncommand: 'saying.lookup("set","hitokoto");'
-			}));
-
-			popup.appendChild($C('menuitem', {
-				label: "名言名句",
-				id: "sayingVeryCD",
-				type: "radio",
-				oncommand: 'saying.lookup("set","veryCD");'
-			}));
-
-			popup.appendChild($C('menuitem', {
-				label: "手动设定",
-				id: "sayingSaying",
-				type: "radio",
-				oncommand: 'saying.lookup("set","saying");'
-			}));
-
-			popup.appendChild($C('menuseparator'));
-
-			popup.appendChild($C('menuitem', {
-				label: "混合随机",
-				id: "sayingRandom",
-				type: "checkbox",
-				oncommand: 'saying.random();'
-			}));
-
-			$('mainPopupSet').appendChild(popup);
-			if (sayingType == "veryCD")
-				$("sayingVeryCD").setAttribute('checked', true);
-			else if (sayingType == "hitokoto")
-				$("sayinghitokoto").setAttribute('checked', true);
-			else if (sayingType == "saying")
-				$("sayingSaying").setAttribute('checked', true);
-
-			if (random)
-				$("sayingRandom").setAttribute('checked', (($("sayingRandom").value != random) ? true : false));
-			else
-				$("sayingRandom").setAttribute('checked', (($("sayingRandom").value != random) ? false : true));
-
-			var xmltt = '\
-        	<tooltip id="sayingtip" style="opacity: 0.8 ;color: brown ;text-shadow:0 0 3px #CCC ;background: rgba(255,255,255,0.6) ;padding-bottom:3px ;border:1px solid #BBB ;border-radius: 3px ;box-shadow:0 0 3px #444 ;">\
-        	<label id="sayingPopupLabel" flex="1" />\
+		var xmltt = '\
+        	<tooltip id="SayingTip" style="opacity: 0.8 ;color: brown ;text-shadow:0 0 3px #CCC ;background: rgba(255,255,255,0.6) ;padding-bottom:3px ;border:1px solid #BBB ;border-radius: 3px ;box-shadow:0 0 3px #444 ;">\
+        	<label id="SayingPopupLabel" flex="1" />\
     		</tooltip>\
     		';
 
-			var rangett = document.createRange();
-			rangett.selectNodeContents($('mainPopupSet'));
-			rangett.collapse(false);
-			rangett.insertNode(rangett.createContextualFragment(xmltt.replace(/\n|\r/g, '')));
-			rangett.detach();
+		var rangett = document.createRange();
+		rangett.selectNodeContents($('mainPopupSet'));
+		rangett.collapse(false);
+		rangett.insertNode(rangett.createContextualFragment(xmltt.replace(/\n|\r/g, '')));
+		rangett.detach();
 
-			this.sayingtip = $("sayingPopupLabel");
-			this.sayingtip.addEventListener("click", function(e) {
-				if (e.button == 0) {
-					$("sayingtip").hidePopup();
-				} else if (e.button == 2) {
-					Cc['@mozilla.org/widget/clipboardhelper;1'].createInstance(Ci.nsIClipboardHelper).copyString($("sayingPopupLabel").textContent);
-					$("sayingtip").hidePopup();
-				}
-			}, false);
-		},
-
-		copy: function() {
-			Cc['@mozilla.org/widget/clipboardhelper;1'].createInstance(Ci.nsIClipboardHelper)
-				.copyString($("sayingPopupLabel").textContent);
-		},
-
-		random: function() {
-			if (random)
-				random = false;
-			else
-				random = true;
-			this._prefs.setIntPref("random", random);
-		},
-
-		addlabel: function() {
-			this.sayings = $('urlbar-icons').appendChild($C('statusbarpanel', {
-				id: 'saying-statusbarpanel',
-				style: 'color: brown; margin: 0 0 -1px 0'
-			}));
-			var cssStr = ('\
-			#saying-statusbarpanel,#saying-icon{-moz-box-ordinal-group: 0 !important;}\
-			#urlbar:hover #saying-statusbarpanel,#saying-icon{visibility: collapse !important;}\
-			#urlbar:hover #saying-icon,#saying-statusbarpanel{visibility: visible !important;}\
-			#saying-statusbarpanel{-moz-appearance: none !important;padding: 0px 0px 0px 0px !important;border: none !important;border-top: none !important;border-bottom: none !important;}\
+		this.SayingTip = $("SayingPopupLabel");
+		this.SayingTip.addEventListener("click", function(e) {
+			if (e.button == 0) {
+				$("SayingTip").hidePopup();
+			} else if (e.button == 2) {
+				Cc['@mozilla.org/widget/clipboardhelper;1'].createInstance(Ci.nsIClipboardHelper).copyString($("SayingPopupLabel").textContent);
+				$("SayingTip").hidePopup();
+			}
+		}, false);
+	};
+	Saying.addlabel = function() {
+		this.Sayings = $('urlbar-icons').appendChild($C('statusbarpanel', {
+			id: 'Saying-statusbarpanel',
+			style: 'color: brown; margin: 0 0 -1px 0'
+		}));
+		var cssStr = ('\
+			#Saying-statusbarpanel,#Saying-icon{-moz-box-ordinal-group: 0 !important;}\
+			#urlbar:hover #Saying-statusbarpanel,#Saying-icon{visibility: collapse !important;}\
+			#urlbar:hover #Saying-icon,#Saying-statusbarpanel{visibility: visible !important;}\
+			#Saying-statusbarpanel{-moz-appearance: none !important;padding: 0px 0px 0px 0px !important;border: none !important;border-top: none !important;border-bottom: none !important;}\
 			');
-			var style = document.createProcessingInstruction('xml-stylesheet', 'type="text/css" href="data:text/css;utf-8,' + encodeURIComponent(cssStr) + '"');
-			document.insertBefore(style, document.documentElement);
-		},
+		var style = document.createProcessingInstruction('xml-stylesheet', 'type="text/css" href="data:text/css;utf-8,' + encodeURIComponent(cssStr) + '"');
+		document.insertBefore(style, document.documentElement);
+	};
+	Saying.onLocationChange = function(forceRefresh) {
+		if (forceRefresh) {
+			this.forceRefresh = true;
+		}
+		var aLocation = window.content.document.location;
+		if (aLocation && aLocation.href && !/about:blank/.test(aLocation.href)) {
+			this.lookup(aLocation.href);
+		}
+	};
+	Saying.lookup = function(host, type) {
+		if (host == "set") {
+			SayingType = type;
+			this._prefs.setCharPref("Type", SayingType);
+			return;
+		}
+		if (this.Random) {
+			//var sayingRandom = ['Saying', 'VeryCD', 'hitokoto'];
+			var SayingRandom = ['VeryCD', 'hitokoto'];
+			SayingType = SayingRandom[Math.floor(Math.random() * Saying.Random.length)];
+		}
+		if (this.forceRefresh) {
+			this.forceRefresh = false;
+			this['lookup_' + this.SayingType](host);
+			return;
+		}
+		if (this.SayingHash[host]) {
+			this.updateTooltipText(this.SayingHash[host]);
+		}
+		if (!this.isReqHash[host]) {
+			this['lookup_' + this.SayingType](host);
 
-		onLocationChange: function(forceRefresh) {
-			if (forceRefresh) {
-				this.forceRefresh = true;
-			}
-			var aLocation = window.content.document.location;
-			if (aLocation && aLocation.href && !/about:blank/.test(aLocation.href)) {
-				this.lookup(aLocation.href);
-			}
-
-		},
-
-		lookup: function(host, type) {
-
-			if (host == "set") {
-				sayingType = type;
-				this._prefs.setCharPref("type", sayingType);
-				return;
-			}
-
-			if (random) {
-				//var sayingRandom = ['saying', 'veryCD', 'hitokoto'];
-				var sayingRandom = ['veryCD', 'hitokoto'];
-				sayingType = sayingRandom[Math.floor(Math.random() * sayingRandom.length)];
-			}
-
-			if (this.forceRefresh) {
-				this.forceRefresh = false;
-				this['lookup_' + sayingType](host);
-				return;
-			}
-			if (this.sayingHash[host]) {
-				this.updateTooltipText(this.sayingHash[host]);
-			} else {
-				if (!this.isReqHash[host]) {
-					this['lookup_' + sayingType](host);
-				}
-			}
-			this.isReqHash[host] = true;
-		},
-
-		lookup_saying: function(host) {
-			var self = this;
-			if (saying_lib) {
-				var responseObj = saying_json[Math.floor(Math.random() * saying_json.length)];
-				self.sayingHash[host] = responseObj;
-				self.updateTooltipText(responseObj);
-			} else {
-				self.sayingHash[host] = "无自定义数据";
-				self.updateTooltipText("无自定义数据");
-			}
-		},
-
-		lookup_hitokoto: function(host) {
-			var self = this;
-			var req = new XMLHttpRequest();
-			req.open("GET", 'http://api.hitokoto.us/rand', true);
-			req.send(null);
-			var onerror = function() {
-				var obj = self.locallib('hitokoto');
-				self.sayingHash[host] = obj;
-				self.updateTooltipText(obj);
-			};
-			req.onerror = onerror;
-			req.timeout = Local_Delay;
-			req.ontimeout = onerror;
-			req.onload = function() {
-				if (req.status == 200) {
-					var obj;
-					var responseObj = JSON.parse(req.responseText);
-					hitokoto_json.push(responseObj);
-					if (responseObj.source == "") {
-						obj = responseObj.hitokoto;
-					} else if (responseObj.source.match("《")) {
-						obj = responseObj.hitokoto + '--' + responseObj.source;
-					} else {
-						obj = responseObj.hitokoto + '--《' + responseObj.source + '》';
-					}
-					self.sayingHash[host] = obj;
-					self.updateTooltipText(obj);
-					//debug('得到在线数据:', JSON.stringify(responseObj));
-				} else {
-					onerror();
-				}
-			};
-		},
-
-		lookup_veryCD: function(host) {
-			var self = this;
-			if (veryCD_lib) {
-				var responseObj = veryCD_json[Math.floor(Math.random() * veryCD_json.length)];
-				self.sayingHash[host] = responseObj;
-				self.updateTooltipText(responseObj);
-				//debug('得到数据库VeryCD数据:', JSON.stringify(responseObj));
-			} else {
-				self.sayingHash[host] = "无VeryCD数据";
-				self.updateTooltipText("无VeryCD数据");
-			}
-		},
-
-		locallib: function(type) {
-			var localjson;
-			if (hitokoto_lib && type == 'hitokoto') {
-				var responseObj = hitokoto_json[Math.floor(Math.random() * hitokoto_json.length)];
+		}
+		this.isReqHash[host] = true;
+	};
+	Saying.lookup_hitokoto = function(host) {
+		var self = Saying;
+		var req = new XMLHttpRequest();
+		req.open("GET", 'http://api.hitokoto.us/rand', true);
+		req.send(null);
+		var onerror = function() {
+			var obj = self.locallib('hitokoto');
+			self.SayingHash[host] = obj;
+			self.updateTooltipText(obj);
+		};
+		req.onerror = onerror;
+		req.timeout = Local_Delay;
+		req.ontimeout = onerror;
+		req.onload = function() {
+			if (req.status == 200) {
+				var obj;
+				var responseObj = JSON.parse(req.responseText);
+				hitokoto_json.push(responseObj);
 				if (responseObj.source == "") {
-					localjson = responseObj.hitokoto;
+					obj = responseObj.hitokoto;
 				} else if (responseObj.source.match("《")) {
-					localjson = responseObj.hitokoto + '--' + responseObj.source;
+					obj = responseObj.hitokoto + '--' + responseObj.source;
 				} else {
-					localjson = responseObj.hitokoto + '--《' + responseObj.source + '》';
+					obj = responseObj.hitokoto + '--《' + responseObj.source + '》';
 				}
-				//debug('得到数据库数据:', JSON.stringify(responseObj));
-
-				return localjson;
-
-			} else if (!hitokoto_lib && type == 'hitokoto') {
-				return localjson = "hitokoto无法访问";
-			}
-		},
-
-		updateTooltipText: function(val) {
-
-			if (SayingLong && SayingLong !== 0 && val.length > SayingLong) {
-				urlval = val.substr(0, SayingLong) + '.....';
+				self.SayingHash[host] = obj;
+				self.updateTooltipText(obj);
+				//debug('得到在线数据:', JSON.stringify(responseObj));
 			} else {
-				urlval = val;
+				onerror();
 			}
-
-			if (autotip == 0) this.sayings.label = urlval;
-
-			else {
-				var popup = $("sayingtip");
-				if (this.timer) clearTimeout(this.timer);
-				if (typeof popup.openPopup != 'undefined') popup.openPopup(this.icon, "overlap", 0, 0, true, false);
-				else popup.showPopup(this.icon, -1, -1, "popup", null, null);
-				this.timer = setTimeout(function() {
-					popup.hidePopup();
-				}, autotiptime);
+		};
+	};
+	Saying.lookup_VeryCD = function(host) {
+		if (Saying.VeryCD_lib) {
+			var responseObj = Saying.veryCD_json[Math.floor(Math.random() * Saying.veryCD_json.length)];
+			Saying.SayingHash[host] = responseObj;
+			Saying.updateTooltipText(responseObj);
+			//debug('得到数据库VeryCD数据:', JSON.stringify(responseObj));
+		} else {
+			Saying.SayingHash[host] = "无VeryCD数据";
+			Saying.updateTooltipText("无VeryCD数据");
+		}
+	};
+	Saying.lookup_Saying = function(host) {
+		if (Saying.Saying_lib) {
+			var responseObj = Saying.Saying_json[Math.floor(Math.random() * Saying.Saying_json.length)];
+			Saying.SayingHash[host] = responseObj;
+			Saying.updateTooltipText(responseObj);
+		} else {
+			Saying.SayingHash[host] = "无自定义数据";
+			Saying.updateTooltipText("无自定义数据");
+		}
+	};
+	Saying.locallib = function(type) {
+		var localjson;
+		if (Saying.hitokoto_lib && type == 'hitokoto') {
+			var responseObj = Saying.hitokoto_json[Math.floor(Math.random() * Saying.hitokoto_json.length)];
+			if (responseObj.source == "") {
+				localjson = responseObj.hitokoto;
+			} else if (responseObj.source.match("《")) {
+				localjson = responseObj.hitokoto + '--' + responseObj.source;
+			} else {
+				localjson = responseObj.hitokoto + '--《' + responseObj.source + '》';
 			}
+			//debug('得到数据库数据:', JSON.stringify(responseObj));
+			return localjson;
+		} else if (!hitokoto_lib && this.Type == 'hitokoto') {
+			return "hitokoto无法访问";
+		}
+	};
+	Saying.updateTooltipText = function(val) {
+		if (this.SayingLong && this.SayingLong !== 0 && val.length > this.SayingLong) {
+			val = val.substr(0, SayingLong) + '.....';
+		} else {
+			val = val;
+		}
 
-			var label = $("sayingPopupLabel");
-			while (label.firstChild) {
-				label.removeChild(label.firstChild);
-			}
-			if (val != "") label.appendChild(document.createTextNode(val));
-		},
+		if (!this.autotip)
+			this.Sayings.label = val;
+		else {
+			var popup = $("SayingTip");
+			if (this.timer) clearTimeout(this.timer);
+			if (typeof popup.openPopup != 'undefined') popup.openPopup(this.icon, "overlap", 0, 0, true, false);
+			else popup.showPopup(this.icon, -1, -1, "popup", null, null);
+			this.timer = setTimeout(function() {
+				popup.hidePopup();
+			}, this.autotiptime);
+		}
 
-		getVeryCD: function() {
-			var self = this;
-			var req = new XMLHttpRequest();
-			req.open("GET", 'http://www.verycd.com/statics/title.saying', true);
-			req.send(null);
-			req.onerror = function() {
-				self.finsh('veryCD');
+		var label = $("SayingPopupLabel");
+		while (label.firstChild) {
+			label.removeChild(label.firstChild);
+		}
+		if (val != "") label.appendChild(document.createTextNode(val));
+	};
+	Saying.copy = function() {
+		Cc['@mozilla.org/widget/clipboardhelper;1'].createInstance(Ci.nsIClipboardHelper)
+			.copyString($("SayingPopupLabel").textContent);
+	};
+	Saying.Randoms = function() {
+		this.Random = !this.Random;
+		this._prefs.setIntPref("Random", this.Random);
+	};
+	Saying.getVeryCD = function() {
+		var self = Saying;
+		var req = new XMLHttpRequest();
+		req.open("GET", 'http://www.VeryCD.com/statics/title.Saying', true);
+		req.send(null);
+		req.onerror = function() {
+			self.finsh('VeryCD');
+		}
+		req.onload = function() {
+			if (req.status == 200) {
+				var _VC_DocumentTitles, _VC_DocumentTitleIndex;
+				eval(req.responseText);
+				_VC_DocumentTitles.forEach(function(t) {
+					self.VeryCD_json.push(t)
+				})
 			}
-			req.onload = function() {
-				if (req.status == 200) {
-					var _VC_DocumentTitles, _VC_DocumentTitleIndex;
-					eval(req.responseText);
-					_VC_DocumentTitles.forEach(function(t) {
-						veryCD_json.push(t)
-					})
+			self.finsh('VeryCD');
+		}
+	};
+	Saying.finsh = function(name) {
+		if (name == 'hitokoto' || name == 'all') {
+			var hitokotolibs = {};
+			var hitokotoInfo = [];
+			this.hitokoto_json.forEach(function(i) {
+				if (!hitokotolibs[i.hitokoto]) {
+					hitokotolibs[i.hitokoto] = true;
+					hitokotoInfo.push(i);
 				}
-				self.finsh('veryCD');
-			}
-		},
+			});
+			this.saveFile(this.hitokoto_Path, JSON.stringify(hitokotoInfo));
+		}
+		if (name == 'VeryCD' || name == 'all') {
+			var veryCDlibs = {};
+			var veryCDInfo = [];
+			this.veryCD_json.forEach(function(i) {
+				if (!veryCDlibs[i]) {
+					veryCDlibs[i] = true;
+					veryCDInfo.push(i);
+				}
+			});
+			this.saveFile(this.VeryCD_Path, JSON.stringify(veryCDInfo));
+		}
+	};
+	Saying.loadFile = function(file_Path) {
+		var aFile = Cc["@mozilla.org/file/directory_service;1"].getService(Ci.nsIDirectoryService).QueryInterface(Ci.nsIProperties).get('UChrm', Ci.nsILocalFile);
+		aFile.appendRelativePath(file_Path);
+		if (!aFile.exists() || !aFile.isFile()) return null;
+		var fstream = Cc["@mozilla.org/network/file-input-stream;1"].createInstance(Ci.nsIFileInputStream);
+		var sstream = Cc["@mozilla.org/scriptableinputstream;1"].createInstance(Ci.nsIScriptableInputStream);
+		fstream.init(aFile, -1, 0, 0);
+		sstream.init(fstream);
+		var data = sstream.read(sstream.available());
+		try {
+			data = decodeURIComponent(escape(data));
+		} catch (e) {}
+		sstream.close();
+		fstream.close();
+		return data;
+	};
+	Saying.saveFile = function(name, data) {
+		var file;
+		if (typeof name == "string") {
+			var file = Services.dirsvc.get('UChrm', Ci.nsILocalFile);
+			file.appendRelativePath(name);
+		} else {
+			file = name;
+		}
 
-		finsh: function(name) {
-			if (name == 'hitokoto' || name == 'all') {
-				var hitokotolibs = {};
-				var hitokotoInfo = [];
-				hitokoto_json.forEach(function(i) {
-					if (!hitokotolibs[i.hitokoto]) {
-						hitokotolibs[i.hitokoto] = true;
-						hitokotoInfo.push(i);
-					}
-				});
-				this.saveFile(hitokoto_Path, JSON.stringify(hitokotoInfo));
-			}
+		var suConverter = Cc["@mozilla.org/intl/scriptableunicodeconverter"].createInstance(Ci.nsIScriptableUnicodeConverter);
+		suConverter.charset = 'UTF-8';
+		data = suConverter.ConvertFromUnicode(data);
 
-			if (name == 'veryCD' || name == 'all') {
-				var veryCDlibs = {};
-				var veryCDInfo = [];
-				veryCD_json.forEach(function(i) {
-					if (!veryCDlibs[i]) {
-						veryCDlibs[i] = true;
-						veryCDInfo.push(i);
-					}
-				});
-				this.saveFile(veryCD_Path, JSON.stringify(veryCDInfo));
-			}
-		},
-
-		loadFile: function(file_Path) {
-			var aFile = Cc["@mozilla.org/file/directory_service;1"].getService(Ci.nsIDirectoryService).QueryInterface(Ci.nsIProperties).get('UChrm', Ci.nsILocalFile);
-			aFile.appendRelativePath(file_Path);
-			if (!aFile.exists() || !aFile.isFile()) return null;
-			var fstream = Cc["@mozilla.org/network/file-input-stream;1"].createInstance(Ci.nsIFileInputStream);
-			var sstream = Cc["@mozilla.org/scriptableinputstream;1"].createInstance(Ci.nsIScriptableInputStream);
-			fstream.init(aFile, -1, 0, 0);
-			sstream.init(fstream);
-			var data = sstream.read(sstream.available());
-			try {
-				data = decodeURIComponent(escape(data));
-			} catch (e) {}
-			sstream.close();
-			fstream.close();
-			return data;
-		},
-
-		saveFile: function(name, data) {
-			var file;
-			if (typeof name == "string") {
-				var file = Services.dirsvc.get('UChrm', Ci.nsILocalFile);
-				file.appendRelativePath(name);
-			} else {
-				file = name;
-			}
-
-			var suConverter = Cc["@mozilla.org/intl/scriptableunicodeconverter"].createInstance(Ci.nsIScriptableUnicodeConverter);
-			suConverter.charset = 'UTF-8';
-			data = suConverter.ConvertFromUnicode(data);
-
-			var foStream = Cc['@mozilla.org/network/file-output-stream;1'].createInstance(Ci.nsIFileOutputStream);
-			foStream.init(file, 0x02 | 0x08 | 0x20, 0664, 0);
-			foStream.write(data, data.length);
-			foStream.close();
-		},
+		var foStream = Cc['@mozilla.org/network/file-output-stream;1'].createInstance(Ci.nsIFileOutputStream);
+		foStream.init(file, 0x02 | 0x08 | 0x20, 0664, 0);
+		foStream.write(data, data.length);
+		foStream.close();
 	};
 
-	window.saying.init();
-
 	function debug() {
-		if (saying.debug) Application.console.log('[saying DEBUG] ' + Array.slice(arguments));
+		if (Saying.debug) Application.console.log('[Saying DEBUG] ' + Array.slice(arguments));
 	}
 
 	function $(id) document.getElementById(id);
@@ -495,4 +456,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		if (attr) Object.keys(attr).forEach(function(n) el.setAttribute(n, attr[n]));
 		return el;
 	}
+
+	Saying.init();
+	window.Saying = Saying;
 })()

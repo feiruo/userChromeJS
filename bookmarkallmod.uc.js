@@ -1,22 +1,20 @@
 // ==UserScript==
-// @name            bookmarkallmod.uc.js
+// @name            bookmarkallmod
 // @description     浏览器退出时保存所有页面
 // @author          feiruo
 // @compatibility   Firefox 16
-// @include         main
 // @charset         UTF-8
-// @version         1.2
-// @update          2014-08-03
-// @reviewURL       http://bbs.kafan.cn/thread-1640643-1-1.html
-// @homepageURL     https://github.com/feiruo/userchromejs/
+// @include         main
 // @id              [77E1FF6F]
-// @idNote          ID用于识别,请勿更改!(为原始文件CRC32)
 // @startup         window.bookmarkallmod.init();
 // @shutdown        window.bookmarkallmod.onDestroy(true);
+// @reviewURL       http://bbs.kafan.cn/thread-1640643-1-1.html
+// @homepageURL     https://github.com/feiruo/userchromejs/
 // @note            注意：对于未载入标签，存入的书签名是URL，只有载入之后才能获取标题
-// @note            1.2 修改动作方式，可以通过函数调用实时启用禁用和实时保存
-// @note            1.1 修复在没有书签保存的情况下仍然创建一个时间文件夹的问题
-// @note            1.0
+// @version         1.2.1
+// @version         1.2 修改动作方式，可以通过函数调用实时启用禁用和实时保存
+// @version         1.1 修复在没有书签保存的情况下仍然创建一个时间文件夹的问题
+// @version         1.0
 // ==/UserScript==
 
 /**
@@ -50,7 +48,7 @@
   };
 
   bookmarkallmod.init = function() {
-    if (this.bookmarkallon)
+    if (bookmarkallmod.bookmarkallon)
       window.addEventListener("unload", bookmarkallmod.bookmarkall, false);
   };
 
@@ -60,29 +58,29 @@
 
   bookmarkallmod.bookmarkall = function() {
     var bookmarksService = Cc["@mozilla.org/browser/nav-bookmarks-service;1"].getService(Ci.nsINavBookmarksService);
-    if (this.toolbarFolder == true) {
+    if (bookmarkallmod.toolbarFolder == true) {
       var target_folder = bookmarksService.toolbarFolder;
     } else {
       var target_folder = bookmarksService.bookmarksMenuFolder;
     }
-    for (var i = 0; i < this.dirs.length; i++) {
+    for (var i = 0; i < bookmarkallmod.dirs.length; i++) {
       for (var j = 0;
         (bookmarksService.getIdForItemAt(target_folder, j) != -1); j++) {
         var temp_folder = bookmarksService.getIdForItemAt(target_folder, j);
         var temp_folder_title = bookmarksService.getItemTitle(temp_folder);
-        if (temp_folder_title == this.dirs[i]) {
+        if (temp_folder_title == bookmarkallmod.dirs[i]) {
           target_folder = temp_folder;
           var k = i;
         }
       }
     }
     if (k == undefined) {
-      for (i = 0; i < this.dirs.length; i++) {
-        target_folder = bookmarksService.createFolder(target_folder, this.dirs[i], 0);
+      for (i = 0; i < bookmarkallmod.dirs.length; i++) {
+        target_folder = bookmarksService.createFolder(target_folder, bookmarkallmod.dirs[i], 0);
       }
     } else {
-      for (i = 1 + k; i < this.dirs.length; i++) {
-        target_folder = bookmarksService.createFolder(target_folder, this.dirs[i], 0);
+      for (i = 1 + k; i < bookmarkallmod.dirs.length; i++) {
+        target_folder = bookmarksService.createFolder(target_folder, bookmarkallmod.dirs[i], 0);
       }
     }
     var duoyu = new Array();
@@ -92,17 +90,17 @@
       var temp_folder_title = bookmarksService.getItemTitle(temp_folder);
       duoyu += temp_folder + "-";
     }
-    if (i > this.number - 2) {
+    if (i > bookmarkallmod.number - 2) {
       var duoy = duoyu.substring(0, duoyu.lastIndexOf('-'));
       var duo = duoy.split("-");
-      for (var m = duo.length - 1; m > this.number - 2; m--) {
+      for (var m = duo.length - 1; m > bookmarkallmod.number - 2; m--) {
         bookmarksService.removeItem(duo[m]);
       }
     }
 
     function getDateTime() {
       var now = new Date();
-      return now.toLocaleFormat(this.dateParse);
+      return now.toLocaleFormat(bookmarkallmod.dateParse);
     }
 
     var www = new　 Array();
@@ -119,12 +117,12 @@
       }
       www += url + '::::::::::' + name + ',\n';
     }
-    for (var i = 0; i < this.exclude.length; i++) {
-      if (this.exclude[i].match(/\*/)) {
-        var paichu = this.exclude[i].replace(/\*/, ".*\n");
+    for (var i = 0; i < bookmarkallmod.exclude.length; i++) {
+      if (bookmarkallmod.exclude[i].match(/\*/)) {
+        var paichu = bookmarkallmod.exclude[i].replace(/\*/, ".*\n");
         paichu = new RegExp(paichu, "g");
       } else {
-        var paichu = this.exclude[i] + ".*\n";
+        var paichu = bookmarkallmod.exclude[i] + ".*\n";
         paichu = new RegExp(paichu, "");
       }
       if (www.match(paichu)) {

@@ -1,12 +1,12 @@
 // ==UserScript==
 // @name            noshowborder.uc.js
 // @description     无边框
-// @compatibility	Firefox 8.0
 // @charset			UTF-8
 // @include         chrome://browser/content/browser.xul
 // @id 				[8DB2CA3E]
 // @startup         window.chromemargin.init();
 // @shutdown        window.chromemargin.onDestroy();
+// @homepageURL   	https://github.com/feiruo/userchromejs/
 // @version         1.2.1
 // ==/UserScript==
 (function() {

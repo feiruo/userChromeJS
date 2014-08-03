@@ -1,20 +1,21 @@
 // ==UserScript==
-// @name				anoBtn.uc.js
-// @description			AnotherButton
+// @name				AnotherButton
+// @description			可移动的按钮菜单
 // @author				feiruo
-// @version		 		1.2.1
 // @compatibility 		Firefox 8.0
-// @charset 			utf-8
+// @charset 			UTF-8
 // @include				main
+// @id 					[A26C02CA]
 // @startup        		window.anobtn.init();
 // @shutdown       		window.anobtn.unint(true);
-// @id 					[A26C02CA]
-// @idNote 				ID用于识别,请勿更改!(为原始文件CRC32)
 // @reviewURL			http://bbs.kafan.cn/thread-1657589-1-1.html
-// @homepage	 		https://github.com/feiruo/userChromeJS/tree/master/anoBtn
-// @note 				1.2修复按钮移动之后重载残留问题，增加菜单弹出位置选择。
-// @note 				1.1解决编辑器中文路径问题，修改菜单，提示等文字。
-// @note 				1.0
+// @homepageURL	 		https://github.com/feiruo/userChromeJS/tree/master/anoBtn
+// @note         	  	支持菜单和脚本设置重载
+// @note          		需要 _anoBtn.js 配置文件
+// @version		 		1.2.1
+// @version 			1.2修复按钮移动之后重载残留问题，增加菜单弹出位置选择。
+// @version 			1.1解决编辑器中文路径问题，修改菜单，提示等文字。
+// @version 			1.0
 // ==/UserScript==
 (function() {
 	window.anobtn = {

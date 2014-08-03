@@ -2,20 +2,20 @@
 // @name				TabPlus
 // @description			标签管理
 // @modby	          	feiruo
-// @id              	[5C5BB610]
-// @idNote        		ID用于识别,请勿更改!(为原始文件CRC32)
 // @charset       		UTF-8
 // @include				chrome://browser/content/browser.xul
 // @include				chrome://browser/content/bookmarks/bookmarksPanel.xul
 // @include				chrome://browser/content/history/history-panel.xul
 // @include				chrome://browser/content/places/places.xul
+// @id              	[5C5BB610]
 // @startup       		window.TabPlus_mod.init();
 // @shutdown      		window.TabPlus_mod.onDestroy(true);
+// @homepageURL   		https://github.com/feiruo/userchromejs/
 // @version      		0.1
 // @note 				新しいタブで開く（空白タブを利用）
 // @note 				新标签打开（智能利用空白标签）
-// @mod					必要なものだけ使って不要であれば削除するなりコメントアウトして下さい
-// @mod					不需要的功能请自行注释掉
+// @note				必要なものだけ使って不要であれば削除するなりコメントアウトして下さい
+// @note				不需要的功能请自行注释掉
 // ==/UserScript==
 (function() {
 	if (window.TabPlus_mod) {
