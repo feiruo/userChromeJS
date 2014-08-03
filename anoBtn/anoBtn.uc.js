@@ -1,16 +1,20 @@
 // ==UserScript==
-// @name		 anoBtn.uc.js
-// @description	 AnotherButton
-// @homepage	 https://github.com/feiruo/userchromejs/
-// @author		 feiruo
-// @include		 main
-// @charset 	 utf-8
-// @version		 1.2
-// @note 		 超感谢 ywzhaiqi  
-// @note 		 按钮菜单，外置配置文件.......
-// @note 		 1.2修复按钮移动之后重载残留问题，增加菜单弹出位置选择。
-// @note 		 1.1解决编辑器中文路径问题，修改菜单，提示等文字。
-// @note 		 1.0
+// @name				anoBtn.uc.js
+// @description			AnotherButton
+// @author				feiruo
+// @version		 		1.2.1
+// @compatibility 		Firefox 8.0
+// @charset 			utf-8
+// @include				main
+// @startup        		window.anobtn.init();
+// @shutdown       		window.anobtn.unint(true);
+// @id 					[A26C02CA]
+// @idNote 				ID用于识别,请勿更改!(为原始文件CRC32)
+// @reviewURL			http://bbs.kafan.cn/thread-1657589-1-1.html
+// @homepage	 		https://github.com/feiruo/userChromeJS/tree/master/anoBtn
+// @note 				1.2修复按钮移动之后重载残留问题，增加菜单弹出位置选择。
+// @note 				1.1解决编辑器中文路径问题，修改菜单，提示等文字。
+// @note 				1.0
 // ==/UserScript==
 (function() {
 	window.anobtn = {
@@ -29,7 +33,7 @@
 			ins.parentNode.insertBefore($C("menuitem", {
 				id: "anobtn_set",
 				label: "AnotherButton",
-				tooltiptext: "左键重载 ；右键编辑",
+				tooltiptext: "左键：重载配置\n右键：编辑配置",
 				oncommand: "setTimeout(function(){ anobtn.reload(true); }, 10);",
 				onclick: "if (event.button == 2) { event.preventDefault(); closeMenus(event.currentTarget);anobtn.edit(anobtn.file); }",
 			}), ins);
@@ -88,7 +92,7 @@
 				obj = this.anomenu[i];
 				menuitem = $(obj.id);
 				if (menuitem) {
-					for (let[key, val] in Iterator(obj)) {
+					for (let [key, val] in Iterator(obj)) {
 						if (typeof val == "function") obj[key] = val = "(" + val.toSource() + ").call(this, event);";
 						menuitem.setAttribute(key, val);
 					}
@@ -102,7 +106,7 @@
 			return popup;
 		},
 
-		unint: function() {
+		unint: function(real) {
 			for (var i = 0; i < this.anomenu.length; i++) {
 				var obj = this.anomenu[i];
 				try {
@@ -111,12 +115,15 @@
 			}
 			$("anobtn").removeChild($("anobtn_popup"));
 			$("anobtn").parentNode.removeChild($("anobtn"));
+			if (real) {
+				$("anobtn_set").parentNode.removeChild($("anobtn_set"));
+			}
 		},
 
 		newMenu: function(menuObj) {
 			var menu = document.createElement("menu");
 			var popup = menu.appendChild(document.createElement("menupopup"));
-			for (let[key, val] in Iterator(menuObj)) {
+			for (let [key, val] in Iterator(menuObj)) {
 				if (key === "child") continue;
 				if (typeof val == "function") menuObj[key] = val = "(" + val.toSource() + ").call(this, event);"
 				menu.setAttribute(key, val);
@@ -139,7 +146,7 @@
 				menuitem = document.createElement("menuitem");
 			}
 
-			for (let[key, val] in Iterator(obj)) {
+			for (let [key, val] in Iterator(obj)) {
 				if (typeof val == "function") obj[key] = val = "(" + val.toSource() + ").call(this, event);";
 				menuitem.setAttribute(key, val);
 			}

@@ -355,7 +355,8 @@
                         aCallback.call(null);
                     }
                 };
-            }
+            } else
+                callback = null;
             var alertsService = Components.classes["@mozilla.org/alerts-service;1"]
                 .getService(Components.interfaces.nsIAlertsService);
             alertsService.showAlertNotification(
@@ -535,7 +536,7 @@
         resource: {}
     };
     USL.readScripts = [];
-    USL.USE_STORAGE_NAME = ['cache', 'cacheInfo', 'cacheAP']; // GM_setValue 名字包含的存储在 json 文件中，而不是 about:config
+    USL.USE_STORAGE_NAME = ['cache', 'cacheInfo']; // GM_setValue 名字包含的存储在 json 文件中，而不是 about:config
     USL.initialized = false;
     USL.isready = false;
     USL.eventName = "USL_DocumentStart" + Math.random();
@@ -1488,7 +1489,7 @@
         USL.getContents(checkURL, function(bytes, contentType, aFile) {
             let newVersion = Utils.r1(/\/\/\s*?@version\s*([^\r\n]+)/i, bytes);
             if (!newVersion) {
-                console.error('更新脚本没找到 @version', bytes);
+                console.error(script.name + ' 脚本更新没找到 @version', bytes);
                 handleSucc();
             } else if (Services.vc.compare(script.version, newVersion) >= 0) {
                 console.log(script.name + ' 脚本无需更新');
@@ -1497,8 +1498,8 @@
                 let downURL = Utils.r1(/\/\/\s*?@downloadURL\s*([^\r\n]+)/i, bytes) || script.downloadURL;
 
                 let name = /\/\/\s*@name\s+(.*)/i.exec(bytes);
-                let filename = (name && name[1] ? name[1] : downURL.split("/").pop()).replace(/\.user\.js$|$/i, ".user.js").replace(/\s/g, '_').toLowerCase();
-
+                //let filename = (name && name[1] ? name[1] : downURL.split("/").pop()).replace(/\.user\.js$|$/i, ".user.js").replace(/\s/g, '_').toLowerCase();
+                let filename = script.name.replace(/\.user\.js$|$/i, ".user.js").replace(/\s/g, '_').toLowerCase();
                 let folder = (script.installTime != script.lastModifiedTime) ?
                     USL.NEW_VERSION_FOLDER :
                     USL.SCRIPTS_FOLDER;
@@ -1512,21 +1513,19 @@
                     };
 
                     handleSucc();
-                };
 
-                if (downURL == checkURL) {
-                    aFile.renameTo(folder.path, filename);
+                };
+                if (filename && downURL == checkURL) {
+                    aFile.renameTo(folder, filename);
                     callback();
                 } else {
-                    USL.downloader(downURL, scriptFile.path, function() {
-                        callback();
-                    });
+                    USL.downloader(downURL, scriptFile.path, filename, callback);
                 }
             }
         }, true);
     };
 
-    USL.downloader = function(url, path, callback) {
+    USL.downloader = function(url, path, filename, callback) {
         Task.spawn(function * () {
             yield Downloads.fetch(url, path);
             console.log(filename + " has been downloaded!", path);
@@ -1543,7 +1542,8 @@
                     aCallback.call(null);
                 }
             };
-        }
+        } else
+            callback = null;
         var alertsService = Components.classes["@mozilla.org/alerts-service;1"]
             .getService(Components.interfaces.nsIAlertsService);
         alertsService.showAlertNotification(

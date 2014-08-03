@@ -1,11 +1,18 @@
 // ==UserScript==
 // @name            Saying.uc.js
-// @description     自定义语句。
-// @namespace       https://github.com/feiruo/userchromejs/
+// @description     地址栏自定义语句
 // @author          feiruo
-// @include         chrome://browser/content/browser.xul
+// @version         1.2
 // @charset      	utf-8
-// @version         1.1
+// @compatibility	Firefox 16
+// @include         chrome://browser/content/browser.xul
+// @id 				[09BD42EC]
+// @idNote 			ID用于识别,请勿更改!(为原始文件CRC32)
+// @optionsURL		about:config?filter=saying.
+// @startup         window.saying.init();
+// @shutdown        window.saying.onDestroy(true);
+// @reviewURL		http://bbs.kafan.cn/thread-1654067-1-1.html
+// @namespace       https://github.com/feiruo/userChromeJS/tree/master/Saying
 // @note            地址栏显示自定义语句，根据网址切换。
 // @note            目前可自动获取的有VeryCD标题上的，和hitokoto API。
 // @note            每次关闭浏览器后数据库添加获取过的内容，并去重复。
@@ -13,7 +20,10 @@
 // @note            1.1 增加地址栏文字长度设置，避免撑长地址栏。
 // ==/UserScript==
 location == "chrome://browser/content/browser.xul" && (function() {
-
+	if (window.saying) {
+		window.saying.onDestroy();
+		delete window.saying;
+	}
 	//VeryCD(名言名句)或hitokoto。
 	sayingType = 'veryCD',
 
@@ -45,6 +55,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 	veryCD_json = [];
 
 	window.saying = {
+		debug: true,
 		isReqHash: [],
 		sayingHash: [],
 
@@ -99,8 +110,14 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			}, false);
 		},
 
-		onDestroy: function() {
+		onDestroy: function(isAlert) {
 			window.getBrowser().removeProgressListener(this.progressListener);
+			if (isAlert) {
+				$("saying-popup").parentNode.removeChild($("saying-popup"));
+				$("saying-icon").parentNode.removeChild($("saying-icon"));
+				$("sayingtip").parentNode.removeChild($("sayingtip"));
+				$("saying-statusbarpanel").parentNode.removeChild($("saying-statusbarpanel"));
+			}
 		},
 
 		addIcon: function() {
@@ -256,7 +273,8 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			}
 
 			if (random) {
-				var sayingRandom = ['saying', 'veryCD', 'hitokoto'];
+				//var sayingRandom = ['saying', 'veryCD', 'hitokoto'];
+				var sayingRandom = ['veryCD', 'hitokoto'];
 				sayingType = sayingRandom[Math.floor(Math.random() * sayingRandom.length)];
 			}
 
@@ -314,6 +332,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 					}
 					self.sayingHash[host] = obj;
 					self.updateTooltipText(obj);
+					//debug('得到在线数据:', JSON.stringify(responseObj));
 				} else {
 					onerror();
 				}
@@ -326,6 +345,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				var responseObj = veryCD_json[Math.floor(Math.random() * veryCD_json.length)];
 				self.sayingHash[host] = responseObj;
 				self.updateTooltipText(responseObj);
+				//debug('得到数据库VeryCD数据:', JSON.stringify(responseObj));
 			} else {
 				self.sayingHash[host] = "无VeryCD数据";
 				self.updateTooltipText("无VeryCD数据");
@@ -343,7 +363,10 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				} else {
 					localjson = responseObj.hitokoto + '--《' + responseObj.source + '》';
 				}
+				//debug('得到数据库数据:', JSON.stringify(responseObj));
+
 				return localjson;
+
 			} else if (!hitokoto_lib && type == 'hitokoto') {
 				return localjson = "hitokoto无法访问";
 			}
@@ -368,6 +391,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 					popup.hidePopup();
 				}, autotiptime);
 			}
+
 			var label = $("sayingPopupLabel");
 			while (label.firstChild) {
 				label.removeChild(label.firstChild);
@@ -459,6 +483,10 @@ location == "chrome://browser/content/browser.xul" && (function() {
 	};
 
 	window.saying.init();
+
+	function debug() {
+		if (saying.debug) Application.console.log('[saying DEBUG] ' + Array.slice(arguments));
+	}
 
 	function $(id) document.getElementById(id);
 
