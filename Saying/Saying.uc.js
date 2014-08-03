@@ -48,6 +48,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		VeryCD_Path: 'lib\\VeryCD.json',
 		Saying_Path: 'lib\\Saying.json', //此数据库为自定义数据库，不更新只读取。
 
+		debug: true,
 		isFirestRun: true,
 		hitokoto_lib: null,
 		VeryCD_lib: null,
@@ -75,7 +76,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			if (this.VeryCD_lib) this.veryCD_json = JSON.parse(this.VeryCD_lib);
 
 			this.Saying_lib = this.loadFile(this.Saying_Path);
-			if (this.Saying_lib) this.saying_json = JSON.parse(this.Saying_lib);
+			if (this.Saying_lib) this.Saying_json = JSON.parse(this.Saying_lib);
 		}
 
 		Saying.progressListener = {
@@ -162,21 +163,21 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			label: "hitokoto",
 			id: "Saying-look-hitokoto",
 			type: "radio",
-			oncommand: 'Saying.lookup("set","hitokoto");'
+			oncommand: 'Saying.sets("set","hitokoto");'
 		}));
 
 		popup.appendChild($C('menuitem', {
 			label: "名言名句",
 			id: "Saying-look-VeryCD",
 			type: "radio",
-			oncommand: 'Saying.lookup("set","VeryCD");'
+			oncommand: 'Saying.sets("set","VeryCD");'
 		}));
 
 		popup.appendChild($C('menuitem', {
 			label: "手动设定",
 			id: "Saying-look-Saying",
 			type: "radio",
-			oncommand: 'Saying.lookup("set","Saying");'
+			oncommand: 'Saying.sets("set","Saying");'
 		}));
 
 		popup.appendChild($C('menuseparator'));
@@ -185,7 +186,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			label: "混合随机",
 			id: "Saying-Random",
 			type: "checkbox",
-			oncommand: 'Saying.Randoms();'
+			oncommand: 'Saying.sets("Random");'
 		}));
 
 		$('mainPopupSet').appendChild(popup);
@@ -238,27 +239,36 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			this.lookup(aLocation.href);
 		}
 	};
+	Saying.sets = function(type, val) {
+		if (type == "set") {
+			this.SayingType = val;
+			this._prefs.setCharPref("SayingType", this.SayingType);
+		}
+		if (type == "Random") {
+			this.Random = !this.Random;
+			this._prefs.setBoolPref("Random", this.Random)
+		}
+		this.onLocationChange(true)
+	};
 	Saying.lookup = function(host, type) {
-		if (host == "set") {
-			SayingType = type;
-			this._prefs.setCharPref("Type", SayingType);
-			return;
-		}
+		var site = this.SayingType
 		if (this.Random) {
-			//var sayingRandom = ['Saying', 'VeryCD', 'hitokoto'];
-			var SayingRandom = ['VeryCD', 'hitokoto'];
-			SayingType = SayingRandom[Math.floor(Math.random() * Saying.Random.length)];
+			var Randoms = ['Saying', 'VeryCD', 'hitokoto'];
+			site = Randoms[Math.floor(Math.random() * Randoms.length)];
 		}
+
 		if (this.forceRefresh) {
 			this.forceRefresh = false;
-			this['lookup_' + this.SayingType](host);
+			this['lookup_' + site](host);
 			return;
 		}
+
 		if (this.SayingHash[host]) {
 			this.updateTooltipText(this.SayingHash[host]);
 		}
+
 		if (!this.isReqHash[host]) {
-			this['lookup_' + this.SayingType](host);
+			this['lookup_' + site](host);
 
 		}
 		this.isReqHash[host] = true;
@@ -274,13 +284,13 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			self.updateTooltipText(obj);
 		};
 		req.onerror = onerror;
-		req.timeout = Local_Delay;
+		req.timeout = Saying.Local_Delay;
 		req.ontimeout = onerror;
 		req.onload = function() {
 			if (req.status == 200) {
 				var obj;
 				var responseObj = JSON.parse(req.responseText);
-				hitokoto_json.push(responseObj);
+				Saying.hitokoto_json.push(responseObj);
 				if (responseObj.source == "") {
 					obj = responseObj.hitokoto;
 				} else if (responseObj.source.match("《")) {
@@ -290,7 +300,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				}
 				self.SayingHash[host] = obj;
 				self.updateTooltipText(obj);
-				//debug('得到在线数据:', JSON.stringify(responseObj));
 			} else {
 				onerror();
 			}
@@ -301,7 +310,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			var responseObj = Saying.veryCD_json[Math.floor(Math.random() * Saying.veryCD_json.length)];
 			Saying.SayingHash[host] = responseObj;
 			Saying.updateTooltipText(responseObj);
-			//debug('得到数据库VeryCD数据:', JSON.stringify(responseObj));
 		} else {
 			Saying.SayingHash[host] = "无VeryCD数据";
 			Saying.updateTooltipText("无VeryCD数据");
@@ -328,9 +336,8 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			} else {
 				localjson = responseObj.hitokoto + '--《' + responseObj.source + '》';
 			}
-			//debug('得到数据库数据:', JSON.stringify(responseObj));
 			return localjson;
-		} else if (!hitokoto_lib && this.Type == 'hitokoto') {
+		} else if (!hitokoto_lib && this.SayingType == 'hitokoto') {
 			return "hitokoto无法访问";
 		}
 	};
@@ -362,10 +369,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 	Saying.copy = function() {
 		Cc['@mozilla.org/widget/clipboardhelper;1'].createInstance(Ci.nsIClipboardHelper)
 			.copyString($("SayingPopupLabel").textContent);
-	};
-	Saying.Randoms = function() {
-		this.Random = !this.Random;
-		this._prefs.setIntPref("Random", this.Random);
 	};
 	Saying.getVeryCD = function() {
 		var self = Saying;
@@ -445,7 +448,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		foStream.close();
 	};
 
-	function debug() {
+	function log() {
 		if (Saying.debug) Application.console.log('[Saying DEBUG] ' + Array.slice(arguments));
 	}
 
