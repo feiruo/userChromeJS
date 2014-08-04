@@ -1,7 +1,7 @@
 /******************************************************************************************
  *这是综合设置，具体下面有解释。
  *******************************************************************************************/
-var showFlagsPer = {
+var Perfs = {
 	//显示国旗图标位置  如：urlbar-icons、identity-box、TabsToolbar、nav-bar-customization-target等等
 	showLocationPos: "identity-box",
 
@@ -23,7 +23,7 @@ var showFlagsPer = {
 /******************************************************************************************
  *这里是设置文字显示的，可以自定义多个，可以根据需要截取，只支持函数操作。
  *******************************************************************************************/
-var showFlagStipSet = [{
+var ServerInfo = [{
 	label: "服务器：",
 	words: "Server"
 }, {
@@ -82,7 +82,7 @@ showFlagS.command('Action','http://ping.chinaz.com/', 'host', 'IP', null,'but')
 showFlagS.command("Edit", "文件路径，支持相对路径")
 showFlagS.command("Copy", "函数或者字符串")
 *******************************************************************************************/
-var showFlagSmenu = [{
+var Menus = [{
 	label: "地址IP",
 	image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAt0lEQVQ4jcXTsWoCQRSF4Q8SsNEitUnhM6RQUtjb+xixTRHIG+SFks7GVxBksbBPGVjWQpsjSNhdXUjIhb+4c5l/mMMMv1g93IfeWf8Qhhi0CcYowmMosAtbfGCO2zrBFGV4CiUOP/iK5GrBHu94wTqSz7rrNAnKzOAtgm0yuUpQ4RkzLCNY4a5LBlU4ZG3RJYOT4BsbvKLfRVDlxAlGuKnb3CY4D7G1/l/Q9JSLzC5W02c69X9TR6H4UVapsaP+AAAAAElFTkSuQmCC",
 	child: [{
@@ -448,54 +448,56 @@ var showFlagSmenu = [{
 	image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAm0lEQVQ4jbWTUQrDIBBEH9QcokjZe+T+ieQaJXiKfvSjIyyJRmzpwHzsuo47qwJMgIlBvIpPMGAFEnAXUyOOLYEEbG7D1oirAsEV3sQoltivdwWO6Ap4C7UWIwMzqBUY8BTtGwvDAmWIBjyAGcjirJypJhwt+HvfdWoGXmJWbgeW0tHPAoHzvQ9Z6KE7xL8LRD5+FxoPqYfL7/wGEBc4QhYRpZIAAAAASUVORK5CYII="
 }];
 /******************************************************************************************************************
- *这里是查询源设置，taobao为脚本内置,可以自行按照示例添加，不限定于IP，可以是其他相关的API，只要是你想要显示的都可以
+ *这里是查询源设置，只支持"GET"方式获取，taobao为脚本内置,可以自行按照示例添加，不限定于IP，可以是其他相关的API，只要是你想要显示的都可以
  *******************************************************************************************************************/
-var showFlagSsiteSource = [{
+var MyInfo = { //查询自己IP信息的接口，可以去掉或者改函数名字去掉功能
+	inquireAPI: "http://whois.pconline.com.cn/", //查询接口API
+	//regulation是截取函数,docum是一个XMLHttpRequest()的req.responseText，（具体可以百度	XMLHttpRequest()）。传回的obj为最终要显示的结果和样式等
+	regulation: function(docum) {
+		docum = docum.substring(docum.indexOf("位置"));
+		docum = docum.substring(0, docum.indexOf("<h3>接口列表"));
+
+		var addr = docum.substring(3, docum.indexOf("\n"));
+
+		var ip = docum.substring(docum.indexOf("为:"));
+		ip = ip.substring(2, ip.indexOf("\n"));
+
+		var RemoteAddr = docum.substring(docum.indexOf("RemoteAddr"));
+		RemoteAddr = RemoteAddr.substring(11, RemoteAddr.indexOf("<br/>"));
+
+		var MyInfos = "我的IP：" + ip + '\n' + "我的地址：" + addr + '\n' + "RemoteAddr：" + RemoteAddr;
+		return MyInfos;
+	}
+};
+
+var SourceAPI = [{
 	label: "纯真 查询源", //菜单中显示的文字
 	id: "CZ", //必须设定一个ID，以便脚本读取
-	type: "GET", //获取类型
-	inquireAPI: "http://www.cz88.net/ip/index.aspx?ip=", //查询接口API
-	//regulation是截取函数，返回“null”的时候便使用备用查询源（淘宝）；
-	//docum是一个XMLHttpRequest()的req.responseText，（具体可以百度	XMLHttpRequest()）。传回的obj为最终要显示的结果和样式等
+	inquireAPI: "http://www.cz88.net/ip/index.aspx?ip=",
+	//返回“null”的时候便使用备用查询源（淘宝）；
 	regulation: function(docum) {
 		var s_local, myip, myAddr;
 		var addr_pos = docum.indexOf("AddrMessage");
 		s_local = docum.substring(addr_pos + 13);
 		s_local = s_local.substring(0, s_local.indexOf("<"));
-		var myip_pos = docum.indexOf("cz_ip");
-		myip = docum.substring(myip_pos + 7);
-		myip = myip.substring(0, myip.indexOf("<"));
-		var myAddr_pos = docum.indexOf("cz_addr");
-		myAddr = docum.substring(myAddr_pos + 9);
-		myAddr = myAddr.substring(0, myAddr.indexOf("<"));
 		s_local = s_local.replace(/ +CZ88.NET ?/g, "");
 		if (s_local) {
-			if (myip) s_local = s_local + '\n' + '我的IP：' + myip;
-			if (myAddr) s_local = s_local + '\n' + '我的地址：' + myAddr;
-			var obj = {
-				Site: s_local
-			};
-			return obj;
+			return s_local;
 		} else return null;
 	}
 }, {
 	label: "太平洋电脑",
 	id: "pconline",
-	type: "GET",
 	inquireAPI: "http://whois.pconline.com.cn/ip.jsp?ip=",
 	regulation: function(docum) {
 		var docum = docum.replace(/\n/ig, "");
-		var obj = {
-			Site: docum
-		};
 		if (docum) {
-			return obj;
+			return docum;
 		} else return null;
 	}
 }, {
-	label: "MyIP 查询源",
+	label: "MyIP查询源",
 	id: "myip",
-	type: "GET",
 	inquireAPI: "http://www.myip.cn/",
 	regulation: function(docum) {
 		var myip_addr, myip_flag;
@@ -509,16 +511,12 @@ var showFlagSsiteSource = [{
 		if (myip_addr.indexOf("\r\n\t\t") !== -1)
 			myip_addr = myip_addr.substring(0, myip_addr.indexOf("\r\n\t\t"));
 		if (myip_addr) {
-			var obj = {
-				Site: myip_addr
-			};
-			return obj;
+			return myip_addr;
 		} else return null;
 	}
 }, {
 	label: "新浪 查询源",
 	id: "sina",
-	type: "GET",
 	inquireAPI: "http://int.dpool.sina.com.cn/iplookup/iplookup.php?format=json&ip=",
 	regulation: function(docum) {
 		var responseObj = JSON.parse(docum);
@@ -527,25 +525,18 @@ var showFlagSsiteSource = [{
 				var addr = responseObj.country + responseObj.province + responseObj.city + responseObj.district + '\n' + responseObj.isp + responseObj.type + responseObj.desc;
 			else
 				var addr = responseObj.country + responseObj.province + responseObj.city + responseObj.district;
-			var obj = {
-				Site: addr
-			};
-			return obj;
+			return addr;
 		} else return null;
 	}
 }, {
-	label: "波士顿大学源",
+	label: "波士顿大学",
 	id: "CZedu",
-	type: "GET",
 	inquireAPI: "http://phyxt8.bu.edu/iptool/qqwry.php?ip=",
 	regulation: function(docum) {
 		var s_local = docum;
 		s_local = s_local.replace(/ +CZ88.NET ?/g, "");
-		var obj = {
-			Site: s_local
-		};
 		if (s_local) {
-			return obj;
+			return s_local;
 		} else return null;
 	}
 }, ]

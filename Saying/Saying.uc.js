@@ -253,7 +253,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 	Saying.lookup = function(host, type) {
 		var site = this.SayingType
 		if (this.Random) {
-			var Randoms = ['Saying', 'VeryCD', 'hitokoto'];
+			var Randoms = ['VeryCD', 'hitokoto'];
 			site = Randoms[Math.floor(Math.random() * Randoms.length)];
 		}
 

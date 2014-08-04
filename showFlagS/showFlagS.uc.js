@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name 			showFlagS
+// @name 			showFlagS.uc.js
 // @description		显示国旗与IP
 // @author			ywzhaiqi、feiruo
 // @compatibility	Firefox 16
@@ -51,9 +51,10 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		BAK_FLAG_PATH: 'http://www.razerzone.com/asset/images/icons/flags/', //网络图标地址 http://www.1108.hk/images/ext/  http://www.myip.cn/images/country_icons/
 		isFirstRun: true,
 		apiSite: null,
-		siteQueue: 0,
-		siteApi: [],
-		siteThx: [],
+		siteQueue: null,
+		siteApi: null,
+		siteThx: null,
+		MyInfoThx: null,
 		dnsCache: [],
 		isReqHash: [],
 		isReqHash_tooltip: [],
@@ -100,9 +101,9 @@ location == "chrome://browser/content/browser.xul" && (function() {
 	};
 
 	showFlagS.uninit = function() {
-		this.removeMenu(this.showFlagSmenu);
+		this.removeMenu(this.Menus);
 		$("showFlagS-popup").parentNode.removeChild($("showFlagS-popup"));
-		if (this.showFlagsPer.showLocationPos == "identity-box")
+		if (this.Perfs.showLocationPos == "identity-box")
 			$("page-proxy-favicon").style.visibility = "";
 	};
 
@@ -162,15 +163,16 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			return;
 		}
 
-		this.removeMenu(this.showFlagSmenu);
+		this.removeMenu(this.Menus);
 
-		this.showFlagsPer = sandbox.showFlagsPer;
-		this.showFlagSmenu = sandbox.showFlagSmenu;
-		this.showFlagStipSet = sandbox.showFlagStipSet;
-		this.showFlagSsiteSource = sandbox.showFlagSsiteSource;
+		this.Perfs = sandbox.Perfs;
+		this.Menus = sandbox.Menus;
+		this.ServerInfo = sandbox.ServerInfo;
+		this.SourceAPI = sandbox.SourceAPI;
+		this.MyInfo = sandbox.MyInfo;
 
 		this.getPrefs();
-		new this.buildIconMenu(this.showFlagSmenu, this.showFlagSsiteSource, this.showFlagsPer);
+		new this.buildIconMenu(this.Menus, this.SourceAPI, this.Perfs);
 
 		this.setPerfs();
 		if (isAlert) this.alert('配置已经重新载入');
@@ -210,13 +212,9 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		this._prefs.QueryInterface(Components.interfaces.nsIPrefBranch2);
 
 		if (!this._prefs.prefHasUserValue("SourceSite") || this._prefs.getPrefType("SourceSite") != Ci.nsIPrefBranch.PREF_STRING)
-			this._prefs.setCharPref("SourceSite", (this.showFlagSsiteSource ? (this.showFlagSsiteSource[0] ? this.showFlagSsiteSource[0].id : "taobao") : "taobao"));
-
-		if (!this._prefs.prefHasUserValue("isExternalComparison") || this._prefs.getPrefType("isExternalComparison") != Ci.nsIPrefBranch.PREF_BOOL)
-			this._prefs.setBoolPref("isExternalComparison", this.isExternalComparison)
+			this._prefs.setCharPref("SourceSite", (this.SourceAPI ? (this.SourceAPI[0] ? this.SourceAPI[0].id : "taobao") : "taobao"));
 
 		this.apiSite = this._prefs.getCharPref("SourceSite");
-		this.isExternalComparison = this._prefs.getBoolPref("isExternalComparison");
 	};
 
 	showFlagS.setPerfs = function(tyep, val) {
@@ -225,30 +223,24 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			this._prefs.setCharPref("SourceSite", this.apiSite);
 			$("showFlagS-apiSite-" + this.apiSite).setAttribute('checked', true);
 		}
-		if (tyep == "ExternalC") {
-			this.isExternalComparison = !this.isExternalComparison;
-			this._prefs.setBoolPref("isExternalComparison", this.isExternalComparison);
-			$("showFlagS-set-externalComparison").setAttribute('checked', this.isExternalComparison);
-		}
-		for (var i = 0; i < this.showFlagSsiteSource.length; i++) {
-			if (this.showFlagSsiteSource[i].id == this.apiSite) {
+		for (var i = 0; i < this.SourceAPI.length; i++) {
+			if (this.SourceAPI[i].id == this.apiSite) {
 				this.siteQueue = i;
-				this.siteApi = this.showFlagSsiteSource[i].inquireAPI;
+				this.siteApi = this.SourceAPI[i].inquireAPI;
 			}
 		}
+		this.MyInfoThx = Cc["@mozilla.org/network/effective-tld-service;1"].getService(Ci.nsIEffectiveTLDService).getBaseDomain(makeURI(this.MyInfo.inquireAPI));
 		this.siteThx = Cc["@mozilla.org/network/effective-tld-service;1"].getService(Ci.nsIEffectiveTLDService).getBaseDomain(makeURI(this.siteApi));
 		this.onLocationChange(true);
 	};
 	/*****************************************************************************************/
-	showFlagS.showDetails = function(isTell) {};
-
 	showFlagS.onLocationChange = function(forceRefresh) {
 		if (forceRefresh) {
 			this.forceRefresh = true;
 		}
 		try {
 			var aLocation = this.contentDoc.location;
-			if (this.showFlagsPer.showLocationPos == 'identity-box') {
+			if (this.Perfs.showLocationPos == 'identity-box') {
 				if ((aLocation.protocol !== "about:") && (aLocation.protocol !== "chrome:"))
 					$('page-proxy-favicon').style.visibility = 'collapse';
 				else
@@ -256,19 +248,19 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				this.icon.hidden = ((aLocation.protocol == "about:") || (aLocation.protocol == "chrome:"));
 			}
 			if (aLocation && /file/.test(aLocation.protocol)) {
-				this.icon.src = this.icon.image = this.showFlagsPer.File_Flag;
+				this.icon.src = this.icon.image = this.Perfs.File_Flag;
 				this.icon.tooltipText = '本地文件' + "\n" + aLocation;
 				return;
 			}
 			if (aLocation && aLocation.hostname == "localhost") {
 				var obj = {};
-				this.icon.src = this.icon.image = this.showFlagsPer.LocahHost_Flag;
+				this.icon.src = this.icon.image = this.Perfs.LocahHost_Flag;
 				obj.locInfo = '回送地址，本机服务器';
 				new showFlagS.updateTooltipText("127.0.0.1", aLocation.host, obj);
 				return;
 			}
 			if (aLocation && /data/.test(aLocation.protocol)) {
-				this.icon.src = this.icon.image = this.showFlagsPer.File_Flag;
+				this.icon.src = this.icon.image = this.Perfs.File_Flag;
 				this.icon.tooltipText = 'Base64编码文件';
 				return;
 			}
@@ -309,7 +301,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 	showFlagS.resetState = function() {
 		this.icon.src = this.icon.image = this.DEFAULT_Flag;
 		this.icon.tooltipText = '';
-		if (this.showFlagsPer.showLocationPos == 'identity-box') {
+		if (this.Perfs.showLocationPos == 'identity-box') {
 			this.icon.hidden = true;
 			$('page-proxy-favicon').style.visibility = 'visible';
 		}
@@ -326,22 +318,24 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				return;
 			}
 			if (ip == "127.0.0.1" || ip == "::1") {
-				var obj = {};
-				obj.locInfo = '回送地址，本机服务器';
-				new showFlagS.updateTooltipText(ip, host, obj);
-				self.icon.src = self.icon.image = self.showFlagsPer.LocahHost_Flag;
-				if (self.showFlagsPer.showLocationPos == 'identity-box') {
+				self.showFlagTooltipHash[host] = {}
+				self.showFlagTooltipHash[host].locInfo = '回送地址，本机服务器';
+				self.showFlagTooltipHash[host].serverInfo = this.serverInfoTip();
+				new showFlagS.updateTooltipText(ip, host, self.showFlagTooltipHash[host]);
+				self.icon.src = self.icon.image = self.Perfs.LocahHost_Flag;
+				if (self.Perfs.showLocationPos == 'identity-box') {
 					$('page-proxy-favicon').style.visibility = 'collapse';
 					self.icon.hidden = false
 				}
 				return;
 			}
 			if (/^192.168.|169.254./.test(ip)) {
-				var obj = {};
-				obj.locInfo = '本地局域网服务器';
-				new showFlagS.updateTooltipText(ip, host, obj);
-				self.icon.src = self.icon.image = self.showFlagsPer.LAN_Flag;
-				if (self.showFlagsPer.showLocationPos == 'identity-box') {
+				self.showFlagTooltipHash[host] = {}
+				self.showFlagTooltipHash[host].locInfo = '本地局域网服务器';
+				self.showFlagTooltipHash[host].serverInfo = this.serverInfoTip();
+				new showFlagS.updateTooltipText(ip, host, self.showFlagTooltipHash[host]);
+				self.icon.src = self.icon.image = self.Perfs.LAN_Flag;
+				if (self.Perfs.showLocationPos == 'identity-box') {
 					$('page-proxy-favicon').style.visibility = 'collapse';
 					self.icon.hidden = false
 				}
@@ -373,11 +367,56 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			}
 			if (checkCache && self.isReqHash_tooltip[host]) return;
 			self.isReqHash_tooltip[host] = true;
+			self.showFlagTooltipHash[host] = {};
+			self.showFlagTooltipHash[host].serverInfo = this.serverInfoTip();
+			this.lookup_Myinfo(self.MyInfo.inquireAPI, host);
 			if (self.apiSite == 'taobao')
 				self.lookupIP_taobao(ip, host);
 			else
 				new self.lookupIP_Info(ip, host, self.siteApi, self.siteQueue);
 		},
+		serverInfoTip: function() {
+			var sTip = [];
+			for (var i = 0; i < showFlagS.ServerInfo.length; i++) {
+				var tip = this.getServInformation(showFlagS.ServerInfo[i].words);
+				if (showFlagS.ServerInfo[i].regx) tip = showFlagS.ServerInfo[i].regx(tip);
+
+				if (tip !== '未知类型')
+					sTip.push(showFlagS.ServerInfo[i].label + tip);
+			}
+			return sTip.join('\n');
+		},
+		getServInformation: function(words) {
+			var word;
+			try {
+				word = gBrowser.mCurrentBrowser.webNavigation.currentDocumentChannel.QueryInterface(Ci.nsIHttpChannel).getResponseHeader(words).split("\n", 1)[0];
+			} catch (e) {}
+			return word || '未知类型';
+		},
+		lookup_Myinfo: function(api, host) {
+			var self = showFlagS;
+			var req = new XMLHttpRequest();
+			req.open("GET", api, true);
+			req.send(null);
+			var onerror = function() {
+				self.showFlagTooltipHash[host].MyInfos = "查询失败";
+			};
+			req.onerror = onerror;
+			req.timeout = self.Perfs.Inquiry_Delay;
+			req.ontimeout = onerror;
+			req.onload = function() {
+				if (req.status == 200) {
+					var obj = self.MyInfo.regulation(req.responseText);
+					if (obj) {
+						self.showFlagTooltipHash[host].MyInfos = obj;
+					} else {
+						onerror();
+					}
+				} else {
+					onerror();
+				}
+			};
+		}
 	};
 
 	showFlagS.updateIcon = function(host, countryCode, countryName) {
@@ -389,7 +428,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			if (host == self.contentDoc.location.host) {
 				self.icon.hidden = false;
 				var aLocation = self.contentDoc.location;
-				if (showFlagS.showFlagsPer.showLocationPos == 'identity-box') {
+				if (showFlagS.Perfs.showLocationPos == 'identity-box') {
 					if (aLocation.protocol !== 'https:')
 						$('page-proxy-favicon').style.visibility = 'collapse';
 					else
@@ -397,7 +436,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				}
 				var src;
 				if (countryCode === 'iana') {
-					src = self.showFlagsPer.Unknown_Flag;
+					src = self.Perfs.Unknown_Flag;
 				} else {
 					src = window.CountryFlags ? (this.getFlagFoxIconPath(countryCode) || CountryFlags[countryCode]) : this.getFlagFoxIconPath(countryCode);
 					if (!src && window.CountryFlags && countryName) {
@@ -407,9 +446,9 @@ location == "chrome://browser/content/browser.xul" && (function() {
 							self.showFlagHash[host] = contryCode;
 						}
 					}
-					src = src || (self.BAK_FLAG_PATH + countryCode + ".gif") || self.showFlagsPer.Unknown_Flag;
+					src = src || (self.BAK_FLAG_PATH + countryCode + ".gif") || self.Perfs.Unknown_Flag;
 
-					if (showFlagS.showFlagsPer.showLocationPos == 'identity-box') {
+					if (showFlagS.Perfs.showLocationPos == 'identity-box') {
 						if (src)
 							$('page-proxy-favicon').style.visibility = 'collapse';
 						else {
@@ -450,42 +489,26 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			obj || (obj = {});
 			tooltipArr.push("域名：" + host);
 			tooltipArr.push("网站IP：" + ip);
-			var serverInfo = this.serverInfoTip();
-			if (serverInfo !== "")
-				tooltipArr.push(serverInfo);
+
+			if (obj.serverInfo !== "")
+				tooltipArr.push(obj.serverInfo);
 
 			if (obj.locInfo)
 				tooltipArr.push(obj.locInfo);
 
-			if (obj.Site) {
+			if (obj.Site)
 				tooltipArr.push(obj.Site);
-				tooltipArr.push('感谢：' + showFlagS.siteThx);
-			}
 
 			if (obj.taobao) {
 				tooltipArr.push(obj.taobao);
-				tooltipArr.push('感谢 淘宝(www.taobao.com)')
+				showFlagS.siteThx = "淘宝(www.taobao.com)";
 			}
 
+			if (obj.MyInfos && obj.MyInfos !== "查询失败")
+				tooltipArr.push(obj.MyInfos);
+
+			tooltipArr.push('感谢：' + showFlagS.siteThx + '、' + showFlagS.MyInfoThx);
 			showFlagS.icon.tooltipText = tooltipArr.join('\n');
-		},
-		serverInfoTip: function() {
-			var sTip = [];
-			for (var i = 0; i < showFlagS.showFlagStipSet.length; i++) {
-				var tip = this.getServInformation(showFlagS.showFlagStipSet[i].words);
-				if (showFlagS.showFlagStipSet[i].regx) tip = showFlagS.showFlagStipSet[i].regx(tip);
-
-				if (tip !== '未知类型')
-					sTip.push(showFlagS.showFlagStipSet[i].label + tip);
-			}
-			return sTip.join('\n');
-		},
-		getServInformation: function(words) {
-			var word;
-			try {
-				word = gBrowser.mCurrentBrowser.webNavigation.currentDocumentChannel.QueryInterface(Ci.nsIHttpChannel).getResponseHeader(words).split("\n", 1)[0];
-			} catch (e) {}
-			return word || '未知类型';
 		},
 	};
 
@@ -502,14 +525,14 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				self.lookupIP_taobao(ip, host, "other");
 			};
 			req.onerror = onerror;
-			req.timeout = self.showFlagsPer.Inquiry_Delay;
+			req.timeout = self.Perfs.Inquiry_Delay;
 			req.ontimeout = onerror;
 			req.onload = function() {
 				if (req.status == 200) {
-					var obj = self.showFlagSsiteSource[i].regulation(req.responseText);
+					var obj = self.SourceAPI[i].regulation(req.responseText);
 					if (obj) {
-						self.showFlagTooltipHash[host] = obj;
-						new self.updateTooltipText(ip, host, obj);
+						self.showFlagTooltipHash[host].Site = obj;
+						new self.updateTooltipText(ip, host, self.showFlagTooltipHash[host]);
 					} else {
 						onerror();
 					}
@@ -527,12 +550,12 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		req.open("GET", 'http://ip.taobao.com/service/getIpInfo.php?ip=' + ip, true);
 		req.send(null);
 		var onerror = function() {
-			self.icon.src = self.showFlagsPer.Unknown_Flag;
+			self.icon.src = self.Perfs.Unknown_Flag;
 			if (other || self.apiSite == 'taobao')
 				self.icon.tooltipText = '无法查询，请刷新！';
 		};
 		req.onerror = onerror;
-		req.timeout = self.showFlagsPer.Inquiry_Delay;
+		req.timeout = self.Perfs.Inquiry_Delay;
 		req.ontimeout = onerror;
 		req.onload = function() {
 			if (req.status == 200) {
@@ -546,8 +569,8 @@ location == "chrome://browser/content/browser.xul" && (function() {
 						taobao: addr
 					};
 					if (other || self.apiSite == 'taobao') {
-						self.showFlagTooltipHash[host] = obj;
-						new self.updateTooltipText(ip, host, obj);
+						self.showFlagTooltipHash[host].taobao = obj;
+						new self.updateTooltipText(ip, host, self.showFlagTooltipHash[host]);
 					}
 					self.showFlagHash[host] = country_id;
 					new self.updateIcon(host, country_id, responseObj.data.country);
@@ -557,7 +580,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			}
 		};
 	};
-
+	/*****************************************************************************************/
 	showFlagS.alert = function(aString, aTitle) {
 		Cc['@mozilla.org/alerts-service;1'].getService(Ci.nsIAlertsService).showAlertNotification("", aTitle || "showFlagS", aString, false, "", null);
 	};
@@ -787,7 +810,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			}, false);
 
 			//$("showFlagS-popup").setAttribute('position', iconPref.iconMenuPosition);
-			//$("showFlagS-set-externalComparison").setAttribute('checked', showFlagS.isExternalComparison);
 			$("showFlagS-apiSite-" + showFlagS.apiSite).setAttribute('checked', true);
 		},
 		buildSiteMenu: function(siteSource) {

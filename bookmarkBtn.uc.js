@@ -1,13 +1,18 @@
 // ==UserScript==
-// @name         bookmarkBtn.uc.js
-// @description  可移动书签菜单按钮
-// @namespace    https://github.com/feiruo/userchromejs/
-// @author       feiruo
-// @include      main
-// @charset      utf-8
-// @version      0.2
-// @note         0.2 新版添加订阅项。
-// @note         可移动书签菜单按钮。
+// @name         		bookmarkBtn.uc.js
+// @description 		可移动书签菜单按钮
+// @author      		feiruo
+// @compatibility		Firefox 16
+// @charset				UTF-8
+// @include				chrome://browser/content/browser.xul
+// @id 					[E9C421E6]
+// @startup       	 	window.bookmarkBtn.init();
+// @shutdown    	    window.bookmarkBtn.onDestroy();
+// @reviewURL			http://bbs.kafan.cn/thread-1666483-1-1.html
+// @homepageURL			https://github.com/feiruo/userChromeJS
+// @note         		可移动书签菜单按钮。
+// @version     		0.2.1
+// @version      		0.2 	新版添加订阅项。
 // ==/UserScript==
 (function() {
 	window.bookmarkBtn = {
@@ -185,9 +190,11 @@
 			menupopup.appendChild(menuitem);
 
 			bookmarkBtn.appendChild(menupopup);
-
 		},
-	}
+		onDestroy: function() {
+			$("bookmarkBtn").parentNode.removeChild($("bookmarkBtn"));
+		},
+	};
 	window.bookmarkBtn.init()
 
 	function $(id) {
