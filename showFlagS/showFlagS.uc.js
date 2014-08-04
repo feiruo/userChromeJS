@@ -787,7 +787,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			}, false);
 
 			//$("showFlagS-popup").setAttribute('position', iconPref.iconMenuPosition);
-			$("showFlagS-set-externalComparison").setAttribute('checked', showFlagS.isExternalComparison);
+			//$("showFlagS-set-externalComparison").setAttribute('checked', showFlagS.isExternalComparison);
 			$("showFlagS-apiSite-" + showFlagS.apiSite).setAttribute('checked', true);
 		},
 		buildSiteMenu: function(siteSource) {
