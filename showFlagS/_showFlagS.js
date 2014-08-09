@@ -95,59 +95,35 @@ var Menus = [{
 	label: "地址IP",
 	image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAt0lEQVQ4jcXTsWoCQRSF4Q8SsNEitUnhM6RQUtjb+xixTRHIG+SFks7GVxBksbBPGVjWQpsjSNhdXUjIhb+4c5l/mMMMv1g93IfeWf8Qhhi0CcYowmMosAtbfGCO2zrBFGV4CiUOP/iK5GrBHu94wTqSz7rrNAnKzOAtgm0yuUpQ4RkzLCNY4a5LBlU4ZG3RJYOT4BsbvKLfRVDlxAlGuKnb3CY4D7G1/l/Q9JSLzC5W02c69X9TR6H4UVapsaP+AAAAAElFTkSuQmCC",
 	child: [{
-		label: "PingIP(aizhan)",
-		tooltiptext: 'http://ping.aizhan.com/',
-		oncommand: "showFlagS.command('Action',this.tooltipText, 'site','host', null,'btn02')",
-		image: "http://www.aizhan.com/favicon.ico"
-	}, {
 		label: "PingIP(17ce)",
 		tooltiptext: 'http://www.17ce.com/site/ping',
 		oncommand: "showFlagS.command('Action',this.tooltipText, 'url','host', 'su')",
 		image: "http://www.17ce.com/smedia/images/favicon.ico"
-	}, {
-		label: "PingIP(chinaz)",
-		tooltiptext: 'http://ping.chinaz.com/',
-		image: "http://seo.chinaz.com/Chinaz.ico",
-		//oncommand: "showFlagS.command('Action',this.tooltipText, 'host', 'host', null,'but')",
-		oncommand: function() {
-			var aPostData = "host=" + content.window.document.location.host + "&alllinetype=全选&linetype=电信&linetype=多线&linetype=联通&linetype=移动&linetype=海外";
-			showFlagS.command('Post', this.tooltipText, aPostData);
-		}
-	}, {
-		label: "PingIP(CA)",
-		tooltiptext: 'http://cloudmonitor.ca.com/zh_cn/ping.php?varghost=',
-		oncommand: 'showFlagS.command(this.tooltipText, "host");',
-		image: "http://cloudmonitor.ca.com/assets/flavors/img/ca/favicon.png"
+	},{
+		label: "PingIP(aizhan)",
+		tooltiptext: 'http://ping.aizhan.com/',
+		oncommand: "showFlagS.command('Action',this.tooltipText, 'site','host', null,'btn02')",
+		image: "http://www.aizhan.com/favicon.ico"
+	},  {
+		label: "路由跟踪",
+		tooltiptext: 'http://www.domaintools.com/research/traceroute/?query=',
+		oncommand: 'showFlagS.command(this.tooltipText, "ip","&search=traceroute");',
+		image: "http://whois.domaintools.com/favicon.png"
+	}, {}, {
+		label: "IP反查域名",
+		tooltiptext: 'http://dns.aizhan.com/?q=',
+		oncommand: 'showFlagS.command(this.tooltipText, "ip");',
+		image: "http://www.aizhan.com/favicon.ico"
 	}, {
 		label: "IP地图位置",
 		tooltiptext: 'http://www.264.cn/ip/',
 		oncommand: 'showFlagS.command(this.tooltipText, "ip",".html");',
 		image: "http://www.264.cn/favicon.ico"
 	}, {
-		label: "路由跟踪",
-		tooltiptext: 'http://www.domaintools.com/research/traceroute/?query=',
-		oncommand: 'showFlagS.command(this.tooltipText, "ip","&search=traceroute");',
-		image: "http://whois.domaintools.com/favicon.png"
-	}, {}, {
-		label: "旁站(aizhan)",
-		tooltiptext: 'http://dns.aizhan.com/?q=',
-		oncommand: 'showFlagS.command(this.tooltipText, "ip");',
-		image: "http://www.aizhan.com/favicon.ico"
-	}, {
-		label: "旁站(264.cn)",
-		tooltiptext: 'http://www.264.cn/sameip/',
-		oncommand: 'showFlagS.command(this.tooltipText, "ip",".html");',
-		image: "http://www.264.cn/favicon.ico"
-	}, {
-		label: "旁站(114best)",
+		label: "同IP地址网站",
 		tooltiptext: 'http://www.114best.com/ip/114.aspx?w=',
 		oncommand: 'showFlagS.command(this.tooltipText, "ip");',
 		image: "http://www.114best.com/favicon.ico"
-	}, {
-		label: "旁站(Bing)",
-		tooltiptext: 'http://cn.bing.com/search?q=ip:',
-		oncommand: 'showFlagS.command(this.tooltipText, "ip");',
-		image: "http://cn.bing.com/s/a/bing_p.ico"
 	}]
 }, {
 	label: "域名DNS",
@@ -167,27 +143,7 @@ var Menus = [{
 		tooltiptext: 'https://www.sugarhosts.com/members/whois.php?domain=',
 		oncommand: 'showFlagS.command(this.tooltipText, "basedomain");',
 		image: "http://www.sugarhosts.com/templates/sh_christmas2009/favicon.ico"
-	}, {
-		label: "Whois(cndns)",
-		tooltiptext: 'http://who.cndns.com/?d=',
-		oncommand: 'showFlagS.command(this.tooltipText, "basedomain");',
-		image: "http://www.cndns.com/favicon.ico"
-	}, {
-		label: "Whois(aizhan)",
-		tooltiptext: 'http://whois.aizhan.com/',
-		oncommand: 'showFlagS.command(this.tooltipText, "host");',
-		image: "http://www.aizhan.com/favicon.ico"
-	}, {
-		label: "Whois(ChinaZ)",
-		tooltiptext: 'http://whois.chinaz.com/',
-		oncommand: 'showFlagS.command(this.tooltipText, "basedomain");',
-		image: "http://www.aizhan.com/favicon.ico"
-	}, {
-		label: "Whois(Dtools)",
-		tooltiptext: 'http://whois.domaintools.com/',
-		oncommand: 'showFlagS.command(this.tooltipText, "basedomain");',
-		image: "http://whois.domaintools.com/favicon.png"
-	}, {
+	},  {
 		label: "Whois(dnsw)",
 		tooltiptext: 'http://dnsw.info/',
 		oncommand: 'showFlagS.command(this.tooltipText, "basedomain");',
@@ -212,7 +168,7 @@ var Menus = [{
 		oncommand: "showFlagS.command('Action',this.tooltipText, 'url', content.window.document.location.host, 'btn-scan-url')",
 		image: "https://www.virustotal.com/static/img/favicon.ico"
 	}, {
-		label: "WOT Scorecard",
+		label: "WOT评分",
 		tooltiptext: 'https://www.mywot.com/en/scorecard/',
 		oncommand: 'showFlagS.command(this.tooltipText, "host");',
 		image: "https://www.mywot.com/files/favicon.ico"
@@ -241,6 +197,11 @@ var Menus = [{
 	label: "站点搜索",
 	image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAPCAYAAADtc08vAAABHklEQVQokZ3TPyjFURwF8I8/r5fyUhZRUoqJ/Q0Gg0lGZbJgsxmUiSR5+TOIkWJQBhkUFvUGGZVRBsmCPMJkUIZ7vbxfnidn/J57zj3f+/1efkYKAzhAAR94wylGUF9GRyTn8IBzrGAi1vJ4wjZafhLXYgavmEVTgs9gDPfYQUPSIItHLMY2ymE0XjKeJHK4QfsvYkKbeaHFIlI4wmGF27+wgPfvhTROsI/qPxhMC9MpogobuEBjBXENdnGbJAaFeQ9XMMgKk1hNEhns4Rp9ZcRdOItJO5Ox6tCGY9xhORp1owdTuMIler+LU8K2bQnL0Yz5eLgQ4xaEnjejYRFpTOIFa0r3vDUmGEI/OoRtLUEOz1hS4ZOUw7rwmv8SfwIjnjkY6akXagAAAABJRU5ErkJggg==",
 	child: [{
+		label: "类似网站",
+		tooltiptext: 'http://www.similarsitesearch.com/cn/site/',
+		oncommand: 'showFlagS.command(this.tooltipText, "host");',
+		image: "http://www.similarsitesearch.com/favicon.ico"
+	}, {
 		label: "维基域名",
 		tooltiptext: 'http://zh.wikipedia.org/wiki/Special:Search?search=',
 		oncommand: 'showFlagS.command(this.tooltipText, "host","&go=Go&variant=zh-cn");',
@@ -250,11 +211,6 @@ var Menus = [{
 		tooltiptext: 'https://www.xmarks.com/site/',
 		oncommand: 'showFlagS.command(this.tooltipText, "host");',
 		image: "http://www.xmarks.com/favicon.ico"
-	}, {
-		label: "类似网站",
-		tooltiptext: 'http://www.similarsitesearch.com/cn/site/',
-		oncommand: 'showFlagS.command(this.tooltipText, "host");',
-		image: "http://www.similarsitesearch.com/favicon.ico"
 	}, {
 		label: "相似页面",
 		tooltiptext: 'http://www.google.com/search?q=related:',
@@ -336,11 +292,6 @@ var Menus = [{
 	label: "镜像快照",
 	image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABSElEQVQ4jc3Tu0tcYRAF8N+GXVhWs+hGAiIi+Fh8gA+wyDZCEPf/MH0KNUXKZUmagNikSGETxEIb7S01uEUaQUQI2gRB7EQIQghrceeCXJSYLlN8MN89Z+6ZM/Pxv8Uz9GAIvcj/C3kYqzjGJX7gK2rI/Y08ie9o4wItnEW+h+4MvoaJNHmOnQCvo4oi+vAWcxnyaKjbDa46brCPF3E5J/EgjZd4jYrEo4Pg1GEl/t4I8Hv8xgYK0f9n/MGnwDSCsyyONprx8R1+RTv5KLCGW3wITDM4SzCPaxyG1BJmQ2oaFbxCOTCt4MxDB7ai4qZkImUMRjsLGROrOMF2cMEYvkWRKxzhp8fHOIORzJ1+fMRpyDvHF0x7wiJBV/S5KDH2jcSL0lPInZLNmpV4MI6pyAceUFBy753kJMtTiULp6AqRFzLkfKgtwh2F4z1a0Vqb4QAAAABJRU5ErkJggg==",
 	child: [{
-		label: "Google快照",
-		tooltiptext: 'https://webcache.googleusercontent.com/search?q=cache:',
-		oncommand: 'showFlagS.command(this.tooltipText, "url");',
-		image: "https://webcache.googleusercontent.com/favicon.ico"
-	}, {
 		label: "Gigablast",
 		tooltiptext: 'http://www.gigablast.com/search?q=',
 		oncommand: 'showFlagS.command(this.tooltipText, "host");',
@@ -406,10 +357,30 @@ var Menus = [{
 	oncommand: 'showFlagS.command(this.tooltipText, "host");',
 	image: "http://www.wolframalpha.com/favicon.ico"
 }, {
+	label: "PingIP",
+	tooltiptext: 'http://cloudmonitor.ca.com/zh_cn/ping.php?varghost=',
+	oncommand: 'showFlagS.command(this.tooltipText, "host");',
+	image: "http://cloudmonitor.ca.com/assets/flavors/img/ca/favicon.png"
+}, {
+	label: "Google快照",
+	tooltiptext: 'https://webcache.googleusercontent.com/search?q=cache:',
+	oncommand: 'showFlagS.command(this.tooltipText, "url");',
+	image: "https://webcache.googleusercontent.com/favicon.ico"
+}, {
+	label: "Whois",
+	tooltiptext: 'http://whois.domaintools.com/',
+	oncommand: 'showFlagS.command(this.tooltipText, "basedomain");',
+	image: "http://whois.domaintools.com/favicon.png"
+}, {
 	label: "BugMeNot",
 	tooltiptext: 'http://bugmenot.com/view/',
 	oncommand: 'showFlagS.command(this.tooltipText, "host");',
 	image: "http://bugmenot.com/favicon.ico"
+}, {
+  	label: "PrintwhatUlike",
+    	tooltiptext: 'http://www.printwhatyoulike.com/print?url=',
+    	oncommand: 'showFlagS.open(this.tooltipText, "url");',
+    	image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAADCUlEQVQ4jYXTaUjTcRgH8McusqjogKIXBYHQiUiH2IVQaFBmUpYVmpWZ0iGKpUZrKzvISSKmpVPTldnm5t8doa2/7VA3jzUXtnWYDV2OOdncZFBQ+e1NCpHWFz6vfjzP83tePEREBCAAQAAR0bOWrOAixQFugXyX4ElLXL2kI75GZjyZ22jKPlpamjyTporRIl5xX3mo4Xbd1rFHmihoes+gtS9lQktfCjQfz9pM/feyLRbLrD+KK2SX5+VJI3p4tVtQ/movXn08/Q9JMH3JrwIwbfzXdFO0s5BTsxF36reh0ZqApncn/tJoTUCuOAwXH65BnTF2rHugMJqIiG7XxyzOEYb4c4QhqG6NgvztsUnlCEMQnh6I8PRARHOXoKE7RU9ERFcfh+25VBUMTu0mSMyxkE5C3pPoLmLOH7hYEpF8+EbQ8/CMuTj3YN1Xt7t3PmVUBh9Jr1gPvnInal/HTIoxn44f31etVs/IKYvJjMhaCPWH/NWUJQyLvCBYgxL1bgg79/1FZDpaZ7PZZg8PDV13u92nPB7PAgDTT+aFNqQWbF9FbM/TpZerQ7+WtUWgXB85QWCI/Pm4K7a8iZFIpNXVg6a2NrhdLox6vS7fyAhXrinbXKsqWk5ERE/16XkV7TE/Kwz7/Y86Dg6ITGdePmnIuvaCYXpYlsWo14vyggI8Ewjw+f17jHq9GPV4HAAWEYCAmq5TCY4R60pzZyeHz+NJ4qOi3pyNixvL53KhkEphNBpRyufjVmYm7mZng5XL8clqtTocjjnE4/GmiU1pEp/PF9RrsQy1a7WoKi5GRlIS2nU6KMViFObmIvX4cfDS0qAUidCl1UKjUIw5nc4NRERkt+sDiYj8fv8yr8dTPOx0fuvQ6VDC5+NCYiISo6NxJTUVrSoVNAoFWIZBp1bbPOVd+FyuIJfTKRjs7//BKpXI43AgqqxEs0wGlmHQLJN9N+l0a6dsMB7HwMAO5+CghZXLof49mWUYGFSqwok7+F/sdnvgO7P5vF6lMrY0NYm6DYYTNptt9vj7L6mnPDF0znLsAAAAAElFTkSuQmCC"
 }, {
 	label: "翻译此页",
 	tooltiptext: 'http://translate.google.cn/translate?u=',

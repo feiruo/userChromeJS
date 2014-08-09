@@ -49,7 +49,8 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		configFile: "lib\\_showFlagS.js", // 菜单配置文件，相对路径： profile\chrome\lib\_showFlagS.js
 		libIconPath: "lib\\countryflags.js", // 旧版国旗图标库
 		isFirstRun: true,
-		sMyInfo: false,
+		isMyInfo: false,
+		isReacquire: false,
 		apiSite: null,
 		siteQueue: null,
 		siteApi: null,
@@ -118,6 +119,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				<menupopup  id="showFlagS-set-popup">\
 					<menuseparator id="showFlagS-sepalator1"/>\
 					<menuitem label="查询本地信息" id="showFlagS-set-MyInfo" tooltiptext="会加大开销" onclick="showFlagS.setPerfs(\'MyInfo\')"/>\
+					<menuitem label="自动重新获取" id="showFlagS-set-Reacquire" tooltiptext="会加大开销" onclick="showFlagS.setPerfs(\'Reacquire\')"/>\
 					<menuitem label="脚本菜单配置" id="showFlagS-set-setMenu" tooltiptext="左键：重载配置|右键：编辑配置" onclick="if(event.button == 0){showFlagS.reload(true);}else if (event.button == 2) {showFlagS.command(\'Edit\');}" class="showFlagS menuitem-iconic" image="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABYElEQVQ4jY3TO0/VQRAF8F9yTUB6QMCCZ6KJBq4JNIQKCkoopAWMsabhC1ho5SOYaO2j0AQ+gYKPS/BeaDD0kPhJLP7nbzZA0ElOsjvnzOzOziyX2yjO8Ds4i++/bRgdzAUdjFwVMIkNDASP8QuDwXF8Nb+RGHAdb3GC72jhIxZxLViMbx/fon2XWKv4inHcx6OaQH8A3eFWot3DmmT8jImipF48y21aeI6+gp9IzA+Ywmu0k7mBF9jBDKaxjZfhxqN9k1hULepgLI90gHvFic34BqJtR6tM0D6XYKrgJ/FT1ZFa+3cu7mALR6mtkf2n3KKZ9auihMPs79aPuIvbxYn9SbIfbOFGwd/CF1XbPVC1ZARL2XdFOIihrLuwjuVod/EQevBeNXmt1P8BC6ohamA+moNojqPpqa/UxCZuBk8iKkf5abihaMsuXbBh1UvPBm3/+EznbRSnqm9c49Lv/AcsoU6W+qo3pgAAAABJRU5ErkJggg=="/>\
 				</menupopup>\
 				</menu>\
@@ -220,9 +222,13 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			this._prefs.setCharPref("SourceSite", (this.SourceAPI ? (this.SourceAPI[0] ? this.SourceAPI[0].id : "taobao") : "taobao"));
 
 		if (!this._prefs.prefHasUserValue("MyInfo") || this._prefs.getPrefType("MyInfo") != Ci.nsIPrefBranch.PREF_BOOL)
-			this._prefs.setBoolPref("MyInfo", this.sMyInfo);
+			this._prefs.setBoolPref("MyInfo", this.isMyInfo);
 
-		this.sMyInfo = this._prefs.getBoolPref("MyInfo");
+		if (!this._prefs.prefHasUserValue("Reacquire") || this._prefs.getPrefType("Reacquire") != Ci.nsIPrefBranch.PREF_BOOL)
+			this._prefs.setBoolPref("Reacquire", this.isReacquire);
+
+		this.isReacquire = this._prefs.getBoolPref("Reacquire");
+		this.isMyInfo = this._prefs.getBoolPref("MyInfo");
 		this.apiSite = this._prefs.getCharPref("SourceSite");
 	};
 
@@ -233,9 +239,14 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			$("showFlagS-apiSite-" + this.apiSite).setAttribute('checked', true);
 		}
 		if (tyep == "MyInfo") {
-			this.sMyInfo = !this.sMyInfo;
-			this._prefs.setBoolPref("MyInfo", this.sMyInfo);
-			$("showFlagS-set-MyInfo").setAttribute('checked', this.sMyInfo);
+			this.isMyInfo = !this.isMyInfo;
+			this._prefs.setBoolPref("MyInfo", this.isMyInfo);
+			$("showFlagS-set-MyInfo").setAttribute('checked', this.isMyInfo);
+		}
+		if (tyep == "Reacquire") {
+			this.isReacquire = !this.isReacquire;
+			this._prefs.setBoolPref("Reacquire", this.isReacquire);
+			$("showFlagS-set-Reacquire").setAttribute('checked', this.isReacquire);
 		}
 		for (var i = 0; i < this.SourceAPI.length; i++) {
 			if (this.SourceAPI[i].id == this.apiSite) {
@@ -354,11 +365,14 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		}
 
 		function flagFunc(checkCache, ip, host) {
-
 			if (/^192.168.|169.254./.test(ip) || ip == "127.0.0.1" || ip == "::1") return;
 			if (checkCache && self.showFlagHash[host]) {
-				self.updateIcon(host, self.showFlagHash[host]);
-				return;
+				if (self.showFlagHash[host] == 'UnknownFlag' && self.isReacquire)
+					self.isReqHash[host] = false;
+				else {
+					self.updateIcon(host, self.showFlagHash[host]);
+					return;
+				}
 			}
 			if (checkCache && self.isReqHash[host]) return;
 			self.isReqHash[host] = true;
@@ -370,8 +384,12 @@ location == "chrome://browser/content/browser.xul" && (function() {
 
 		function tooltipFunc(checkCache, ip, host) {
 			if (checkCache && self.showFlagTooltipHash[host]) {
-				self.updateTooltipText(ip, host, self.showFlagTooltipHash[host]);
-				return;
+				if (self.showFlagTooltipHash[host].UnknownFlag && self.isReacquire)
+					self.isReqHash_tooltip[host] = false;
+				else {
+					self.updateTooltipText(ip, host, self.showFlagTooltipHash[host]);
+					return;
+				}
 			}
 			if (checkCache && self.isReqHash_tooltip[host]) return;
 			self.isReqHash_tooltip[host] = true;
@@ -387,36 +405,36 @@ location == "chrome://browser/content/browser.xul" && (function() {
 					self.updateTooltipText(ip, host, self.showFlagTooltipHash[host]);
 					return;
 				}
-				if (self.MyInfo && self.sMyInfo)
-					self.lookup_Myinfo(self.MyInfo.inquireAPI, host, function(myinfo, myInfoThx) {
-						obj.MyInfo = myinfo;
-						if (myInfoThx)
-							obj.MyInfoThx = myInfoThx;
-						self.showFlagTooltipHash[host] = obj;
-						if (self.apiSite == 'taobao')
-							self.lookupIP_taobao(ip, host);
-						else {
-							if (self.Thx(self.siteApi) !== self.Thx(self.MyInfo.inquireAPI))
-								self.lookupIP_Info(ip, host, self.siteApi, self.siteQueue);
-							else
-								setTimeout(function() {
-									self.lookupIP_Info(ip, host, self.siteApi, self.siteQueue);
-								}, 500);
-						}
-					});
-				else {
+
+				function callback(info, Thx) {
+					obj.SiteInfo = info;
+					obj.SiteInfoThx = Thx;
 					self.showFlagTooltipHash[host] = obj;
-					if (self.apiSite == 'taobao')
-						self.lookupIP_taobao(ip, host);
-					else {
-						if (self.Thx(self.siteApi) !== self.Thx(self.MyInfo.inquireAPI))
-							self.lookupIP_Info(ip, host, self.siteApi, self.siteQueue);
-						else
-							setTimeout(function() {
-								self.lookupIP_Info(ip, host, self.siteApi, self.siteQueue);
-							}, 500);
+
+					if (!self.MyInfo || !self.isMyInfo) {
+						self.updateTooltipText(ip, host, self.showFlagTooltipHash[host]);
+						return;
 					}
+
+					self.lookup_Myinfo(self.MyInfo.inquireAPI, host, function(myinfo, myInfoThx) {
+						self.showFlagTooltipHash[host].MyInfo = myinfo;
+						if (myInfoThx)
+							self.showFlagTooltipHash[host].MyInfoThx = myInfoThx;
+						self.updateTooltipText(ip, host, self.showFlagTooltipHash[host]);
+					});
 				}
+
+				if (self.apiSite == 'taobao')
+					self.lookupIP_taobao(ip, host, callback);
+				else {
+					if (self.Thx(self.siteApi) !== self.Thx(self.MyInfo.inquireAPI))
+						self.lookupIP_Info(ip, host, self.siteApi, self.siteQueue, callback);
+					else
+						setTimeout(function() {
+							self.lookupIP_Info(ip, host, self.siteApi, self.siteQueue, callback);
+						}, 500);
+				}
+
 			});
 		}
 		flagFunc(!self.forceRefresh, ip, host);
@@ -428,7 +446,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		if (host == this.contentDoc.location.host) {
 			this.icon.hidden = false;
 			var src;
-			if (countryCode === 'iana') {
+			if (countryCode === 'iana' || countryCode === 'UnknownFlag') {
 				src = this.Perfs.Unknown_Flag;
 			} else {
 				src = window.CountryFlags ? (this.getFlagFoxIconPath(countryCode) || CountryFlags[countryCode]) : this.getFlagFoxIconPath(countryCode);
@@ -441,16 +459,15 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				}
 				src = src || (this.BAK_FLAG_PATH + countryCode + ".gif") || this.Perfs.Unknown_Flag;
 
-				if (this.Perfs.showLocationPos == 'identity-box') {
-					if (this.contentDoc.location.protocol !== 'https:')
-						$('page-proxy-favicon').style.visibility = 'collapse';
-					else
-						$('page-proxy-favicon').style.visibility = 'visible';
-					if (!src) this.icon.hidden = true;
-				}
 			}
 			this.icon.src = this.icon.image = src;
-
+			if (this.Perfs.showLocationPos == 'identity-box') {
+				if (this.contentDoc.location.protocol !== 'https:')
+					$('page-proxy-favicon').style.visibility = 'collapse';
+				else
+					$('page-proxy-favicon').style.visibility = 'visible';
+				if (!src) this.icon.hidden = true;
+			}
 		}
 	};
 
@@ -459,19 +476,24 @@ location == "chrome://browser/content/browser.xul" && (function() {
 
 		var tooltipArr = [];
 		obj || (obj = {});
-		if (this.showFlagHash[host])
+		if (this.showFlagHash[host] && !obj.UnknownFlag)
 			obj.FlagThx = this.Thx('http://ip.taobao.com/service/getIpInfo.php?ip=')
+
+		if (obj.UnknownFlag && obj.UnknownFlag !== "") {
+			tooltipArr.push(obj.UnknownFlag);
+			tooltipArr.push("--------------------------------");
+		}
 
 		tooltipArr.push("域名：" + host);
 		tooltipArr.push("网站IP：" + ip);
 
-		if (obj.ServerInfo !== "")
+		if (obj.ServerInfo && obj.ServerInfo !== "")
 			tooltipArr.push(obj.ServerInfo);
 
-		if (obj.SiteInfo)
+		if (obj.SiteInfo && obj.SiteInfo !== "")
 			tooltipArr.push(obj.SiteInfo);
 
-		if (this.MyInfo && this.sMyInfo && obj.MyInfo && obj.MyInfo !== "查询失败") {
+		if (this.MyInfo && this.isMyInfo && obj.MyInfo && obj.MyInfo !== "查询失败") {
 			tooltipArr.push("--------------------------------");
 			tooltipArr.push(obj.MyInfo);
 		}
@@ -508,8 +530,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			if (req.status == 200) {
 				myinfo = self.MyInfo.regulation(req.responseText);
 				if (myinfo) {
-					var myInfoThx = self.Thx(api);
-					callback(myinfo, myInfoThx);
+					callback(myinfo, self.Thx(api));
 				} else {
 					onerror();
 				}
@@ -519,13 +540,13 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		};
 	};
 
-	showFlagS.lookupIP_Info = function(ip, host, api, i) {
+	showFlagS.lookupIP_Info = function(ip, host, api, i, callback) {
 		var req = new XMLHttpRequest();
 		req.open("GET", api + ip, true);
 		req.send(null);
 		var self = showFlagS;
 		var onerror = function() {
-			self.lookupIP_taobao(ip, host, "other");
+			self.lookupIP_taobao(ip, host, callback, "other");
 		};
 		req.onerror = onerror;
 		req.timeout = self.Perfs.Inquiry_Delay;
@@ -534,9 +555,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			if (req.status == 200) {
 				var info = self.SourceAPI[i].regulation(req.responseText);
 				if (info) {
-					self.showFlagTooltipHash[host].SiteInfo = info;
-					self.showFlagTooltipHash[host].SiteInfoThx = self.Thx(api);
-					self.updateTooltipText(ip, host, self.showFlagTooltipHash[host]);
+					callback(info, self.Thx(api));
 				} else {
 					onerror();
 				}
@@ -546,16 +565,19 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		};
 	};
 
-	showFlagS.lookupIP_taobao = function(ip, host, other) {
+	showFlagS.lookupIP_taobao = function(ip, host, callback, other) {
 		var self = showFlagS;
 		var api = 'http://ip.taobao.com/service/getIpInfo.php?ip=';
 		var req = new XMLHttpRequest();
 		req.open("GET", api + ip, true);
 		req.send(null);
 		var onerror = function() {
-			self.icon.src = self.Perfs.Unknown_Flag;
-			if (other || self.apiSite == 'taobao')
-				self.icon.tooltipText = '无法查询，请刷新！';
+			self.showFlagHash[host] = 'UnknownFlag';
+			self.updateIcon(host, self.showFlagHash[host]);
+			if (!self.showFlagTooltipHash[host]) self.showFlagTooltipHash[host] = {};
+			self.showFlagTooltipHash[host].UnknownFlag = '无法获取，请刷新！';
+			self.updateTooltipText(ip, host, self.showFlagTooltipHash[host]);
+			return;
 		};
 		req.onerror = onerror;
 		req.timeout = self.Perfs.Inquiry_Delay;
@@ -569,9 +591,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 					if (responseObj.data.region || responseObj.data.city || responseObj.data.county || responseObj.data.isp)
 						addr = addr + '\n' + responseObj.data.region + responseObj.data.city + responseObj.data.county + responseObj.data.isp;
 					if (other || self.apiSite == 'taobao') {
-						self.showFlagTooltipHash[host].SiteInfo = addr;
-						self.showFlagTooltipHash[host].SiteInfoThx = self.Thx(api);
-						self.updateTooltipText(ip, host, self.showFlagTooltipHash[host]);
+						callback(addr, self.Thx(api));
 					}
 					self.showFlagHash[host] = country_id;
 					self.updateIcon(host, country_id, responseObj.data.country);
@@ -823,7 +843,8 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		}, false);
 
 		//$("showFlagS-popup").setAttribute('position', iconPref.iconMenuPosition);
-		$("showFlagS-set-MyInfo").setAttribute('checked', this.sMyInfo);
+		$("showFlagS-set-Reacquire").setAttribute('checked', this.isReacquire);
+		$("showFlagS-set-MyInfo").setAttribute('checked', this.isMyInfo);
 		$("showFlagS-apiSite-" + this.apiSite).setAttribute('checked', true);
 	};
 
