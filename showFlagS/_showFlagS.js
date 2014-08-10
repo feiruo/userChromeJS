@@ -1,33 +1,51 @@
 /******************************************************************************************
- *这是综合设置，具体下面有解释。※表示脚本没有预设，必须你自己设置
+ *这是综合设置，具体下面有解释。
  *******************************************************************************************/
 var Perfs = {
-	//显示国旗图标位置  默认为identity-box
+	//显示国旗图标位置  预设为identity-box
 	showLocationPos: "", //如：urlbar-icons、TabsToolbar、nav-bar-customization-target等等
 
-	//毫秒,延迟时间，时间内未取得所选择查询源数据，就使用备用询源,默认3500毫秒
+	mLeft: "", //marginLeft 预设4xp
+	mRight: "", //marginRight 预设2px
+	heig: "", //图标高 无预设
+	wid: "", //图标宽 无预设
+	
+	//毫秒,延迟时间，时间内未取得所选择查询源数据，就使用备用询源,预设3500毫秒
 	Inquiry_Delay: "",
 
-	//本地PNG图标存放文件夹，默认相对路径： profile\chrome\lib\LocalFlags\
+	//本地PNG图标存放文件夹，预设相对路径： profile\chrome\lib\LocalFlags\
 	LocalFlags: "",
 
-	//网络图标地址 默认'http://www.razerzone.com/asset/images/icons/flags/'
+	//网络图标地址 预设'http://www.razerzone.com/asset/images/icons/flags/'
 	BAK_FLAG_PATH: "", //http://www.1108.hk/images/ext/ 、http://www.myip.cn/images/country_icons/ 等等
 
 	//等待时国旗图标,脚本内已有一个默认，如不喜欢内置默认，可以再这里修改
 	DEFAULT_Flag: "",
 
-	//※未知的国旗图标
+	//未知的国旗图标，预设为脚本内置的等待时国旗图标。
 	Unknown_Flag: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABwUlEQVQ4jZWRMahScRjFL40REW9ojqaGhoaGprg0eL3//3fkj0pCDrYp2hARmRItjk4ND0EuSFMgSEQIiuMjEjdnwUGIvLdF+bxc/j6ut8X3eM9X7z3P+vE7nPMdw9gRgPdEdCSlPJRS3t+9Xyrbtp8A4FqtFmQyGQbARHRERAXLsg6uNADwMZ1O83q9jpbLZdjtdnW5XPa3Rksi+iqEeA7g5j8NFosFu64bRjuaz+dhu93WhULBB8AAXCll3TTNO6fweDx+qLWOwvACf06TySR0HCdQSjGAt2fjKwA8m83+6zCdTsNWqxXkcjkG4Nq2/ezUgIg+ZbNZ3mw25yDP88JOp6NLpdLJL/4AaAkhnu4+cFyv14MoiiJmjvr9vq5Wq34ikeBt7+8AXpimeevC8+Lx+D0APBgMdK/X08lk8gT6KaV8HYvF7l46nxDiJQD2PC+sVCo+Ef0A8ODK3c/0/5zP5/0gCCKlFBPRu2vD2/6/ms1mMBqNjgGwEOLxtWEhxCMAPBwOjx3H0UT02zCMG/vEf6OU4tVqFRWLRZ+IvuwVn4g+pFIpbjQawXbnV3sZWJZ1IKU8BDAhom+2bd/eh/8LEFU+M9Rx2boAAAAASUVORK5CYII=",
 
-	//※本地文件图标
+	//本地文件图标，预设为脚本内置的等待时国旗图标。
 	File_Flag: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABYAAAAQCAYAAAAS7Y8mAAAB3ElEQVQ4jZ3QT2vTcBzH8YGPxpt4EHwmHoc+BRV8ADuu+8MG2w47DJINVkLHWDrFKXpYBtqmttl+JV3/Zk1/SX5pfklq09TCx8O0yLB/0g+8j9/X4bu09GB7ex9fHB8XqSgqVBQVKgj3iaJCj46+0f39r8Wtrezzh3czl0plXxUKLjj/BcuKYNv3MRbDMEKk0wWIonKTSp0+SwSvrmaXVdUGY33Uau64RsODrts4OVFhGH2I4tWPlZXTp4ngfN6C4/RBCEWp1IammSCEQtM6kKQcwnAEyxpCknLft7c/PJkbzuUoGIug6zYIoSiXKSoVB4RQCIICVTVAiAVFMbC7+/nq4ODL47lh141QrbrQdQeVioPbW4ZazYUsl5DJ5JHJqJDlIi4uGtjZ+fQuATxAvd5FtcrGNZscphnANAO02wE4j1Euc6ytya/nhj0vQqvlodHo/pM7rl53Yds9XF93k8IDGIaPVov/t2aTg7H+InCMdjvE3V0wMdeNksOcx+h0Qpjm5LrdwWKwZfVA6eQ8L4amLQDb9s+pcZ4QzucpfH8Ix+lPzfeHSV7x/mWhwBAEIzAWTy0IRiAkwMbG+duZ8OZmdjmdLoaHh5ehIFz2ZiVJWri+fvbmz/mjv85vk5TTd5np7HoAAAAASUVORK5CYII=",
 
-	//※LocalHOST,127.0.0.1
+	//LocalHOST【127.0.0.1】【::1】，预设为脚本内置的等待时国旗图标。
 	LocahHost_Flag: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABYAAAAQCAYAAAAS7Y8mAAABNklEQVQ4ja2UwUpCQRSGPwx9gyAfooVLF0GLXiFo5QsUlkHcUgjcCZVEqIueQGjlIqwWbXqAom2IVJu2Bobg4raYM93D8ard7IeBuf/85xtm7szApA6BUNq6eGfKC4GdmLq5CqS4It+nBurbdlJwFahL/0SBRkB7EfhKDDQENsU/WgRul79lxv8Er8+BepVNrvgf0Gnw/bjQeUKolz6eE/ALNTBMAPU6AMaKUQLYMzM2VMESkAHSBpQWP6W8O8PhWDpj4AuoqfAl0AeegWXxckBP/EBlO8BAgzNAAcgDL0BLhW/UpFnx1lRxU2UfgGtgg+jM/+jNgDsC+CS6OKvAI/AE7BrwrQV6vf4CPE0zwe9E7wTAlYAHuC2bpXvcD4xVH7fEAHc+e0T7WcNd5YppZcl+AF0P+gbk74HicL4aGwAAAABJRU5ErkJggg==",
 
-	//※局域网，192.168.xxx.xxx
+	//局域网【192.168.xxx.xxx】【169.254.xxx.xxx】，预设为脚本内置的等待时国旗图标。
 	LAN_Flag: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABYAAAAQCAYAAAAS7Y8mAAABLklEQVQ4jeXUO0vcURAF8F8pxDqdAdFCZLUQ/ARiZ6f4AjWua2dhq4IaNEWKgNjFSi3ED2AhmEKxUXw3PrBQQwQbI6SSiJhiR1nwv6uwlXhguJc5cw4zl3svhTGIM1ziV8RvXGD4BW1BfMFDnvhejPEo7hJM7/HtfRlPJpg+xlQxxhlsYEv2dpxjG5sYKMb4Az6hHEMYQSXKUPpakxI0II0efEYnmtGCH5hBW+Q6curSaIxGnuGj7LmNoxt96A9RGnOYj1xvrBl0YQzTMd0TqlGLJsyiHTWoQkXs6zCBr6iPXGXUpNAa2pbgUrCCfRzhCofYwWJMsIZd2Wd8gT2sR4cLUXsY2pMc3h/J1+kUP/EvgbvHKo7zaG/JfipJ5AGWcJPA/cVydJekvX57xv8BD7eoP535NRkAAAAASUVORK5CYII=",
+	
+	//显示文字自定义设置,
+	tipArrHost: "网站域名：", //域名
+	tipArrIP: "网站IP：", //IP
+	tipArrSep0: "", //分割线，留空就没有
+	/*这里会显示 服务器信息	ServerInfo*/
+	tipArrSep1: "", //分割线，留空就没有
+	/*这里会显示 网站IP信息*/
+	tipArrSep2: "--------------------------------", //分割线，留空就没有
+	/*这里会显示 我的信息	MyInfo*/
+	tipArrSep3: "--------------------------------", //分割线，留空就没有
+	tipArrThanks: "Thx&From：", //感谢：xxxxx
+
 };
 /******************************************************************************************
  *这里是设置文字显示的，可以自定义多个，可以根据需要截取，只支持函数操作。
@@ -53,14 +71,7 @@ var ServerInfo = [{
 	words: "X-Powered-By"
 }];
 /******************************************************************************************
-child:[  ]内为当前菜单的二级菜单配置，只支持二级菜单；
-text 为运行参数，如果无需参数，直接删除text属性，目前只支持 %u 为当前网页完整地址；
-exec 为打开路径，可以是任意文件和文件夹，支持相对路径，相对于配置文件；
-文件夹不支持直接“\\”开头的相对路径，需要用“Services.dirsvc.get("ProfD", Ci.nsILocalFile).path”开头
-=======================
-除了以上属性外，可以自定义添加其他属性，如果快捷键accesskey等
-=======================
-{}, 为分隔条 
+具体设置请参考示例或者https://github.com/feiruo/userChromeJS/blob/master/anoBtn/_anoBtn.js
 =======================
 如果设置了id属性，会尝试获取此id并移动，如果在浏览器中没有找到此id，则这个id就不会生效
 =======================
@@ -88,8 +99,8 @@ showFlagS.command('Action','http://ping.chinaz.com/', 'host', 'IP', null,'but')
 					  but: 		点击使你输入的数据生效或提交按钮的类名（class）
 -----------------
 还有一些其他的，比如编辑文件
-showFlagS.command("Edit", "文件路径，支持相对路径")
-showFlagS.command("Copy", "函数或者字符串")
+showFlagS.command("Edit", "文件路径，支持相对路径") 如果无路径默认为编辑本文件
+showFlagS.command("Copy", "函数或者字符串")//函数或者字符串默认为复制图标的提示信息[即国旗图标提示里面的信息]
 *******************************************************************************************/
 var Menus = [{
 	label: "地址IP",
@@ -409,21 +420,18 @@ var Menus = [{
 //查询本地信息
 var MyInfo = {
 	inquireAPI: "http://whois.pconline.com.cn/", //查询接口API
-	//regulation是截取函数,docum是一个XMLHttpRequest()的req.responseText，（具体可以百度	XMLHttpRequest()）。传回的obj为最终要显示的结果和样式等
+	//regulation是截取函数,docum是一个XMLHttpRequest()的req.responseText，（具体可以百度	XMLHttpRequest()）。
 	regulation: function(docum) {
 		docum = docum.substring(docum.indexOf("位置"));
 		docum = docum.substring(0, docum.indexOf("<h3>接口列表"));
-
 		var addr = docum.substring(3, docum.indexOf("\n"));
-
 		var ip = docum.substring(docum.indexOf("为:"));
 		ip = ip.substring(2, ip.indexOf("\n"));
-
 		var RemoteAddr = docum.substring(docum.indexOf("RemoteAddr"));
 		RemoteAddr = RemoteAddr.substring(11, RemoteAddr.indexOf("<br/>"));
 		if (addr || ip || RemoteAddr) {
 			var MyInfos = "我的IP：" + ip + '\n' + "我的地址：" + addr + '\n' + "RemoteAddr：" + RemoteAddr;
-			return MyInfos
+			return MyInfos;
 		} else return "查询失败";
 	}
 };
@@ -431,17 +439,23 @@ var MyInfo = {
 var SourceAPI = [{
 	label: "纯真 查询源", //菜单中显示的文字
 	id: "CZ", //必须设定一个ID，以便脚本读取
-	inquireAPI: "http://www.cz88.net/ip/index.aspx?ip=",
-	//返回“null”的时候便使用备用查询源（淘宝）；
+	isFlag: false, //是否作为国旗图标的查询源,所有自定义项目中，只能有一个设为true，其余可删除该项或为false,当你没有设定的时候会使用脚本预设
+	isJustFlag: false, //是否仅作为国旗图标的查询源,如果有此项，就不会创建此项的菜单，也不会作为信息查询源使用。该项为false的时候可注释掉
+	inquireAPI: "http://www.cz88.net/ip/index.aspx?ip=", //查询的API，GET类型
+	//返回“null”的时候便使用备用查询源；
 	regulation: function(docum) {
 		var s_local, myip, myAddr;
 		var addr_pos = docum.indexOf("AddrMessage");
 		s_local = docum.substring(addr_pos + 13);
 		s_local = s_local.substring(0, s_local.indexOf("<"));
 		s_local = s_local.replace(/ +CZ88.NET ?/g, "");
-		if (s_local) {
-			return s_local;
-		} else return null;
+
+		var obj = {}; //※必须，返回结果必须为object类型，此处为声明。
+		obj.SiteInfo = s_local || null; //※必须，此处为返回结果中你需要显示的信息;当前项仅为图标查询源的时候可以非必须。
+		//以下两项非必须，在此项目不作为国旗图标查询源的时候可以不用
+		obj.countryCode = null; //此处为返回结果的国家CODE。
+		obj.countryName = null; //此处为返回结果的国家名称【中文，需要lib数据库支持】。
+		return obj || null;
 	}
 }, {
 	label: "太平洋电脑",
@@ -449,9 +463,12 @@ var SourceAPI = [{
 	inquireAPI: "http://whois.pconline.com.cn/ip.jsp?ip=",
 	regulation: function(docum) {
 		var docum = docum.replace(/\n/ig, "");
-		if (docum) {
-			return docum;
-		} else return null;
+
+		var obj = {};
+		obj.SiteInfo = docum || null;
+		obj.countryCode = null;
+		obj.countryName = null;
+		return obj || null;
 	}
 }, {
 	label: "MyIP查询源",
@@ -468,22 +485,30 @@ var SourceAPI = [{
 			myip_addr = myip_addr.substring(0, myip_addr.indexOf("<"));
 		if (myip_addr.indexOf("\r\n\t\t") !== -1)
 			myip_addr = myip_addr.substring(0, myip_addr.indexOf("\r\n\t\t"));
-		if (myip_addr) {
-			return myip_addr;
-		} else return null;
+
+		var obj = {};
+		obj.SiteInfo = myip_addr || null;
+		obj.countryCode = null;
+		obj.countryName = null;
+		return obj || null;
 	}
 }, {
 	label: "新浪 查询源",
 	id: "sina",
 	inquireAPI: "http://int.dpool.sina.com.cn/iplookup/iplookup.php?format=json&ip=",
 	regulation: function(docum) {
-		var responseObj = JSON.parse(docum);
-		if (responseObj.ret == 1) {
-			if (responseObj.isp !== '' || responseObj.type !== '' || responseObj.desc !== '')
-				var addr = responseObj.country + responseObj.province + responseObj.city + responseObj.district + '\n' + responseObj.isp + responseObj.type + responseObj.desc;
+		var doc = JSON.parse(docum);
+		if (doc.ret == 1) {
+			if (doc.isp !== '' || doc.type !== '' || doc.desc !== '')
+				var addr = doc.country + doc.province + doc.city + doc.district + '\n' + doc.isp + doc.type + doc.desc;
 			else
-				var addr = responseObj.country + responseObj.province + responseObj.city + responseObj.district;
-			return addr;
+				var addr = doc.country + doc.province + doc.city + doc.district;
+
+			var obj = {};
+			obj.SiteInfo = addr || null;
+			obj.countryCode = null;
+			obj.countryName = doc.country || null;
+			return obj || null;
 		} else return null;
 	}
 }, {
@@ -493,8 +518,33 @@ var SourceAPI = [{
 	regulation: function(docum) {
 		var s_local = docum;
 		s_local = s_local.replace(/ +CZ88.NET ?/g, "");
-		if (s_local) {
-			return s_local;
+
+		var obj = {};
+		obj.SiteInfo = s_local || null;
+		obj.countryCode = null;
+		obj.countryName = null;
+		return obj || null;
+
+	}
+}, {
+	label: "淘宝 查询源",
+	id: "taobao",
+	isFlag: true,
+	inquireAPI: "http://ip.taobao.com/service/getIpInfo.php?ip=",
+	regulation: function(docum) {
+		var doc = JSON.parse(docum);
+		if (doc.code == 0) {
+			var country_id = doc.data.country_id.toLocaleLowerCase();
+			var addr = doc.data.country + doc.data.area;
+			if (doc.data.region || doc.data.city || doc.data.county || doc.data.isp)
+				addr = addr + '\n' + doc.data.region + doc.data.city + doc.data.county + doc.data.isp;
+
+			var obj = {};
+			obj.SiteInfo = addr || null;
+			obj.countryCode = country_id || null;
+			obj.countryName = doc.data.country || null;
+			return obj || null;
+
 		} else return null;
 	}
-}, ]
+}]
