@@ -3,23 +3,23 @@
  *******************************************************************************************/
 var Perfs = {
 	//显示国旗图标位置  预设为identity-box
-	showLocationPos: "", //如：urlbar-icons、TabsToolbar、nav-bar-customization-target等等
+	showLocationPos: "", //如：urlbar-icons、TabsToolbar、nav-bar-customization-target等等。
 
 	mLeft: "", //marginLeft 预设4xp
 	mRight: "", //marginRight 预设2px
 	heig: "", //图标高 无预设
 	wid: "", //图标宽 无预设
-	
-	//毫秒,延迟时间，时间内未取得所选择查询源数据，就使用备用询源,预设3500毫秒
+
+	//毫秒,延迟时间，时间内未取得所选择查询源数据，就使用备用询源,预设3500毫秒。
 	Inquiry_Delay: "",
 
-	//本地PNG图标存放文件夹，预设相对路径： profile\chrome\lib\LocalFlags\
+	//本地PNG图标存放文件夹，预设相对路径： chrome\lib\LocalFlags 文件夹。
 	LocalFlags: "",
 
-	//网络图标地址 预设'http://www.razerzone.com/asset/images/icons/flags/'
-	BAK_FLAG_PATH: "", //http://www.1108.hk/images/ext/ 、http://www.myip.cn/images/country_icons/ 等等
+	//网络图标地址 预设'http://www.razerzone.com/asset/images/icons/flags/'。
+	BAK_FLAG_PATH: "", //http://www.1108.hk/images/ext/ 、http://www.myip.cn/images/country_icons/ 等等。
 
-	//等待时国旗图标,脚本内已有一个默认，如不喜欢内置默认，可以再这里修改
+	//等待时国旗图标,脚本内已有一个默认，如不喜欢内置默认，可以再这里修改。
 	DEFAULT_Flag: "",
 
 	//未知的国旗图标，预设为脚本内置的等待时国旗图标。
@@ -33,7 +33,7 @@ var Perfs = {
 
 	//局域网【192.168.xxx.xxx】【169.254.xxx.xxx】，预设为脚本内置的等待时国旗图标。
 	LAN_Flag: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABYAAAAQCAYAAAAS7Y8mAAABLklEQVQ4jeXUO0vcURAF8F8pxDqdAdFCZLUQ/ARiZ6f4AjWua2dhq4IaNEWKgNjFSi3ED2AhmEKxUXw3PrBQQwQbI6SSiJhiR1nwv6uwlXhguJc5cw4zl3svhTGIM1ziV8RvXGD4BW1BfMFDnvhejPEo7hJM7/HtfRlPJpg+xlQxxhlsYEv2dpxjG5sYKMb4Az6hHEMYQSXKUPpakxI0II0efEYnmtGCH5hBW+Q6curSaIxGnuGj7LmNoxt96A9RGnOYj1xvrBl0YQzTMd0TqlGLJsyiHTWoQkXs6zCBr6iPXGXUpNAa2pbgUrCCfRzhCofYwWJMsIZd2Wd8gT2sR4cLUXsY2pMc3h/J1+kUP/EvgbvHKo7zaG/JfipJ5AGWcJPA/cVydJekvX57xv8BD7eoP535NRkAAAAASUVORK5CYII=",
-	
+
 	//显示文字自定义设置,
 	tipArrHost: "网站域名：", //域名
 	tipArrIP: "网站IP：", //IP
@@ -59,8 +59,10 @@ var ServerInfo = [{
 	//截取或替换的函数，返回的是“未知类型”就是在没有结果的时候自动隐藏该项
 	regx: function(word) {
 		if (word.match("=")) {
-			word = word.replace(/text\/html;| |charset=/ig, "").toUpperCase();
-		} else word = "未知类型";
+			word = word.substring(word.indexOf("charset="));
+			word = word.substring(8, word.lenght).toUpperCase();
+			//word = word.replace(/text\/html;| |charset=/ig, "").toUpperCase();
+		} else word = null;
 		return word;
 	}
 }, {
@@ -71,7 +73,14 @@ var ServerInfo = [{
 	words: "X-Powered-By"
 }];
 /******************************************************************************************
-具体设置请参考示例或者https://github.com/feiruo/userChromeJS/blob/master/anoBtn/_anoBtn.js
+child:[  ]内为当前菜单的二级菜单配置，只支持二级菜单；
+text 为运行参数，如果无需参数，直接删除text属性，目前只支持 %u 为当前网页完整地址；
+exec 为打开路径，可以是任意文件和文件夹，支持相对路径，相对于配置文件；
+文件夹不支持直接“\\”开头的相对路径，需要用“Services.dirsvc.get("ProfD", Ci.nsILocalFile).path”开头
+=======================
+除了以上属性外，可以自定义添加其他属性，如果快捷键accesskey等
+=======================
+{}, 为分隔条 
 =======================
 如果设置了id属性，会尝试获取此id并移动，如果在浏览器中没有找到此id，则这个id就不会生效
 =======================
@@ -99,42 +108,66 @@ showFlagS.command('Action','http://ping.chinaz.com/', 'host', 'IP', null,'but')
 					  but: 		点击使你输入的数据生效或提交按钮的类名（class）
 -----------------
 还有一些其他的，比如编辑文件
-showFlagS.command("Edit", "文件路径，支持相对路径") 如果无路径默认为编辑本文件
-showFlagS.command("Copy", "函数或者字符串")//函数或者字符串默认为复制图标的提示信息[即国旗图标提示里面的信息]
+showFlagS.command("Edit", "文件路径，支持相对路径")
+showFlagS.command("Copy", "函数或者字符串")
 *******************************************************************************************/
 var Menus = [{
 	label: "地址IP",
 	image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAt0lEQVQ4jcXTsWoCQRSF4Q8SsNEitUnhM6RQUtjb+xixTRHIG+SFks7GVxBksbBPGVjWQpsjSNhdXUjIhb+4c5l/mMMMv1g93IfeWf8Qhhi0CcYowmMosAtbfGCO2zrBFGV4CiUOP/iK5GrBHu94wTqSz7rrNAnKzOAtgm0yuUpQ4RkzLCNY4a5LBlU4ZG3RJYOT4BsbvKLfRVDlxAlGuKnb3CY4D7G1/l/Q9JSLzC5W02c69X9TR6H4UVapsaP+AAAAAElFTkSuQmCC",
 	child: [{
-		label: "PingIP(17ce)",
-		tooltiptext: 'http://www.17ce.com/site/ping',
-		oncommand: "showFlagS.command('Action',this.tooltipText, 'url','host', 'su')",
-		image: "http://www.17ce.com/smedia/images/favicon.ico"
-	},{
 		label: "PingIP(aizhan)",
 		tooltiptext: 'http://ping.aizhan.com/',
 		oncommand: "showFlagS.command('Action',this.tooltipText, 'site','host', null,'btn02')",
 		image: "http://www.aizhan.com/favicon.ico"
-	},  {
-		label: "路由跟踪",
-		tooltiptext: 'http://www.domaintools.com/research/traceroute/?query=',
-		oncommand: 'showFlagS.command(this.tooltipText, "ip","&search=traceroute");',
-		image: "http://whois.domaintools.com/favicon.png"
-	}, {}, {
-		label: "IP反查域名",
-		tooltiptext: 'http://dns.aizhan.com/?q=',
-		oncommand: 'showFlagS.command(this.tooltipText, "ip");',
-		image: "http://www.aizhan.com/favicon.ico"
+	}, {
+		label: "PingIP(17ce)",
+		tooltiptext: 'http://www.17ce.com/site/ping',
+		oncommand: "showFlagS.command('Action',this.tooltipText, 'url','host', 'su')",
+		image: "http://www.17ce.com/smedia/images/favicon.ico"
+	}, {
+		label: "PingIP(chinaz)",
+		tooltiptext: 'http://ping.chinaz.com/',
+		image: "http://seo.chinaz.com/Chinaz.ico",
+		//oncommand: "showFlagS.command('Action',this.tooltipText, 'host', 'host', null,'but')",
+		oncommand: function() {
+			var aPostData = "host=" + content.window.document.location.host + "&alllinetype=全选&linetype=电信&linetype=多线&linetype=联通&linetype=移动&linetype=海外";
+			showFlagS.command('Post', this.tooltipText, aPostData);
+		}
+	}, {
+		label: "PingIP(CA)",
+		tooltiptext: 'http://cloudmonitor.ca.com/zh_cn/ping.php?varghost=',
+		oncommand: 'showFlagS.command(this.tooltipText, "host");',
+		image: "http://cloudmonitor.ca.com/assets/flavors/img/ca/favicon.png"
 	}, {
 		label: "IP地图位置",
 		tooltiptext: 'http://www.264.cn/ip/',
 		oncommand: 'showFlagS.command(this.tooltipText, "ip",".html");',
 		image: "http://www.264.cn/favicon.ico"
 	}, {
-		label: "同IP地址网站",
+		label: "路由跟踪",
+		tooltiptext: 'http://www.domaintools.com/research/traceroute/?query=',
+		oncommand: 'showFlagS.command(this.tooltipText, "ip","&search=traceroute");',
+		image: "http://whois.domaintools.com/favicon.png"
+	}, {}, {
+		label: "旁站(aizhan)",
+		tooltiptext: 'http://dns.aizhan.com/?q=',
+		oncommand: 'showFlagS.command(this.tooltipText, "ip");',
+		image: "http://www.aizhan.com/favicon.ico"
+	}, {
+		label: "旁站(264.cn)",
+		tooltiptext: 'http://www.264.cn/sameip/',
+		oncommand: 'showFlagS.command(this.tooltipText, "ip",".html");',
+		image: "http://www.264.cn/favicon.ico"
+	}, {
+		label: "旁站(114best)",
 		tooltiptext: 'http://www.114best.com/ip/114.aspx?w=',
 		oncommand: 'showFlagS.command(this.tooltipText, "ip");',
 		image: "http://www.114best.com/favicon.ico"
+	}, {
+		label: "旁站(Bing)",
+		tooltiptext: 'http://cn.bing.com/search?q=ip:',
+		oncommand: 'showFlagS.command(this.tooltipText, "ip");',
+		image: "http://cn.bing.com/s/a/bing_p.ico"
 	}]
 }, {
 	label: "域名DNS",
@@ -154,7 +187,27 @@ var Menus = [{
 		tooltiptext: 'https://www.sugarhosts.com/members/whois.php?domain=',
 		oncommand: 'showFlagS.command(this.tooltipText, "basedomain");',
 		image: "http://www.sugarhosts.com/templates/sh_christmas2009/favicon.ico"
-	},  {
+	}, {
+		label: "Whois(cndns)",
+		tooltiptext: 'http://who.cndns.com/?d=',
+		oncommand: 'showFlagS.command(this.tooltipText, "basedomain");',
+		image: "http://www.cndns.com/favicon.ico"
+	}, {
+		label: "Whois(aizhan)",
+		tooltiptext: 'http://whois.aizhan.com/',
+		oncommand: 'showFlagS.command(this.tooltipText, "host");',
+		image: "http://www.aizhan.com/favicon.ico"
+	}, {
+		label: "Whois(ChinaZ)",
+		tooltiptext: 'http://whois.chinaz.com/',
+		oncommand: 'showFlagS.command(this.tooltipText, "basedomain");',
+		image: "http://www.aizhan.com/favicon.ico"
+	}, {
+		label: "Whois(Dtools)",
+		tooltiptext: 'http://whois.domaintools.com/',
+		oncommand: 'showFlagS.command(this.tooltipText, "basedomain");',
+		image: "http://whois.domaintools.com/favicon.png"
+	}, {
 		label: "Whois(dnsw)",
 		tooltiptext: 'http://dnsw.info/',
 		oncommand: 'showFlagS.command(this.tooltipText, "basedomain");',
@@ -179,7 +232,7 @@ var Menus = [{
 		oncommand: "showFlagS.command('Action',this.tooltipText, 'url', content.window.document.location.host, 'btn-scan-url')",
 		image: "https://www.virustotal.com/static/img/favicon.ico"
 	}, {
-		label: "WOT评分",
+		label: "WOT Scorecard",
 		tooltiptext: 'https://www.mywot.com/en/scorecard/',
 		oncommand: 'showFlagS.command(this.tooltipText, "host");',
 		image: "https://www.mywot.com/files/favicon.ico"
@@ -208,11 +261,6 @@ var Menus = [{
 	label: "站点搜索",
 	image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAPCAYAAADtc08vAAABHklEQVQokZ3TPyjFURwF8I8/r5fyUhZRUoqJ/Q0Gg0lGZbJgsxmUiSR5+TOIkWJQBhkUFvUGGZVRBsmCPMJkUIZ7vbxfnidn/J57zj3f+/1efkYKAzhAAR94wylGUF9GRyTn8IBzrGAi1vJ4wjZafhLXYgavmEVTgs9gDPfYQUPSIItHLMY2ymE0XjKeJHK4QfsvYkKbeaHFIlI4wmGF27+wgPfvhTROsI/qPxhMC9MpogobuEBjBXENdnGbJAaFeQ9XMMgKk1hNEhns4Rp9ZcRdOItJO5Ox6tCGY9xhORp1owdTuMIler+LU8K2bQnL0Yz5eLgQ4xaEnjejYRFpTOIFa0r3vDUmGEI/OoRtLUEOz1hS4ZOUw7rwmv8SfwIjnjkY6akXagAAAABJRU5ErkJggg==",
 	child: [{
-		label: "类似网站",
-		tooltiptext: 'http://www.similarsitesearch.com/cn/site/',
-		oncommand: 'showFlagS.command(this.tooltipText, "host");',
-		image: "http://www.similarsitesearch.com/favicon.ico"
-	}, {
 		label: "维基域名",
 		tooltiptext: 'http://zh.wikipedia.org/wiki/Special:Search?search=',
 		oncommand: 'showFlagS.command(this.tooltipText, "host","&go=Go&variant=zh-cn");',
@@ -222,6 +270,11 @@ var Menus = [{
 		tooltiptext: 'https://www.xmarks.com/site/',
 		oncommand: 'showFlagS.command(this.tooltipText, "host");',
 		image: "http://www.xmarks.com/favicon.ico"
+	}, {
+		label: "类似网站",
+		tooltiptext: 'http://www.similarsitesearch.com/cn/site/',
+		oncommand: 'showFlagS.command(this.tooltipText, "host");',
+		image: "http://www.similarsitesearch.com/favicon.ico"
 	}, {
 		label: "相似页面",
 		tooltiptext: 'http://www.google.com/search?q=related:',
@@ -303,6 +356,11 @@ var Menus = [{
 	label: "镜像快照",
 	image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABSElEQVQ4jc3Tu0tcYRAF8N+GXVhWs+hGAiIi+Fh8gA+wyDZCEPf/MH0KNUXKZUmagNikSGETxEIb7S01uEUaQUQI2gRB7EQIQghrceeCXJSYLlN8MN89Z+6ZM/Pxv8Uz9GAIvcj/C3kYqzjGJX7gK2rI/Y08ie9o4wItnEW+h+4MvoaJNHmOnQCvo4oi+vAWcxnyaKjbDa46brCPF3E5J/EgjZd4jYrEo4Pg1GEl/t4I8Hv8xgYK0f9n/MGnwDSCsyyONprx8R1+RTv5KLCGW3wITDM4SzCPaxyG1BJmQ2oaFbxCOTCt4MxDB7ai4qZkImUMRjsLGROrOMF2cMEYvkWRKxzhp8fHOIORzJ1+fMRpyDvHF0x7wiJBV/S5KDH2jcSL0lPInZLNmpV4MI6pyAceUFBy753kJMtTiULp6AqRFzLkfKgtwh2F4z1a0Vqb4QAAAABJRU5ErkJggg==",
 	child: [{
+		label: "Google快照",
+		tooltiptext: 'https://webcache.googleusercontent.com/search?q=cache:',
+		oncommand: 'showFlagS.command(this.tooltipText, "url");',
+		image: "https://webcache.googleusercontent.com/favicon.ico"
+	}, {
 		label: "Gigablast",
 		tooltiptext: 'http://www.gigablast.com/search?q=',
 		oncommand: 'showFlagS.command(this.tooltipText, "host");',
@@ -368,30 +426,10 @@ var Menus = [{
 	oncommand: 'showFlagS.command(this.tooltipText, "host");',
 	image: "http://www.wolframalpha.com/favicon.ico"
 }, {
-	label: "PingIP",
-	tooltiptext: 'http://cloudmonitor.ca.com/zh_cn/ping.php?varghost=',
-	oncommand: 'showFlagS.command(this.tooltipText, "host");',
-	image: "http://cloudmonitor.ca.com/assets/flavors/img/ca/favicon.png"
-}, {
-	label: "Google快照",
-	tooltiptext: 'https://webcache.googleusercontent.com/search?q=cache:',
-	oncommand: 'showFlagS.command(this.tooltipText, "url");',
-	image: "https://webcache.googleusercontent.com/favicon.ico"
-}, {
-	label: "Whois",
-	tooltiptext: 'http://whois.domaintools.com/',
-	oncommand: 'showFlagS.command(this.tooltipText, "basedomain");',
-	image: "http://whois.domaintools.com/favicon.png"
-}, {
 	label: "BugMeNot",
 	tooltiptext: 'http://bugmenot.com/view/',
 	oncommand: 'showFlagS.command(this.tooltipText, "host");',
 	image: "http://bugmenot.com/favicon.ico"
-}, {
-  	label: "PrintwhatUlike",
-    	tooltiptext: 'http://www.printwhatyoulike.com/print?url=',
-    	oncommand: 'showFlagS.open(this.tooltipText, "url");',
-    	image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAADCUlEQVQ4jYXTaUjTcRgH8McusqjogKIXBYHQiUiH2IVQaFBmUpYVmpWZ0iGKpUZrKzvISSKmpVPTldnm5t8doa2/7VA3jzUXtnWYDV2OOdncZFBQ+e1NCpHWFz6vfjzP83tePEREBCAAQAAR0bOWrOAixQFugXyX4ElLXL2kI75GZjyZ22jKPlpamjyTporRIl5xX3mo4Xbd1rFHmihoes+gtS9lQktfCjQfz9pM/feyLRbLrD+KK2SX5+VJI3p4tVtQ/movXn08/Q9JMH3JrwIwbfzXdFO0s5BTsxF36reh0ZqApncn/tJoTUCuOAwXH65BnTF2rHugMJqIiG7XxyzOEYb4c4QhqG6NgvztsUnlCEMQnh6I8PRARHOXoKE7RU9ERFcfh+25VBUMTu0mSMyxkE5C3pPoLmLOH7hYEpF8+EbQ8/CMuTj3YN1Xt7t3PmVUBh9Jr1gPvnInal/HTIoxn44f31etVs/IKYvJjMhaCPWH/NWUJQyLvCBYgxL1bgg79/1FZDpaZ7PZZg8PDV13u92nPB7PAgDTT+aFNqQWbF9FbM/TpZerQ7+WtUWgXB85QWCI/Pm4K7a8iZFIpNXVg6a2NrhdLox6vS7fyAhXrinbXKsqWk5ERE/16XkV7TE/Kwz7/Y86Dg6ITGdePmnIuvaCYXpYlsWo14vyggI8Ewjw+f17jHq9GPV4HAAWEYCAmq5TCY4R60pzZyeHz+NJ4qOi3pyNixvL53KhkEphNBpRyufjVmYm7mZng5XL8clqtTocjjnE4/GmiU1pEp/PF9RrsQy1a7WoKi5GRlIS2nU6KMViFObmIvX4cfDS0qAUidCl1UKjUIw5nc4NRERkt+sDiYj8fv8yr8dTPOx0fuvQ6VDC5+NCYiISo6NxJTUVrSoVNAoFWIZBp1bbPOVd+FyuIJfTKRjs7//BKpXI43AgqqxEs0wGlmHQLJN9N+l0a6dsMB7HwMAO5+CghZXLof49mWUYGFSqwok7+F/sdnvgO7P5vF6lMrY0NYm6DYYTNptt9vj7L6mnPDF0znLsAAAAAElFTkSuQmCC"
 }, {
 	label: "翻译此页",
 	tooltiptext: 'http://translate.google.cn/translate?u=',
@@ -420,13 +458,16 @@ var Menus = [{
 //查询本地信息
 var MyInfo = {
 	inquireAPI: "http://whois.pconline.com.cn/", //查询接口API
-	//regulation是截取函数,docum是一个XMLHttpRequest()的req.responseText，（具体可以百度	XMLHttpRequest()）。
+	//regulation是截取函数,docum是一个XMLHttpRequest()的req.responseText，（具体可以百度	XMLHttpRequest()）。传回的obj为最终要显示的结果和样式等
 	regulation: function(docum) {
 		docum = docum.substring(docum.indexOf("位置"));
 		docum = docum.substring(0, docum.indexOf("<h3>接口列表"));
+
 		var addr = docum.substring(3, docum.indexOf("\n"));
+
 		var ip = docum.substring(docum.indexOf("为:"));
 		ip = ip.substring(2, ip.indexOf("\n"));
+
 		var RemoteAddr = docum.substring(docum.indexOf("RemoteAddr"));
 		RemoteAddr = RemoteAddr.substring(11, RemoteAddr.indexOf("<br/>"));
 		if (addr || ip || RemoteAddr) {
@@ -440,7 +481,7 @@ var SourceAPI = [{
 	label: "纯真 查询源", //菜单中显示的文字
 	id: "CZ", //必须设定一个ID，以便脚本读取
 	isFlag: false, //是否作为国旗图标的查询源,所有自定义项目中，只能有一个设为true，其余可删除该项或为false,当你没有设定的时候会使用脚本预设
-	isJustFlag: false, //是否仅作为国旗图标的查询源,如果有此项，就不会创建此项的菜单，也不会作为信息查询源使用。该项为false的时候可注释掉
+	isJustFlag: false, //是否仅作为国旗图标的查询源,如果有此项，就不会创建此项的菜单，也不会作为信息查询源代使用。该项为false的时候可删除或注释掉
 	inquireAPI: "http://www.cz88.net/ip/index.aspx?ip=", //查询的API，GET类型
 	//返回“null”的时候便使用备用查询源；
 	regulation: function(docum) {
@@ -455,6 +496,7 @@ var SourceAPI = [{
 		//以下两项非必须，在此项目不作为国旗图标查询源的时候可以不用
 		obj.countryCode = null; //此处为返回结果的国家CODE。
 		obj.countryName = null; //此处为返回结果的国家名称【中文，需要lib数据库支持】。
+
 		return obj || null;
 	}
 }, {
