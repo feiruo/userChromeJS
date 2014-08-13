@@ -12,6 +12,7 @@
 // @homepageURL	 		https://github.com/feiruo/userChromeJS/tree/master/anoBtn
 // @note         	  	支持菜单和脚本设置重载
 // @note          		需要 _anoBtn.js 配置文件
+// @version		 		1.3.0	2014.08.12 19:00 支持多级菜单，不限制菜单级数。
 // @version		 		1.2.1
 // @version 			1.2修复按钮移动之后重载残留问题，增加菜单弹出位置选择。
 // @version 			1.1解决编辑器中文路径问题，修改菜单，提示等文字。
@@ -71,6 +72,20 @@
 			if (isAlert) this.alert('配置已经重新载入');
 		},
 
+		unint: function(real) {
+			for (var i = 0; i < this.anomenu.length; i++) {
+				var obj = this.anomenu[i];
+				try {
+					$("main-menubar").insertBefore($(obj.id), $("main-menubar").childNodes[7]);
+				} catch (e) {}
+			}
+			$("anobtn").removeChild($("anobtn_popup"));
+			$("anobtn").parentNode.removeChild($("anobtn"));
+			if (real) {
+				$("anobtn_set").parentNode.removeChild($("anobtn_set"));
+			}
+		},
+
 		makebtn: function() {
 			var intags;
 			intags = $(this.anobtnset.intags);
@@ -107,23 +122,10 @@
 			return popup;
 		},
 
-		unint: function(real) {
-			for (var i = 0; i < this.anomenu.length; i++) {
-				var obj = this.anomenu[i];
-				try {
-					$("main-menubar").insertBefore($(obj.id), $("main-menubar").childNodes[7]);
-				} catch (e) {}
-			}
-			$("anobtn").removeChild($("anobtn_popup"));
-			$("anobtn").parentNode.removeChild($("anobtn"));
-			if (real) {
-				$("anobtn_set").parentNode.removeChild($("anobtn_set"));
-			}
-		},
-
-		newMenu: function(menuObj) {
+		newMenu: function(menuObj, islow) {
 			var menu = document.createElement("menu");
 			var popup = menu.appendChild(document.createElement("menupopup"));
+
 			for (let [key, val] in Iterator(menuObj)) {
 				if (key === "child") continue;
 				if (typeof val == "function") menuObj[key] = val = "(" + val.toSource() + ").call(this, event);"
@@ -140,6 +142,7 @@
 		},
 
 		newMenuitem: function(obj) {
+			if (obj.child) return this.newMenu(obj);
 			var menuitem;
 			if (obj.label === "separator" || (!obj.label && !obj.text && !obj.oncommand && !obj.command)) {
 				menuitem = document.createElement("menuseparator");
