@@ -10,11 +10,13 @@
 // @shutdown        window.showFlagS.onDestroy(true);
 // @optionsURL		about:config?filter=showFlagS.
 // @reviewURL		http://bbs.kafan.cn/thread-1666483-1-1.html
+// @reviewURL		http://www.firefoxfan.com/UC-Script/328.html
 // @homepageURL		https://github.com/feiruo/userChromeJS/tree/master/showFlagS
 // @note            Begin 2013-12-16
 // @note            左键点击复制，中间刷新，右键弹出菜单
 // @note            支持菜单和脚本设置重载
 // @note            需要 _showFlagS.js 配置文件
+// @version         1.6.0 		2014.08.17 16:40	Fix。
 // @version         1.6.0 		2014.08.10 18:00	ReBuilding。
 // @version         1.6.0 		2014.08.08 21:00	ReBuilding。
 // @version         1.6.0 		2014.08.07 17:00	ReBuilding。
@@ -115,7 +117,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 					<menuseparator id="showFlagS-sepalator1"/>\
 					<menuitem label="查询本地信息" id="showFlagS-set-MyInfo" type="checkbox"  oncommand="showFlagS.setPerfs(\'MyInfo\')" />\
 					<menuitem label="自动重新获取" id="showFlagS-set-Reacquire" type="checkbox"  oncommand="showFlagS.setPerfs(\'Reacquire\')" />\
-					<menuitem label="脚本菜单配置" id="showFlagS-set-setMenu" tooltiptext="左键：重载配置%EOL%右键：编辑配置" onclick="if(event.button == 0){showFlagS.reload(true);}else if (event.button == 2) {showFlagS.command(\'Edit\');}" class="showFlagS menuitem-iconic" image="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABYElEQVQ4jY3TO0/VQRAF8F9yTUB6QMCCZ6KJBq4JNIQKCkoopAWMsabhC1ho5SOYaO2j0AQ+gYKPS/BeaDD0kPhJLP7nbzZA0ElOsjvnzOzOziyX2yjO8Ds4i++/bRgdzAUdjFwVMIkNDASP8QuDwXF8Nb+RGHAdb3GC72jhIxZxLViMbx/fon2XWKv4inHcx6OaQH8A3eFWot3DmmT8jImipF48y21aeI6+gp9IzA+Ywmu0k7mBF9jBDKaxjZfhxqN9k1hULepgLI90gHvFic34BqJtR6tM0D6XYKrgJ/FT1ZFa+3cu7mALR6mtkf2n3KKZ9auihMPs79aPuIvbxYn9SbIfbOFGwd/CF1XbPVC1ZARL2XdFOIihrLuwjuVod/EQevBeNXmt1P8BC6ohamA+moNojqPpqa/UxCZuBk8iKkf5abihaMsuXbBh1UvPBm3/+EznbRSnqm9c49Lv/AcsoU6W+qo3pgAAAABJRU5ErkJggg=="/>\
+					<menuitem label="脚本菜单配置" id="showFlagS-set-setMenu" tooltiptext="左键：重载配置\r\n右键：编辑配置" onclick="if(event.button == 0){showFlagS.reload(true);}else if (event.button == 2) {showFlagS.command(\'Edit\');}" class="showFlagS menuitem-iconic" image="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABYElEQVQ4jY3TO0/VQRAF8F9yTUB6QMCCZ6KJBq4JNIQKCkoopAWMsabhC1ho5SOYaO2j0AQ+gYKPS/BeaDD0kPhJLP7nbzZA0ElOsjvnzOzOziyX2yjO8Ds4i++/bRgdzAUdjFwVMIkNDASP8QuDwXF8Nb+RGHAdb3GC72jhIxZxLViMbx/fon2XWKv4inHcx6OaQH8A3eFWot3DmmT8jImipF48y21aeI6+gp9IzA+Ywmu0k7mBF9jBDKaxjZfhxqN9k1hULepgLI90gHvFic34BqJtR6tM0D6XYKrgJ/FT1ZFa+3cu7mALR6mtkf2n3KKZ9auihMPs79aPuIvbxYn9SbIfbOFGwd/CF1XbPVC1ZARL2XdFOIihrLuwjuVod/EQevBeNXmt1P8BC6ohamA+moNojqPpqa/UxCZuBk8iKkf5abihaMsuXbBh1UvPBm3/+EznbRSnqm9c49Lv/AcsoU6W+qo3pgAAAABJRU5ErkJggg=="/>\
 				</menupopup>\
 				</menu>\
 				<menuseparator hidden="true" id="showFlagS-sepalator2"/>\
@@ -860,9 +862,11 @@ location == "chrome://browser/content/browser.xul" && (function() {
 	};
 
 	showFlagS.editFile = function(file) {
-		var file = file || this.configFile;
-		var aFile = Cc["@mozilla.org/file/directory_service;1"].getService(Ci.nsIDirectoryService).QueryInterface(Ci.nsIProperties).get('UChrm', Ci.nsILocalFile);
-		aFile.appendRelativePath(file);
+		var aFile;
+		if (file) {
+			aFile = Cc["@mozilla.org/file/directory_service;1"].getService(Ci.nsIDirectoryService).QueryInterface(Ci.nsIProperties).get('UChrm', Ci.nsILocalFile);
+			aFile.appendRelativePath(file);
+		} else aFile = this.configFile;
 		if (!aFile || !aFile.exists() || !aFile.isFile()) return;
 		var editor;
 		try {
