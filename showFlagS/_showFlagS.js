@@ -13,13 +13,16 @@ var Perfs = {
 	//毫秒,延迟时间，时间内未取得所选择查询源数据，就使用备用询源,预设3500毫秒。
 	Inquiry_Delay: "",
 
-	//本地PNG图标存放文件夹，预设相对路径： chrome\lib\LocalFlags 文件夹。
-	LocalFlags: "",
+	//旧版国旗图标库，相对路径，Chrome文件夹，脚本内已有预设：chrome\lib\countryflags.js 文件。	
+	libIconPath: "lib\\countryflags.js", //※请注意格式，任何系统都请使用“\\”分割，但请勿直接以“\\”开头。
 
-	//网络图标地址 预设'http://www.razerzone.com/asset/images/icons/flags/'。
+	//本地PNG图标存放文件夹，相对路径，Chrome文件夹，预设： chrome\lib\LocalFlags 文件夹。	
+	LocalFlags: "lib\\LocalFlags", //※请注意格式，任何系统都请使用“\\”分割，但请勿直接以“\\”开头。
+
+	//网络图标地址，预设'http://www.razerzone.com/asset/images/icons/flags/'。
 	BAK_FLAG_PATH: "", //http://www.1108.hk/images/ext/ 、http://www.myip.cn/images/country_icons/ 等等。
 
-	//等待时国旗图标,脚本内已有一个默认，如不喜欢内置默认，可以再这里修改。
+	//等待时国旗图标,脚本内已有预设，如不喜欢内置默认，可以再这里修改。
 	DEFAULT_Flag: "",
 
 	//未知的国旗图标，预设为脚本内置的等待时国旗图标。
@@ -34,7 +37,7 @@ var Perfs = {
 	//局域网【192.168.xxx.xxx】【169.254.xxx.xxx】，预设为脚本内置的等待时国旗图标。
 	LAN_Flag: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABYAAAAQCAYAAAAS7Y8mAAABLklEQVQ4jeXUO0vcURAF8F8pxDqdAdFCZLUQ/ARiZ6f4AjWua2dhq4IaNEWKgNjFSi3ED2AhmEKxUXw3PrBQQwQbI6SSiJhiR1nwv6uwlXhguJc5cw4zl3svhTGIM1ziV8RvXGD4BW1BfMFDnvhejPEo7hJM7/HtfRlPJpg+xlQxxhlsYEv2dpxjG5sYKMb4Az6hHEMYQSXKUPpakxI0II0efEYnmtGCH5hBW+Q6curSaIxGnuGj7LmNoxt96A9RGnOYj1xvrBl0YQzTMd0TqlGLJsyiHTWoQkXs6zCBr6iPXGXUpNAa2pbgUrCCfRzhCofYwWJMsIZd2Wd8gT2sR4cLUXsY2pMc3h/J1+kUP/EvgbvHKo7zaG/JfipJ5AGWcJPA/cVydJekvX57xv8BD7eoP535NRkAAAAASUVORK5CYII=",
 
-	//显示文字自定义设置,
+	//显示文字自定义设置：
 	tipArrHost: "网站域名：", //域名
 	tipArrIP: "网站IP：", //IP
 	tipArrSep0: "", //分割线，留空就没有
@@ -201,7 +204,7 @@ var Menus = [{
 		label: "Whois(ChinaZ)",
 		tooltiptext: 'http://whois.chinaz.com/',
 		oncommand: 'showFlagS.command(this.tooltipText, "basedomain");',
-		image: "http://www.aizhan.com/favicon.ico"
+		image: "http://whois.chinaz.com/Images/Chinaz.ico"
 	}, {
 		label: "Whois(Dtools)",
 		tooltiptext: 'http://whois.domaintools.com/',
@@ -434,7 +437,13 @@ var Menus = [{
 	label: "翻译此页",
 	tooltiptext: 'http://translate.google.cn/translate?u=',
 	oncommand: 'showFlagS.command(this.tooltipText, "url");',
-	image: "https://translate.google.fr/favicon.ico"
+	image: "http://translate.google.cn/favicon.ico"
+}, {
+	label: "内嵌翻译",
+	oncommand: function() {
+		gBrowser.loadURI("javascript:(function(){var%20s%20=%20document.createElement('script');%20s.type%20=%20'text/javascript';%20s.src%20=%20'http://labs.microsofttranslator.com/bookmarklet/default.aspx?f=js&to=zh-chs';%20document.body.insertBefore(s,%20document.body.firstChild);})()");
+	},
+	image: "http://labs.microsofttranslator.com/favicon.ico"
 }, {
 	label: "存为PDF",
 	tooltiptext: 'http://www.web2pdfconvert.com/engine?curl=',

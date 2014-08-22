@@ -16,6 +16,7 @@
 // @note            左键点击复制，中间刷新，右键弹出菜单
 // @note            支持菜单和脚本设置重载
 // @note            需要 _showFlagS.js 配置文件
+// @version         1.6.1 		2014.08.22 22:00	修复Linux和Windows路径问题。
 // @version         1.6.0 		2014.08.17 16:40	Fix。
 // @version         1.6.0 		2014.08.10 18:00	ReBuilding。
 // @version         1.6.0 		2014.08.08 21:00	ReBuilding。
@@ -50,7 +51,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 	}
 	var showFlagS = {
 		debug: true,
-		libIconPath: "lib\\countryflags.js", // 旧版国旗图标库
 		isFirstRun: true,
 		dnsCache: [],
 		isReqHash: [],
@@ -76,13 +76,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		this.makePopup();
 		this.reload();
 		this.onLocationChange();
-		if (this.isFirstRun) {
-			this.importLib(this.libIconPath);
-			this.isFirstRun = !this.isFirstRun;
-			window.addEventListener("unload", function() {
-				showFlagS.onDestroy();
-			}, false);
-		}
 		showFlagS.progressListener = {
 			onLocationChange: function() {
 				showFlagS.onLocationChange();
@@ -182,7 +175,8 @@ location == "chrome://browser/content/browser.xul" && (function() {
 
 		this.Perfs.showLocationPos = sandbox.Perfs.showLocationPos ? sandbox.Perfs.showLocationPos : 'identity-box';
 		this.Inquiry_Delay = sandbox.Perfs.Inquiry_Delay ? sandbox.Perfs.Inquiry_Delay : 3500;
-		this.LocalFlags = sandbox.Perfs.LocalFlags ? sandbox.Perfs.LocalFlags : "/lib/LocalFlags/";
+		this.libIconPath = sandbox.Perfs.libIconPath ? sandbox.Perfs.libIconPath : "lib\\countryflags.js",
+		this.LocalFlags = sandbox.Perfs.LocalFlags ? sandbox.Perfs.LocalFlags : "lib\\LocalFlags\\";
 		this.BAK_FLAG_PATH = sandbox.Perfs.BAK_FLAG_PATH ? sandbox.Perfs.BAK_FLAG_PATH : 'http://www.razerzone.com/asset/images/icons/flags/';
 		this.DEFAULT_Flag = sandbox.Perfs.DEFAULT_Flag ? sandbox.Perfs.DEFAULT_Flag : this.DEFAULT_Flag;
 		this.Unknown_Flag = sandbox.Perfs.Unknown_Flag ? sandbox.Perfs.Unknown_Flag : this.DEFAULT_Flag;
@@ -203,6 +197,16 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		if (this.apiSite)
 			$("showFlagS-apiSite-" + this.apiSite).setAttribute('checked', true);
 		this.setPerfs();
+
+		if (this.isFirstRun) {
+			var file = FileUtils.getFile("UChrm", this.libIconPath.split('\\'));
+			if (file.exists()) userChrome.import(file.path);
+			this.isFirstRun = !this.isFirstRun;
+			window.addEventListener("unload", function() {
+				showFlagS.onDestroy();
+			}, false);
+		}
+
 		if (isAlert) this.alert('配置已经重新载入');
 	};
 
@@ -240,7 +244,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		this._prefs.QueryInterface(Components.interfaces.nsIPrefBranch2);
 
 		if (!this._prefs.prefHasUserValue("SourceSite") || this._prefs.getPrefType("SourceSite") != Ci.nsIPrefBranch.PREF_STRING)
-			this._prefs.setCharPref("SourceSite", "");
+			this._prefs.setCharPref("SourceSite", (this.SourceAPI ? (this.SourceAPI[0] ? this.SourceAPI[0].id : "") : ""));
 
 		if (!this._prefs.prefHasUserValue("MyInfo") || this._prefs.getPrefType("MyInfo") != Ci.nsIPrefBranch.PREF_BOOL)
 			this._prefs.setBoolPref("MyInfo", this.isMyInfo);
@@ -699,19 +703,8 @@ location == "chrome://browser/content/browser.xul" && (function() {
 	};
 
 	showFlagS.getFlagFoxIconPath = function(filename) {
-		var localFlagPath = (this.LocalFlags + filename + ".png").replace(/\//g, '\\');
-		var fullPath = Cc["@mozilla.org/file/directory_service;1"].getService(Ci.nsIProperties)
-			.get("UChrm", Ci.nsILocalFile).path;
-		if (/^(\\)/.test(localFlagPath)) {
-			fullPath = fullPath + localFlagPath;
-		} else {
-			fullPath = fullPath + "\\" + localFlagPath;
-		}
-		var file = Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsILocalFile);
-		file.initWithPath(fullPath);
-		if (file.exists()) {
-			return "file:///" + fullPath;
-		}
+		var file = FileUtils.getFile("UChrm", (this.LocalFlags + filename + ".png").split('\\'));
+		if (file.exists()) return "file:///" + file.path;
 	};
 
 	showFlagS.Thx = function(api) {
@@ -1095,23 +1088,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 	/*****************************************************************************************/
 	showFlagS.alert = function(aString, aTitle) {
 		Cc['@mozilla.org/alerts-service;1'].getService(Ci.nsIAlertsService).showAlertNotification("", aTitle || "showFlagS", aString, false, "", null);
-	};
-
-	showFlagS.importLib = function(localFlagPath) {
-		localFlagPath = localFlagPath.replace(/\//g, '\\');
-		var fullPath = Cc["@mozilla.org/file/directory_service;1"].getService(Ci.nsIProperties)
-			.get("UChrm", Ci.nsILocalFile).path;
-		if (/^(\\)/.test(localFlagPath)) {
-			fullPath = fullPath + localFlagPath;
-		} else {
-			fullPath = fullPath + "\\" + localFlagPath;
-		}
-
-		var file = Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsILocalFile);
-		file.initWithPath(fullPath);
-		if (file.exists()) {
-			userChrome.import(localFlagPath, "UChrm");
-		}
 	};
 
 	showFlagS.loadFile = function(aFile) {
