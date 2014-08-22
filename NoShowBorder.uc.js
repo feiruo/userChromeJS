@@ -7,9 +7,20 @@
 // @startup         window.chromemargin.init();
 // @shutdown        window.chromemargin.onDestroy();
 // @homepageURL   	https://github.com/feiruo/userchromejs/
-// @version         1.2.1
+// @version         1.2.2
 // ==/UserScript==
 (function() {
+	var gav = Services.wm.getEnumerator("navigator:browser");
+	var inIDOMUtils = Cc["@mozilla.org/inspector/dom-utils;1"].getService(Ci.inIDOMUtils);
+	while (gav.hasMoreElements()) {
+		if (gav.getNext().chromemargin && !document.documentElement.outerHTML.match('chromehidden=""')) return;
+	}
+
+	if (window.chromemargin) {
+		window.chromemargin.onDestroy();
+		delete window.chromemargin;
+	}
+
 	window.chromemargin = {
 		init: function() {
 			window.addEventListener("resize", this, true);
