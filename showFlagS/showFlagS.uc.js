@@ -6,7 +6,7 @@
 // @charset			UTF-8
 // @include			chrome://browser/content/browser.xul
 // @id 				[FE89584D]
-// @startup         window.showFlagS.init();
+// @startup         window.showFlag.init();
 // @shutdown        window.showFlagS.onDestroy(true);
 // @optionsURL		about:config?filter=showFlagS.
 // @reviewURL		http://bbs.kafan.cn/thread-1666483-1-1.html
@@ -16,6 +16,8 @@
 // @note            左键点击复制，中间刷新，右键弹出菜单
 // @note            支持菜单和脚本设置重载
 // @note            需要 _showFlagS.js 配置文件
+// @version         1.6.1 		2014.08.27 20:30	完善禁用和路径支持。
+// @version         1.6.1 		2014.08.24 22:00	错误页面显示。
 // @version         1.6.1 		2014.08.22 22:00	修复Linux和Windows路径问题。
 // @version         1.6.0 		2014.08.17 16:40	Fix。
 // @version         1.6.0 		2014.08.10 18:00	ReBuilding。
@@ -49,9 +51,23 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		window.showFlagS.onDestroy();
 		delete window.showFlagS;
 	}
+	window.showFlag = {
+		init: function() {
+			for (var i = 0; i < userChrome_js.scripts.length; i++) {
+				if (userChrome_js.scripts[i].id == '[FE89584D]') {
+					var name = userChrome_js.scripts[i].filename;
+					var dir = userChrome_js.scripts[i].dir;
+					if (dir == 'root')
+						dir = FileUtils.getFile("UChrm", [name]).path;
+					else
+						dir = FileUtils.getFile("UChrm", [dir, name]).path;
+				}
+			}
+			userChrome.import(dir);
+		},
+	};
 	var showFlagS = {
 		debug: true,
-		isFirstRun: true,
 		dnsCache: [],
 		isReqHash: [],
 		isReqHash_tooltip: [],
@@ -86,18 +102,22 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			onStatusChange: function() {}
 		};
 		window.getBrowser().addProgressListener(showFlagS.progressListener);
-	};
 
-	showFlagS.uninit = function() {
-		this.removeMenu(this.Menus);
-		$("showFlagS-popup").parentNode.removeChild($("showFlagS-popup"));
-		if (this.Perfs.showLocationPos == "identity-box")
-			$("page-proxy-favicon").style.visibility = "";
+		window.addEventListener("unload", function() {
+			showFlagS.onDestroy();
+		}, false);
 	};
 
 	showFlagS.onDestroy = function(isAlert) {
-		if (isAlert) this.uninit();
+		this.removeMenu(this.Menus);
+		try {
+			$("showFlagS-popup").parentNode.removeChild($("showFlagS-popup"));
+		} catch (e) {}
+		if (this.Perfs.showLocationPos == "identity-box")
+			$("page-proxy-favicon").style.visibility = "";
 		window.getBrowser().removeProgressListener(showFlagS.progressListener);
+		if (isAlert)
+			delete window.showFlagS;
 	};
 
 	showFlagS.makePopup = function() {
@@ -198,14 +218,30 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			$("showFlagS-apiSite-" + this.apiSite).setAttribute('checked', true);
 		this.setPerfs();
 
-		if (this.isFirstRun) {
-			var file = FileUtils.getFile("UChrm", this.libIconPath.split('\\'));
-			if (file.exists()) userChrome.import(file.path);
-			this.isFirstRun = !this.isFirstRun;
-			window.addEventListener("unload", function() {
-				showFlagS.onDestroy();
-			}, false);
+
+		this.libIconPath = this.libIconPath.replace(/\//g, '\\');
+		if (/(\\)$/.test(this.libIconPath))
+			this.libIconPath.substring(this.libIconPath.lastIndexOf("\\") + 1)
+		var libFile = FileUtils.getFile("UChrm", this.libIconPath.split('\\'));
+		if (libFile.exists())
+			var libData = this.loadFile(libFile);
+
+		var sandbox = new Cu.Sandbox(new XPCNativeWrapper(window));
+		sandbox.Components = Components;
+		sandbox.Cc = Cc;
+		sandbox.Ci = Ci;
+		sandbox.Cr = Cr;
+		sandbox.Cu = Cu;
+		sandbox.Services = Services;
+		sandbox.locale = Services.prefs.getCharPref("general.useragent.locale");
+
+		try {
+			Cu.evalInSandbox(libData, sandbox, "1.8");
+		} catch (e) {
+			return;
 		}
+		this.CountryNames = sandbox.CountryNames;
+		this.CountryFlags = sandbox.CountryFlags;
 
 		if (isAlert) this.alert('配置已经重新载入');
 	};
@@ -379,7 +415,13 @@ location == "chrome://browser/content/browser.xul" && (function() {
 	showFlagS.lookupIP = function(ip, host) {
 		var self = showFlagS;
 		if (ip == "0") {
-			self.resetState();
+			self.showFlagHash[host] = 'UnknownFlag';
+			self.updateIcon(host, self.showFlagHash[host]);
+			var doc = self.contentDoc.URL;
+			var obj = {};
+			obj.SiteInfo = '错误类型：' + doc.substring(doc.indexOf("=") + 1, doc.indexOf("&")) + '\n' + '详细描述：' + decodeURI(doc.substring(doc.lastIndexOf("=") + 1));
+			self.showFlagTooltipHash[host] = obj;
+			self.updateTooltipText(ip, host, self.showFlagTooltipHash[host]);
 			return;
 		}
 		if (/^192.168.|169.254./.test(ip) || ip == "127.0.0.1" || ip == "::1") {
@@ -429,15 +471,20 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			if (checkCache && self.isReqHash_tooltip[host]) return;
 			self.isReqHash_tooltip[host] = true;
 			var obj = {};
+			if (/^(about:neterror)/.test(self.contentDoc.URL)) {
+				var doc = self.contentDoc.URL;
+				obj.SiteInfo = '错误类型：' + doc.substring(doc.indexOf("=") + 1, doc.indexOf("&")) + '\n' + '详细描述：' + decodeURI(doc.substring(doc.lastIndexOf("=") + 1));
+				self.showFlagTooltipHash[host] = obj;
+				self.updateTooltipText(ip, host, self.showFlagTooltipHash[host]);
+				return;
+			}
 			self.serverInfoTip(function(info) {
 				obj.ServerInfo = info;
 				if (/^192.168.|169.254./.test(ip) || ip == "127.0.0.1" || ip == "::1") {
 					if (/^192.168.|169.254./.test(ip))
 						obj.SiteInfo = '本地局域网服务器';
-					else if (info)
-						obj.SiteInfo = '回送地址：本机[服务器]';
 					else
-						obj.SiteInfo = '回送地址：连接被重置(或[Hosts]文件屏蔽此网址)';
+						obj.SiteInfo = '回送地址：本机[服务器]';
 					self.showFlagTooltipHash[host] = obj;
 					self.updateTooltipText(ip, host, self.showFlagTooltipHash[host]);
 					return;
@@ -478,11 +525,11 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			if (countryCode === 'iana' || countryCode === 'UnknownFlag') {
 				src = this.Unknown_Flag;
 			} else {
-				src = window.CountryFlags ? (this.getFlagFoxIconPath(countryCode) || CountryFlags[countryCode]) : this.getFlagFoxIconPath(countryCode);
-				if (!src && window.CountryFlags && countryName) {
-					contryCode = window.CountryNames && CountryNames[countryName];
-					if (contryCode in CountryFlags) {
-						src = CountryFlags[contryCode];
+				src = this.CountryFlags ? (this.getFlagFoxIconPath(countryCode) || this.CountryFlags[countryCode]) : this.getFlagFoxIconPath(countryCode);
+				if (!src && this.CountryFlags && countryName) {
+					contryCode = this.CountryNames && this.CountryNames[countryName];
+					if (contryCode in this.CountryFlags) {
+						src = this.CountryFlags[contryCode];
 						this.showFlagHash[host] = contryCode;
 					}
 				}
@@ -495,7 +542,8 @@ location == "chrome://browser/content/browser.xul" && (function() {
 					$('page-proxy-favicon').style.visibility = 'collapse';
 				else
 					$('page-proxy-favicon').style.visibility = 'visible';
-				if (!src) this.icon.hidden = true;
+				if (src) $('page-proxy-favicon').style.visibility = 'collapse';
+				else this.icon.hidden = true;
 			}
 		}
 	};
@@ -515,7 +563,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 
 		var tooltipArr = [];
 		obj || (obj = {});
-		if (this.showFlagHash[host] && !obj.UnknownFlag)
+		if (this.showFlagHash[host] && !obj.UnknownFlag && this.showFlagHash[host] !== 'UnknownFlag')
 			obj.FlagThx = this.Thx(this.FlagApi) || this.Thx("http://ip.taobao.com/service/getIpInfo.php?ip=");
 
 		if (obj.UnknownFlag && obj.UnknownFlag !== "") {
@@ -653,7 +701,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			self.showFlagHash[host] = 'UnknownFlag';
 			self.updateIcon(host, self.showFlagHash[host]);
 			if (!self.showFlagTooltipHash[host]) self.showFlagTooltipHash[host] = {};
-			self.showFlagTooltipHash[host].UnknownFlag = '无法获取，请刷新！';
+			self.showFlagTooltipHash[host].UnknownFlag = '无法获取国家代码，请刷新！';
 			self.updateTooltipText(ip, host, self.showFlagTooltipHash[host]);
 			return;
 		};
@@ -703,6 +751,9 @@ location == "chrome://browser/content/browser.xul" && (function() {
 	};
 
 	showFlagS.getFlagFoxIconPath = function(filename) {
+		this.LocalFlags = this.LocalFlags.replace(/\//g, '\\');
+		if (!/(\\)$/.test(this.LocalFlags))
+			this.LocalFlags = this.LocalFlags + '\\';
 		var file = FileUtils.getFile("UChrm", (this.LocalFlags + filename + ".png").split('\\'));
 		if (file.exists()) return "file:///" + file.path;
 	};
@@ -911,7 +962,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		} else {
 			this.icon = $(iconPref.showLocationPos).appendChild($C("toolbarbutton", {
 				id: "showFlagS-icon",
-				class: "toolbarbutton-1 chromeclass-toolbar-additional", //statusbarpanel-iconic
+				class: "statusbarpanel-iconic", //statusbarpanel-iconic
 				removable: true,
 				context: "showFlagS-popup",
 			}));

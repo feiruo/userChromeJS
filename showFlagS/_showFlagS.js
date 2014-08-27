@@ -14,10 +14,10 @@ var Perfs = {
 	Inquiry_Delay: "",
 
 	//旧版国旗图标库，相对路径，Chrome文件夹，脚本内已有预设：chrome\lib\countryflags.js 文件。	
-	libIconPath: "lib\\countryflags.js", //※请注意格式，任何系统都请使用“\\”分割，但请勿直接以“\\”开头。
+	libIconPath: "lib\\countryflags.js", //支持Linux、WIndows格式，但请勿直接以“\\”开头。
 
 	//本地PNG图标存放文件夹，相对路径，Chrome文件夹，预设： chrome\lib\LocalFlags 文件夹。	
-	LocalFlags: "lib\\LocalFlags", //※请注意格式，任何系统都请使用“\\”分割，但请勿直接以“\\”开头。
+	LocalFlags: "lib\\LocalFlags", //支持Linux、WIndows格式，但请勿直接以“\\”开头。
 
 	//网络图标地址，预设'http://www.razerzone.com/asset/images/icons/flags/'。
 	BAK_FLAG_PATH: "", //http://www.1108.hk/images/ext/ 、http://www.myip.cn/images/country_icons/ 等等。
@@ -61,12 +61,12 @@ var ServerInfo = [{
 	words: "Content-Type", //http头信息关键字
 	//截取或替换的函数，返回的是“未知类型”就是在没有结果的时候自动隐藏该项
 	regx: function(word) {
-		if (word.match("=")) {
+		if (word && word.match("=")) {
 			word = word.substring(word.indexOf("charset="));
 			word = word.substring(8, word.lenght).toUpperCase();
 			//word = word.replace(/text\/html;| |charset=/ig, "").toUpperCase();
-		} else word = null;
-		return word;
+			return word;
+		} else return null;
 	}
 }, {
 	label: "网站程序：",
@@ -469,20 +469,22 @@ var MyInfo = {
 	inquireAPI: "http://whois.pconline.com.cn/", //查询接口API
 	//regulation是截取函数,docum是一个XMLHttpRequest()的req.responseText，（具体可以百度	XMLHttpRequest()）。传回的obj为最终要显示的结果和样式等
 	regulation: function(docum) {
-		docum = docum.substring(docum.indexOf("位置"));
-		docum = docum.substring(0, docum.indexOf("<h3>接口列表"));
+		if (docum) {
+			docum = docum.substring(docum.indexOf("位置"));
+			docum = docum.substring(0, docum.indexOf("<h3>接口列表"));
 
-		var addr = docum.substring(3, docum.indexOf("\n"));
+			var addr = docum.substring(3, docum.indexOf("\n"));
 
-		var ip = docum.substring(docum.indexOf("为:"));
-		ip = ip.substring(2, ip.indexOf("\n"));
+			var ip = docum.substring(docum.indexOf("为:"));
+			ip = ip.substring(2, ip.indexOf("\n"));
 
-		var RemoteAddr = docum.substring(docum.indexOf("RemoteAddr"));
-		RemoteAddr = RemoteAddr.substring(11, RemoteAddr.indexOf("<br/>"));
-		if (addr || ip || RemoteAddr) {
-			var MyInfos = "我的IP：" + ip + '\n' + "我的地址：" + addr + '\n' + "RemoteAddr：" + RemoteAddr;
-			return MyInfos;
-		} else return "查询失败";
+			var RemoteAddr = docum.substring(docum.indexOf("RemoteAddr"));
+			RemoteAddr = RemoteAddr.substring(11, RemoteAddr.indexOf("<br/>"));
+			if (addr || ip || RemoteAddr) {
+				var MyInfos = "我的IP：" + ip + '\n' + "我的地址：" + addr + '\n' + "RemoteAddr：" + RemoteAddr;
+				return MyInfos;
+			} else return "查询失败";
+		} else return null;
 	}
 };
 //查询网站IP信息等
@@ -494,72 +496,81 @@ var SourceAPI = [{
 	inquireAPI: "http://www.cz88.net/ip/index.aspx?ip=", //查询的API，GET类型
 	//返回“null”的时候便使用备用查询源；
 	regulation: function(docum) {
-		var s_local, myip, myAddr;
-		var addr_pos = docum.indexOf("AddrMessage");
-		s_local = docum.substring(addr_pos + 13);
-		s_local = s_local.substring(0, s_local.indexOf("<"));
-		s_local = s_local.replace(/ +CZ88.NET ?/g, "");
+		if (docum) { //判断是否有传入值
 
-		var obj = {}; //※必须，返回结果必须为object类型，此处为声明。
-		obj.SiteInfo = s_local || null; //※必须，此处为返回结果中你需要显示的信息;当前项仅为图标查询源的时候可以非必须。
-		//以下两项非必须，在此项目不作为国旗图标查询源的时候可以不用
-		obj.countryCode = null; //此处为返回结果的国家CODE。
-		obj.countryName = null; //此处为返回结果的国家名称【中文，需要lib数据库支持】。
+			var s_local, myip, myAddr;
+			var addr_pos = docum.indexOf("AddrMessage");
+			s_local = docum.substring(addr_pos + 13);
+			s_local = s_local.substring(0, s_local.indexOf("<"));
+			s_local = s_local.replace(/ +CZ88.NET ?/g, "");
 
-		return obj || null;
+			var obj = {}; //※必须，返回结果必须为object类型，此处为声明。
+			obj.SiteInfo = s_local || null; //※必须，此处为返回结果中你需要显示的信息;当前项仅为图标查询源的时候可以非必须。
+			//以下两项非必须，在此项目不作为国旗图标查询源的时候可以不用
+			obj.countryCode = null; //此处为返回结果的国家CODE。
+			obj.countryName = null; //此处为返回结果的国家名称【中文，需要lib数据库支持】。
+
+			return obj || null;
+		} else return null; //如果没有传入值则返回空
 	}
 }, {
 	label: "太平洋电脑",
 	id: "pconline",
 	inquireAPI: "http://whois.pconline.com.cn/ip.jsp?ip=",
 	regulation: function(docum) {
-		var docum = docum.replace(/\n/ig, "");
+		if (docum) {
+			var docum = docum.replace(/\n/ig, "");
 
-		var obj = {};
-		obj.SiteInfo = docum || null;
-		obj.countryCode = null;
-		obj.countryName = null;
-		return obj || null;
+			var obj = {};
+			obj.SiteInfo = docum || null;
+			obj.countryCode = null;
+			obj.countryName = null;
+			return obj || null;
+		} else return null;
 	}
 }, {
 	label: "MyIP查询源",
 	id: "myip",
 	inquireAPI: "http://www.myip.cn/",
 	regulation: function(docum) {
-		var myip_addr, myip_flag;
-		var addr_pos = docum.indexOf("来自");
-		myip_addr = docum.substring(addr_pos + 4);
-		myip_addr = myip_addr.substring(0, myip_addr.indexOf("."));
-		if (myip_addr.indexOf("&nbsp;") !== -1)
-			myip_addr = myip_addr.substring(0, myip_addr.indexOf("&nbsp;"));
-		if (myip_addr.indexOf("<") !== -1)
-			myip_addr = myip_addr.substring(0, myip_addr.indexOf("<"));
-		if (myip_addr.indexOf("\r\n\t\t") !== -1)
-			myip_addr = myip_addr.substring(0, myip_addr.indexOf("\r\n\t\t"));
+		if (docum) {
+			var myip_addr, myip_flag;
+			var addr_pos = docum.indexOf("来自");
+			myip_addr = docum.substring(addr_pos + 4);
+			myip_addr = myip_addr.substring(0, myip_addr.indexOf("."));
+			if (myip_addr.indexOf("&nbsp;") !== -1)
+				myip_addr = myip_addr.substring(0, myip_addr.indexOf("&nbsp;"));
+			if (myip_addr.indexOf("<") !== -1)
+				myip_addr = myip_addr.substring(0, myip_addr.indexOf("<"));
+			if (myip_addr.indexOf("\r\n\t\t") !== -1)
+				myip_addr = myip_addr.substring(0, myip_addr.indexOf("\r\n\t\t"));
 
-		var obj = {};
-		obj.SiteInfo = myip_addr || null;
-		obj.countryCode = null;
-		obj.countryName = null;
-		return obj || null;
+			var obj = {};
+			obj.SiteInfo = myip_addr || null;
+			obj.countryCode = null;
+			obj.countryName = null;
+			return obj || null;
+		} else return null;
 	}
 }, {
 	label: "新浪 查询源",
 	id: "sina",
 	inquireAPI: "http://int.dpool.sina.com.cn/iplookup/iplookup.php?format=json&ip=",
 	regulation: function(docum) {
-		var doc = JSON.parse(docum);
-		if (doc.ret == 1) {
-			if (doc.isp !== '' || doc.type !== '' || doc.desc !== '')
-				var addr = doc.country + doc.province + doc.city + doc.district + '\n' + doc.isp + doc.type + doc.desc;
-			else
-				var addr = doc.country + doc.province + doc.city + doc.district;
+		if (docum) {
+			var doc = JSON.parse(docum);
+			if (doc.ret == 1) {
+				if (doc.isp !== '' || doc.type !== '' || doc.desc !== '')
+					var addr = doc.country + doc.province + doc.city + doc.district + '\n' + doc.isp + doc.type + doc.desc;
+				else
+					var addr = doc.country + doc.province + doc.city + doc.district;
 
-			var obj = {};
-			obj.SiteInfo = addr || null;
-			obj.countryCode = null;
-			obj.countryName = doc.country || null;
-			return obj || null;
+				var obj = {};
+				obj.SiteInfo = addr || null;
+				obj.countryCode = null;
+				obj.countryName = doc.country || null;
+				return obj || null;
+			} else return null;
 		} else return null;
 	}
 }, {
@@ -567,14 +578,16 @@ var SourceAPI = [{
 	id: "CZedu",
 	inquireAPI: "http://phyxt8.bu.edu/iptool/qqwry.php?ip=",
 	regulation: function(docum) {
-		var s_local = docum;
-		s_local = s_local.replace(/ +CZ88.NET ?/g, "");
+		if (docum) {
+			var s_local = docum;
+			s_local = s_local.replace(/ +CZ88.NET ?/g, "");
 
-		var obj = {};
-		obj.SiteInfo = s_local || null;
-		obj.countryCode = null;
-		obj.countryName = null;
-		return obj || null;
+			var obj = {};
+			obj.SiteInfo = s_local || null;
+			obj.countryCode = null;
+			obj.countryName = null;
+			return obj || null;
+		} else return null;
 
 	}
 }, {
@@ -583,8 +596,8 @@ var SourceAPI = [{
 	isFlag: true,
 	inquireAPI: "http://ip.taobao.com/service/getIpInfo.php?ip=",
 	regulation: function(docum) {
-		var doc = JSON.parse(docum);
-		if (doc.code == 0) {
+		if (docum && JSON.parse(docum).code == 0) {
+			var doc = JSON.parse(docum);
 			var country_id = doc.data.country_id.toLocaleLowerCase();
 			var addr = doc.data.country + doc.data.area;
 			if (doc.data.region || doc.data.city || doc.data.county || doc.data.isp)
@@ -595,7 +608,6 @@ var SourceAPI = [{
 			obj.countryCode = country_id || null;
 			obj.countryName = doc.data.country || null;
 			return obj || null;
-
 		} else return null;
 	}
 }]
