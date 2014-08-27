@@ -955,14 +955,15 @@ location == "chrome://browser/content/browser.xul" && (function() {
 
 	showFlagS.setIcon = function(iconPref) {
 		if (iconPref.showLocationPos == 'identity-box' || iconPref.showLocationPos == 'urlbar-icons') {
-			this.icon = $(iconPref.showLocationPos).appendChild($C('image', {
+			this.icon = $(iconPref.showLocationPos).appendChild($C('image' /*statusbarpanel*/ , {
 				id: 'showFlagS-icon',
+				//class:"statusbarpanel-iconic"
 				context: 'showFlagS-popup'
 			}));
 		} else {
 			this.icon = $(iconPref.showLocationPos).appendChild($C("toolbarbutton", {
 				id: "showFlagS-icon",
-				class: "statusbarpanel-iconic", //statusbarpanel-iconic
+				class: "toolbarbutton-1 chromeclass-toolbar-additional",
 				removable: true,
 				context: "showFlagS-popup",
 			}));
