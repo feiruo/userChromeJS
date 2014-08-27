@@ -51,21 +51,25 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		window.showFlagS.onDestroy();
 		delete window.showFlagS;
 	}
-	window.showFlag = {
-		init: function() {
-			for (var i = 0; i < userChrome_js.scripts.length; i++) {
-				if (userChrome_js.scripts[i].id == '[FE89584D]') {
-					var name = userChrome_js.scripts[i].filename;
-					var dir = userChrome_js.scripts[i].dir;
-					if (dir == 'root')
-						dir = FileUtils.getFile("UChrm", [name]).path;
-					else
-						dir = FileUtils.getFile("UChrm", [dir, name]).path;
+
+	if (!window.showFlag) {
+		window.showFlag = {
+			init: function() {
+				for (var i = 0; i < userChrome_js.scripts.length; i++) {
+					if (userChrome_js.scripts[i].id == '[FE89584D]') {
+						var name = userChrome_js.scripts[i].filename;
+						var dir = userChrome_js.scripts[i].dir;
+						if (dir == 'root')
+							dir = FileUtils.getFile("UChrm", [name]).path;
+						else
+							dir = FileUtils.getFile("UChrm", [dir, name]).path;
+					}
 				}
-			}
-			userChrome.import(dir);
-		},
-	};
+				userChrome.import(dir);
+			},
+		};
+	}
+
 	var showFlagS = {
 		debug: true,
 		dnsCache: [],
@@ -957,7 +961,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		if (iconPref.showLocationPos == 'identity-box' || iconPref.showLocationPos == 'urlbar-icons') {
 			this.icon = $(iconPref.showLocationPos).appendChild($C('image' /*statusbarpanel*/ , {
 				id: 'showFlagS-icon',
-				//class:"statusbarpanel-iconic"
+				//class:"statusbarpanel-iconic",
 				context: 'showFlagS-popup'
 			}));
 		} else {
