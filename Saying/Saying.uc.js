@@ -91,7 +91,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		window.getBrowser().addProgressListener(Saying.progressListener);
 
 		window.addEventListener("unload", function() {
-			Saying.finsh('all');
 			Saying.onDestroy();
 		}, false);
 	};
@@ -349,7 +348,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		}
 
 		if (!this.autotip)
-			this.Sayings.label = val;
+			Saying.Sayings.label = val;
 		else {
 			var popup = $("SayingTip");
 			if (this.timer) clearTimeout(this.timer);
@@ -373,7 +372,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 	Saying.getVeryCD = function() {
 		var self = Saying;
 		var req = new XMLHttpRequest();
-		req.open("GET", 'http://www.VeryCD.com/statics/title.Saying', true);
+		req.open("GET", 'http://www.verycd.com/statics/title.saying', true);
 		req.send(null);
 		req.onerror = function() {
 			self.finsh('VeryCD');
