@@ -1,6 +1,10 @@
 userChromeJS
 ============
 ####一些修改、原创的自用脚本,可能包含个人使用习惯。
+Need this:</br>
+https://github.com/alice0775/userChrome.js/blob/master/userChrome.js </br>
+Or this:</br>
+https://github.com/ywzhaiqi/userChromeJS/tree/master/userChromeJS_Mix.xpi
 #####AwesomeBookmarkbar.uc.js
 - 点击地址栏显示书签工具栏；
 - 鼠标移到地址栏自动显示书签工具栏，移出隐藏；
