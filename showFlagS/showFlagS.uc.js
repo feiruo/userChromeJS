@@ -7,7 +7,7 @@
 // @include			chrome://browser/content/browser.xul
 // @id 				[FE89584D]
 // @startup         window.showFlag.init();
-// @shutdown        window.showFlagS.onDestroy(true);
+// @shutdown        window.showFlag.onDestroy(true);
 // @optionsURL		about:config?filter=showFlagS.
 // @reviewURL		http://bbs.kafan.cn/thread-1666483-1-1.html
 // @reviewURL		http://www.firefoxfan.com/UC-Script/328.html
@@ -15,7 +15,8 @@
 // @note            Begin 2013-12-16
 // @note            左键点击复制，中间刷新，右键弹出菜单
 // @note            支持菜单和脚本设置重载
-// @note            需要 _showFlagS.js 配置文件
+// @note            更多功能需要 _showFlagS.js 配置文件
+// @version         1.7.0 		2014.08.29 21:30	完善卸载，完善路径兼容。
 // @version         1.6.1 		2014.08.27 20:30	完善禁用和路径支持。
 // @version         1.6.1 		2014.08.24 22:00	错误页面显示。
 // @version         1.6.1 		2014.08.22 22:00	修复Linux和Windows路径问题。
@@ -47,16 +48,12 @@
  * 参考 Show Location 扩展、Flagfox 扩展、http://files.cnblogs.com/ziyunfei/showFlag.uc.js
  */
 location == "chrome://browser/content/browser.xul" && (function() {
-	if (window.showFlagS) {
-		window.showFlagS.onDestroy();
-		delete window.showFlagS;
-	}
 
 	if (!window.showFlag) {
 		window.showFlag = {
 			init: function() {
 				for (var i = 0; i < userChrome_js.scripts.length; i++) {
-					if (userChrome_js.scripts[i].id == '[FE89584D]') {
+					if (userChrome_js.scripts[i].id == '[FE89584D]' || userChrome_js.scripts[i].description == '显示国旗与IP') {
 						var name = userChrome_js.scripts[i].filename;
 						var dir = userChrome_js.scripts[i].dir;
 						if (dir == 'root')
@@ -67,8 +64,24 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				}
 				userChrome.import(dir);
 			},
+			onDestroy: function(isAlert) {
+				window.showFlagS.removeMenu(window.showFlagS.Menus);
+				try {
+					$("showFlagS-popup").parentNode.removeChild($("showFlagS-popup"));
+				} catch (e) {}
+				if (window.showFlagS.Perfs.showLocationPos == "identity-box")
+					$("page-proxy-favicon").style.visibility = "";
+				window.getBrowser().removeProgressListener(window.showFlagS.progressListener);
+				delete window.showFlagS;
+				Services.obs.notifyObservers(null, "startupcache-invalidate", "");
+			},
 		};
+		window.addEventListener("unload", function() {
+			showFlag.onDestroy();
+		}, false);
 	}
+
+	if (window.showFlagS) window.showFlag.onDestroy();
 
 	var showFlagS = {
 		debug: true,
@@ -92,7 +105,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 	};
 
 	showFlagS.init = function() {
-		this.addIcon();
 		this.makePopup();
 		this.reload();
 		this.onLocationChange();
@@ -106,22 +118,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			onStatusChange: function() {}
 		};
 		window.getBrowser().addProgressListener(showFlagS.progressListener);
-
-		window.addEventListener("unload", function() {
-			showFlagS.onDestroy();
-		}, false);
-	};
-
-	showFlagS.onDestroy = function(isAlert) {
-		this.removeMenu(this.Menus);
-		try {
-			$("showFlagS-popup").parentNode.removeChild($("showFlagS-popup"));
-		} catch (e) {}
-		if (this.Perfs.showLocationPos == "identity-box")
-			$("page-proxy-favicon").style.visibility = "";
-		window.getBrowser().removeProgressListener(showFlagS.progressListener);
-		if (isAlert)
-			delete window.showFlagS;
 	};
 
 	showFlagS.makePopup = function() {
@@ -148,31 +144,19 @@ location == "chrome://browser/content/browser.xul" && (function() {
 	};
 
 	showFlagS.reload = function(isAlert) {
-		var aFile = Services.dirsvc.get('UChrm', Ci.nsILocalFile);
+		var aFile, data, libFile, libData, err, errMsg = [];
+		aFile = Services.dirsvc.get('UChrm', Ci.nsILocalFile);
 		aFile.appendRelativePath('lib');
 		aFile.appendRelativePath('_showFlagS.js');
-		if (!aFile || !aFile.exists() || !aFile.isFile()) {
-			this.Perfs = this.Menus = this.ServerInfo = this.SourceAPI = this.MyInfo = {};
-			this.Perfs.showLocationPos = 'identity-box';
-			this.Inquiry_Delay = 3500;
-			this.LocalFlags = "/lib/LocalFlags/";
-			this.BAK_FLAG_PATH = 'http://www.razerzone.com/asset/images/icons/flags/';
-			this.DEFAULT_Flag = this.DEFAULT_Flag;
-			this.Unknown_Flag = this.DEFAULT_Flag;
-			this.File_Flag = this.DEFAULT_Flag;
-			this.Base64_Flag = this.File_Flag;
-			this.LocahHost_Flag = this.DEFAULT_Flag;
-			this.LAN_Flag = this.DEFAULT_Flag;
+		if (aFile && aFile.exists() && aFile.isFile()) {
 			this.isConfigFile = true;
-			this.setPerfs();
-			if (isAlert) this.alert('配置文件不存在');
-			return log('配置文件不存在');
+			this.configFile = aFile;
+			data = this.loadFile(aFile);
+		} else {
+			err = true;
+			errMsg.push('配置文件不存在');
+			log('配置文件不存在');
 		}
-
-		delete this.configFile;
-		this.configFile = aFile;
-		var data = this.loadFile(aFile);
-		if (isAlert && (!data)) return this.alert('ReLoad Error: 配置文件不存在');
 
 		var sandbox = new Cu.Sandbox(new XPCNativeWrapper(window));
 		sandbox.Components = Components;
@@ -186,68 +170,73 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		try {
 			Cu.evalInSandbox(data, sandbox, "1.8");
 		} catch (e) {
-			this.alert('ReLoad Error: ' + e + '\n请重新检查配置文件');
-			return;
+			err = true;
+			errMsg.push(e);
+			log(e);
 		}
-		this.removeMenu(this.Menus);
 
-		this.Perfs = sandbox.Perfs;
-		this.Menus = sandbox.Menus;
-		this.ServerInfo = sandbox.ServerInfo;
-		this.SourceAPI = sandbox.SourceAPI;
-		this.MyInfo = sandbox.MyInfo;
+		if (this.isConfigFile) this.removeMenu(this.Menus);
 
-		this.Perfs.showLocationPos = sandbox.Perfs.showLocationPos ? sandbox.Perfs.showLocationPos : 'identity-box';
-		this.Inquiry_Delay = sandbox.Perfs.Inquiry_Delay ? sandbox.Perfs.Inquiry_Delay : 3500;
-		this.libIconPath = sandbox.Perfs.libIconPath ? sandbox.Perfs.libIconPath : "lib\\countryflags.js",
-		this.LocalFlags = sandbox.Perfs.LocalFlags ? sandbox.Perfs.LocalFlags : "lib\\LocalFlags\\";
-		this.BAK_FLAG_PATH = sandbox.Perfs.BAK_FLAG_PATH ? sandbox.Perfs.BAK_FLAG_PATH : 'http://www.razerzone.com/asset/images/icons/flags/';
-		this.DEFAULT_Flag = sandbox.Perfs.DEFAULT_Flag ? sandbox.Perfs.DEFAULT_Flag : this.DEFAULT_Flag;
-		this.Unknown_Flag = sandbox.Perfs.Unknown_Flag ? sandbox.Perfs.Unknown_Flag : this.DEFAULT_Flag;
-		this.File_Flag = sandbox.Perfs.File_Flag ? sandbox.Perfs.File_Flag : this.DEFAULT_Flag;
-		this.Base64_Flag = sandbox.Perfs.Base64_Flag ? sandbox.Perfs.Base64_Flag : this.File_Flag;
-		this.LocahHost_Flag = sandbox.Perfs.LocahHost_Flag ? sandbox.Perfs.LocahHost_Flag : this.DEFAULT_Flag;
-		this.LAN_Flag = sandbox.Perfs.LAN_Flag ? sandbox.Perfs.LAN_Flag : this.DEFAULT_Flag;
-		this.isConfigFile = true;
+		this.Perfs = sandbox.Perfs || {};
+		this.Menus = sandbox.Menus || {};
+		this.ServerInfo = sandbox.ServerInfo || {};
+		this.SourceAPI = sandbox.SourceAPI || {};
+		this.MyInfo = sandbox.MyInfo || {};
 
-		this.getPrefs();
-		this.buildSiteMenu(this.SourceAPI);
-		this.buildFreedomMenu(this.Menus);
-		this.setIcon(this.Perfs);
-		$("showFlagS-set-config").hidden = this.isConfigFile ? false : true;
-		$("showFlagS-sepalator2").hidden = this.isConfigFile ? false : true;
-		$("showFlagS-set-Reacquire").setAttribute('checked', this.isReacquire);
-		$("showFlagS-set-MyInfo").setAttribute('checked', this.isMyInfo);
-		if (this.apiSite)
-			$("showFlagS-apiSite-" + this.apiSite).setAttribute('checked', true);
-		this.setPerfs();
-
+		this.Perfs.showLocationPos = this.Perfs.showLocationPos ? this.Perfs.showLocationPos : 'identity-box';
+		this.Inquiry_Delay = this.Perfs.Inquiry_Delay ? this.Perfs.Inquiry_Delay : 3500;
+		this.libIconPath = this.Perfs.libIconPath ? this.Perfs.libIconPath : "lib\\countryflags.js",
+		this.LocalFlags = this.Perfs.LocalFlags ? this.Perfs.LocalFlags : "lib\\LocalFlags\\";
+		this.BAK_FLAG_PATH = this.Perfs.BAK_FLAG_PATH ? this.Perfs.BAK_FLAG_PATH : 'http://www.razerzone.com/asset/images/icons/flags/';
+		this.DEFAULT_Flag = this.Perfs.DEFAULT_Flag ? this.Perfs.DEFAULT_Flag : this.DEFAULT_Flag;
+		this.Unknown_Flag = this.Perfs.Unknown_Flag ? this.Perfs.Unknown_Flag : this.DEFAULT_Flag;
+		this.File_Flag = this.Perfs.File_Flag ? this.Perfs.File_Flag : this.DEFAULT_Flag;
+		this.Base64_Flag = this.Perfs.Base64_Flag ? this.Perfs.Base64_Flag : this.File_Flag;
+		this.LocahHost_Flag = this.Perfs.LocahHost_Flag ? this.Perfs.LocahHost_Flag : this.DEFAULT_Flag;
+		this.LAN_Flag = this.Perfs.LAN_Flag ? this.Perfs.LAN_Flag : this.DEFAULT_Flag;
 
 		this.libIconPath = this.libIconPath.replace(/\//g, '\\');
 		if (/(\\)$/.test(this.libIconPath))
 			this.libIconPath.substring(this.libIconPath.lastIndexOf("\\") + 1)
-		var libFile = FileUtils.getFile("UChrm", this.libIconPath.split('\\'));
-		if (libFile.exists())
-			var libData = this.loadFile(libFile);
-
-		var sandbox = new Cu.Sandbox(new XPCNativeWrapper(window));
-		sandbox.Components = Components;
-		sandbox.Cc = Cc;
-		sandbox.Ci = Ci;
-		sandbox.Cr = Cr;
-		sandbox.Cu = Cu;
-		sandbox.Services = Services;
-		sandbox.locale = Services.prefs.getCharPref("general.useragent.locale");
+		libFile = FileUtils.getFile("UChrm", this.libIconPath.split('\\'));
+		if (libFile && libFile.exists() && libFile.isFile()) libData = this.loadFile(libFile);
+		else {
+			errMsg.push('Lib文件不存在');
+			log('Lib文件不存在');
+		}
 
 		try {
 			Cu.evalInSandbox(libData, sandbox, "1.8");
 		} catch (e) {
-			return;
+			err = true;
+			errMsg.push(e);
+			log(e);
 		}
-		this.CountryNames = sandbox.CountryNames;
-		this.CountryFlags = sandbox.CountryFlags;
 
-		if (isAlert) this.alert('配置已经重新载入');
+		this.CountryNames = sandbox.CountryNames || [];
+		this.CountryFlags = sandbox.CountryFlags || [];
+
+		this.getPrefs();
+		this.buildSiteMenu(this.SourceAPI);
+		this.buildFreedomMenu(this.Menus);
+		this.addIcon(this.Perfs);
+		$("showFlagS-set-Reacquire").setAttribute('checked', this.isReacquire);
+		$("showFlagS-set-MyInfo").setAttribute('checked', this.isMyInfo);
+		$("showFlagS-set-config").hidden = $("showFlagS-sepalator2").hidden = this.isConfigFile ? false : true;
+		if (this.SourceAPI[0] && this.apiSite)
+			$("showFlagS-apiSite-" + this.apiSite).setAttribute('checked', true);
+		this.setPerfs();
+
+		if (isAlert) {
+			if (!err) this.alert('配置已经重新载入');
+			else {
+				var MSG = [];
+				MSG.push("ReLoad Error: ");
+				MSG.push(errMsg.join('\n'));
+				MSG.push('请重新检查配置文件');
+				this.alert(MSG.join('\n'));
+			}
+		}
 	};
 
 	showFlagS.removeMenu = function(menu) {
@@ -499,7 +488,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 					obj.SiteInfoThx = Thx;
 					self.showFlagTooltipHash[host] = obj;
 
-					if (!self.MyInfo || !self.isMyInfo) {
+					if (!self.MyInfo.inquireAPI || !self.isMyInfo) {
 						self.updateTooltipText(ip, host, self.showFlagTooltipHash[host]);
 						return;
 					}
@@ -939,25 +928,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 	};
 
 	/*****************************************************************************************/
-	showFlagS.addIcon = function() {
-		this.icon = $('identity-box').appendChild($C('image', {
-			id: 'showFlagS-icon',
-			context: 'showFlagS-popup'
-		}));
-
-		this.icon.src = this.icon.image = this.DEFAULT_Flag;
-		this.icon.style.marginLeft = "4px";
-		this.icon.style.marginRight = "2px";
-		this.icon.addEventListener("click", function(event) {
-			if (event.button == 0) {
-				showFlagS.command('Copy');
-			} else if (event.button == 1) {
-				showFlagS.onLocationChange(true);
-			}
-		}, false);
-	};
-
-	showFlagS.setIcon = function(iconPref) {
+	showFlagS.addIcon = function(iconPref) {
 		if (iconPref.showLocationPos == 'identity-box' || iconPref.showLocationPos == 'urlbar-icons') {
 			this.icon = $(iconPref.showLocationPos).appendChild($C('image' /*statusbarpanel*/ , {
 				id: 'showFlagS-icon',
