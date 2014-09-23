@@ -1,6 +1,9 @@
 var anobtnset = {
-	//※必须设置	按钮放在哪个id之前，alltabs-button，back-button等
+	//※必须设置	按钮与哪个id相邻，alltabs-button，back-button等
 	intags: "tabbrowser-tabs",
+
+	//※必须设置	按钮与目标id关系，之前（before）或者之后(after)
+	orientation: "before",
 
 	//※必须设置	按钮图标
 	image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAABmElEQVRIic3Vz2ddURAH8I+IqqonKqqioiKLyiKqIqKqqqoi3iKL6qKriKguKp56qioekUVVFhEVVfef7eLMbY/z7i8N1S/jcmfm+z0zd+Zc/gMsYQs7hW1hdB3iFTzDBhYb/Dewiae4O5R0NZ47eNgTuxgxLzCLZyfWcRqBS/FuIcT2NFcxwj6+osIEtyJvDvsRNMVB2BRXmWATFrCNi8g/llo3h8MIKO207UQFlnEeOWcaKj5pEajwOSrq6/NmlrOeOzY6yGu7xKMege2sipe5o609tX3R/R1qvMpyDmVt6mpPhaMB5KXAhTRRnQI/cB/3BpAv43WR+7uCc80CPyNxCHb9GdUK33LntEWgCvEnWMNYmqgj3C4ExkXeJHfudQg0VXUgta7GzRDN48a5wEoP6VWU/wEPipOPoj2XRc5qEedjh8BMsTiBO+EryU8aYq1F+V2VfJLa+Rxv8b0lrnUh3/QIDLH3beSkuT2+BvlMtlxdIn1XR5NNzI9uJx5LV3Uf8Zn0U/pr1Av2Tpq0ibQHu+ZH9t/jF5XwjtYY3gV/AAAAAElFTkSuQmCC",
@@ -11,8 +14,7 @@ var anobtnset = {
 /*
 child:[  ]内为当前菜单的下一级菜单配置
 text 为运行参数，如果无需参数，直接删除text属性
-exec 为打开路径，可以是任意文件和文件夹，支持相对路径，相对于配置文件夹；
-文件夹不支持直接“\\”开头的相对路径，需要用“Services.dirsvc.get("ProfD", Ci.nsILocalFile).path”开头
+exec 为打开路径，可以是任意文件和文件夹，支持相对路径，相对于配置文件夹；相对路径文件夹直接“\\”开头，
 oncommand 可以用function(){}；
 ----
 除了以上属性外，可以自定义添加其他属性，如果快捷键accesskey等
