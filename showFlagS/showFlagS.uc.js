@@ -16,6 +16,8 @@
 // @note            左键点击复制，中间刷新，右键弹出菜单
 // @note            支持菜单和脚本设置重载
 // @note            更多功能需要 _showFlagS.js 配置文件
+// @version         1.6.2.2 	2015.02.13 23:00	Fix exec。
+// @version         1.6.2.1 	2014.09.18 19:00	Fix Path indexof '\\' or '//'。
 // @version         1.6.2 		2014.08.29 21:30	完善卸载，完善路径兼容。
 // @version         1.6.1 		2014.08.27 20:30	完善禁用和路径支持。
 // @version         1.6.1 		2014.08.24 22:00	错误页面显示。
@@ -52,25 +54,25 @@ location == "chrome://browser/content/browser.xul" && (function() {
 	if (!window.showFlag) {
 		window.showFlag = {
 			init: function() {
-				for (var i = 0; i < userChrome_js.scripts.length; i++) {
-					if (userChrome_js.scripts[i].id == '[FE89584D]' || userChrome_js.scripts[i].description == '显示国旗与IP') {
-						var name = userChrome_js.scripts[i].filename;
-						var dir = userChrome_js.scripts[i].dir;
-						if (dir == 'root')
-							dir = FileUtils.getFile("UChrm", [name]).path;
-						else
-							dir = FileUtils.getFile("UChrm", [dir, name]).path;
+				if (!this.dirs) {
+					for (var i = 0; i < userChrome_js.scripts.length; i++) {
+						if (userChrome_js.scripts[i].id == '[FE89584D]' || userChrome_js.scripts[i].description == '显示国旗与IP') {
+							this.dirs = userChrome_js.scripts[i].file.path;
+							break;
+						}
 					}
 				}
-				userChrome.import(dir);
+				userChrome.import(this.dirs);
 			},
 			onDestroy: function(isAlert) {
-				window.showFlagS.removeMenu(window.showFlagS.Menus);
 				try {
+					window.showFlagS.removeMenu(window.showFlagS.Menus);
 					$("showFlagS-popup").parentNode.removeChild($("showFlagS-popup"));
-				} catch (e) {}
-				if (window.showFlagS.Perfs.showLocationPos == "identity-box")
-					$("page-proxy-favicon").style.visibility = "";
+					if (window.showFlagS.Perfs.showLocationPos == "identity-box")
+						$("page-proxy-favicon").style.visibility = "";
+				} catch (e) {
+					log(e);
+				}
 				window.getBrowser().removeProgressListener(window.showFlagS.progressListener);
 				delete window.showFlagS;
 				Services.obs.notifyObservers(null, "startupcache-invalidate", "");
@@ -168,10 +170,12 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		sandbox.locale = Services.prefs.getCharPref("general.useragent.locale");
 
 		try {
+			var lineFinder = new Error();
 			Cu.evalInSandbox(data, sandbox, "1.8");
 		} catch (e) {
 			err = true;
-			errMsg.push(e);
+			let line = e.lineNumber - lineFinder.lineNumber - 1;
+			errMsg.push('Error: ' + e + "\n请重新检查配置文件第 " + line + " 行");
 			log(e);
 		}
 
@@ -186,7 +190,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		this.Perfs.showLocationPos = this.Perfs.showLocationPos ? this.Perfs.showLocationPos : 'identity-box';
 		this.Inquiry_Delay = this.Perfs.Inquiry_Delay ? this.Perfs.Inquiry_Delay : 3500;
 		this.libIconPath = this.Perfs.libIconPath ? this.Perfs.libIconPath : "lib\\countryflags.js",
-		this.LocalFlags = this.Perfs.LocalFlags ? this.Perfs.LocalFlags : "lib\\LocalFlags\\";
+			this.LocalFlags = this.Perfs.LocalFlags ? this.Perfs.LocalFlags : "lib\\LocalFlags\\";
 		this.BAK_FLAG_PATH = this.Perfs.BAK_FLAG_PATH ? this.Perfs.BAK_FLAG_PATH : 'http://www.razerzone.com/asset/images/icons/flags/';
 		this.DEFAULT_Flag = this.Perfs.DEFAULT_Flag ? this.Perfs.DEFAULT_Flag : this.DEFAULT_Flag;
 		this.Unknown_Flag = this.Perfs.Unknown_Flag ? this.Perfs.Unknown_Flag : this.DEFAULT_Flag;
@@ -1071,12 +1075,21 @@ location == "chrome://browser/content/browser.xul" && (function() {
 	};
 
 	showFlagS.exec = function(path, arg) {
+		if (/^(\\)||^(\/\/)||^(\/)/.test(path))
+			path = Services.dirsvc.get("ProfD", Ci.nsILocalFile).path + path;
 		var file = Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsILocalFile);
 		var process = Cc['@mozilla.org/process/util;1'].createInstance(Ci.nsIProcess);
 		try {
-			var a = (typeof arg == 'string' || arg instanceof String) ? arg.split(/\s+/) : [arg];
-			file.initWithPath(path);
+			var a;
+			if (typeof arg == 'string' || arg instanceof String) {
+				a = arg.split(/\s+/)
+			} else if (Array.isArray(arg)) {
+				a = arg;
+			} else {
+				a = [arg];
+			}
 
+			file.initWithPath(path);
 			if (!file.exists()) {
 				Cu.reportError('File Not Found: ' + path);
 				return;
@@ -1084,11 +1097,10 @@ location == "chrome://browser/content/browser.xul" && (function() {
 
 			if (file.isExecutable()) {
 				process.init(file);
-				process.run(false, a, a.length);
+				process.runw(false, a, a.length);
 			} else {
 				file.launch();
 			}
-
 		} catch (e) {}
 	};
 

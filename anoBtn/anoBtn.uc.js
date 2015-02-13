@@ -6,19 +6,53 @@
 // @charset 			UTF-8
 // @include				main
 // @id 					[A26C02CA]
-// @startup        		window.anobtn.init();
-// @shutdown       		window.anobtn.unint(true);
+// @startup        		window.anobtnS.init();
+// @shutdown       		window.anobtnS.onDestroy(true);
 // @reviewURL			http://bbs.kafan.cn/thread-1657589-1-1.html
 // @homepageURL	 		https://github.com/feiruo/userChromeJS/tree/master/anoBtn
 // @note         	  	支持菜单和脚本设置重载
 // @note          		需要 _anoBtn.js 配置文件
-// @version		 		1.3.0	2014.08.12 19:00 支持多级菜单，不限制菜单级数。
+// @version		 		1.3.1	2015.02.13 23:00	Fix exec。
+// @version		 		1.3.1	2014.09.18 19:00	Fix Path indexof '\\' or '//'。。
+// @version		 		1.3.0	2014.08.12 19:00	支持多级菜单，不限制菜单级数。
 // @version		 		1.2.1
-// @version 			1.2修复按钮移动之后重载残留问题，增加菜单弹出位置选择。
-// @version 			1.1解决编辑器中文路径问题，修改菜单，提示等文字。
+// @version 			1.2 	修复按钮移动之后重载残留问题，增加菜单弹出位置选择。
+// @version 			1.1 	解决编辑器中文路径问题，修改菜单，提示等文字。
 // @version 			1.0
 // ==/UserScript==
 (function() {
+
+	if (!window.anobtnS) {
+		window.anobtnS = {
+			init: function() {
+				if (!this.dirs) {
+					for (var i = 0; i < userChrome_js.scripts.length; i++) {
+						if (userChrome_js.scripts[i].id == '[A26C02CA]' || userChrome_js.scripts[i].description == '可移动的按钮菜单') {
+							this.dirs = userChrome_js.scripts[i].file.path;
+							break;
+						}
+					}
+				}
+				userChrome.import(this.dirs);
+			},
+			onDestroy: function(isAlert) {
+				try {
+					window.anobtn.unint(isAlert);
+				} catch (e) {
+					log(e);
+				}
+				delete window.anobtn;
+				Services.obs.notifyObservers(null, "startupcache-invalidate", "");
+			},
+		};
+		window.addEventListener("unload", function() {
+			anobtnS.onDestroy();
+		}, false);
+	}
+
+	if (window.anobtn) window.anobtnS.onDestroy();
+
+
 	window.anobtn = {
 		get file() {
 			let aFile;
@@ -37,6 +71,8 @@
 				label: "AnotherButton",
 				tooltiptext: "左键：重载配置\n右键：编辑配置",
 				oncommand: "setTimeout(function(){ anobtn.reload(true); }, 10);",
+				image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABBElEQVQ4ja2SMWoDMRBFx2CSzp17F1sEtkolsNFq3oAL+wg+THIAHyPp4spnSMpcIVXYhXSuDd40WpCTiN2FDAyI0fwn/ZFEMuGcm5nZE/DsnJvl+v4MM1sCH2bWmlkb18teoapOgQfgHMXvMVvgrKqPqjrNiRfAa2y+qOq+KIrbsixvVHUPXOLem6oursTAzsxOsaEJIax/HhBCWANNvNkJ2HV+XzqvZnb03s9zFr33czM7JrM5SDosEZn0DkpkkgC+RFXvEsCg6Pqrqrq/KowF5AsiEkLYADVQhxA2owFAnXitRwOSl8nu/T8AWPUBgNUvQOp3aAJNCtgm33RIfgJbEZFvV1jYjFeO1K0AAAAASUVORK5CYII=",
+				class: "menuitem-iconic",
 				onclick: "if (event.button == 2) { event.preventDefault(); closeMenus(event.currentTarget);anobtn.edit(anobtn.file); }",
 			}), ins);
 			this.reload();
@@ -44,7 +80,7 @@
 
 		reload: function(isAlert) {
 			var aFile = this.file;
-			var data = loadFile(this.file);
+			var data = this.loadFile(this.file);
 			if (!aFile || !aFile.exists() || !aFile.isFile() || !data) return this.alert('Load Error: 配置文件不存在');
 
 			var sandbox = new Cu.Sandbox(new XPCNativeWrapper(window));
@@ -57,9 +93,11 @@
 			sandbox.locale = Services.prefs.getCharPref("general.useragent.locale");
 
 			try {
+				var lineFinder = new Error();
 				Cu.evalInSandbox(data, sandbox, "1.8");
 			} catch (e) {
-				this.alert('Error: ' + e + '\n请重新检查配置文件');
+				let line = e.lineNumber - lineFinder.lineNumber - 1;
+				this.alert('Error: ' + e + "\n请重新检查配置文件第 " + line + " 行");
 				return;
 			}
 			try {
@@ -87,16 +125,28 @@
 		},
 
 		makebtn: function() {
-			var intags;
-			intags = $(this.anobtnset.intags);
-			intags.parentNode.insertBefore($C("toolbarbutton", {
+			var iconInTag = this.anobtnset.intags ? this.anobtnset.intags : "tabbrowser-tabs";
+			var iconImage = this.anobtnset.image ? this.anobtnset.image : "chrome://branding/content/icon32.png";
+			var intags = $(iconInTag);
+			var orientation = this.anobtnset.orientation ? this.anobtnset.orientation : 'before';
+			var anoButton = $C("toolbarbutton", {
 				id: "anobtn",
 				label: "AnoBtn",
 				class: "toolbarbutton-1 chromeclass-toolbar-additional",
 				type: "menu",
 				removable: "true",
-				image: this.anobtnset.image,
-			}), intags);
+				image: iconImage,
+			});
+			if (orientation == 'before')
+				intags.parentNode.insertBefore(anoButton, intags);
+			else if (orientation == 'after') {
+				var parentEl = intags.parentNode;
+				if (parentEl.lastChild == intags) {
+					parentEl.appendChild(anoButton);
+				} else {
+					parentEl.insertBefore(anoButton, intags.nextSibling);
+				}
+			}
 		},
 
 		makepopup: function() {
@@ -122,7 +172,7 @@
 			return popup;
 		},
 
-		newMenu: function(menuObj, islow) {
+		newMenu: function(menuObj) {
 			var menu = document.createElement("menu");
 			var popup = menu.appendChild(document.createElement("menupopup"));
 
@@ -202,12 +252,21 @@
 		},
 
 		exec: function(path, arg) {
+			if (/^(\\)||^(\/\/)||^(\/)/.test(path))
+				path = Services.dirsvc.get("ProfD", Ci.nsILocalFile).path + path;
 			var file = Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsILocalFile);
 			var process = Cc['@mozilla.org/process/util;1'].createInstance(Ci.nsIProcess);
 			try {
-				var a = (typeof arg == 'string' || arg instanceof String) ? arg.split(/\s+/) : [arg];
-				file.initWithPath(path);
+				var a;
+				if (typeof arg == 'string' || arg instanceof String) {
+					a = arg.split(/\s+/)
+				} else if (Array.isArray(arg)) {
+					a = arg;
+				} else {
+					a = [arg];
+				}
 
+				file.initWithPath(path);
 				if (!file.exists()) {
 					Cu.reportError('File Not Found: ' + path);
 					return;
@@ -215,25 +274,21 @@
 
 				if (file.isExecutable()) {
 					process.init(file);
-					process.run(false, a, a.length);
+					process.runw(false, a, a.length);
 				} else {
 					file.launch();
 				}
-
 			} catch (e) {
-				log(e);
+				this.log(e);
 			}
 		},
 
 		handleRelativePath: function(path) {
 			if (path) {
 				path = path.replace(/\//g, '\\').toLocaleLowerCase();
-				var profD = Cc['@mozilla.org/file/directory_service;1'].getService(Ci.nsIProperties).get("ProfD", Ci.nsILocalFile);
+				var ffdir = Cc['@mozilla.org/file/directory_service;1'].getService(Components.interfaces.nsIProperties).get("ProfD", Components.interfaces.nsILocalFile).path;
 				if (/^(\\)/.test(path)) {
-					if (path.startsWith('\\..\\')) {
-						return profD.parent.path + path.replace('\\..', '');
-					}
-					return profD.path + path;
+					return ffdir + path;
 				} else {
 					return path;
 				}
@@ -267,6 +322,20 @@
 				this.alert("编辑器不正确！")
 			}
 		},
+
+		loadFile: function(aFile) {
+			var fstream = Cc["@mozilla.org/network/file-input-stream;1"].createInstance(Ci.nsIFileInputStream);
+			var sstream = Cc["@mozilla.org/scriptableinputstream;1"].createInstance(Ci.nsIScriptableInputStream);
+			fstream.init(aFile, -1, 0, 0);
+			sstream.init(fstream);
+			var data = sstream.read(sstream.available());
+			try {
+				data = decodeURIComponent(escape(data));
+			} catch (e) {}
+			sstream.close();
+			fstream.close();
+			return data;
+		},
 	}
 	window.anobtn.init()
 
@@ -282,19 +351,5 @@
 		var el = document.createElement(name);
 		if (attr) Object.keys(attr).forEach(function(n) el.setAttribute(n, attr[n]));
 		return el;
-	}
-
-	function loadFile(aFile) {
-		var fstream = Cc["@mozilla.org/network/file-input-stream;1"].createInstance(Ci.nsIFileInputStream);
-		var sstream = Cc["@mozilla.org/scriptableinputstream;1"].createInstance(Ci.nsIScriptableInputStream);
-		fstream.init(aFile, -1, 0, 0);
-		sstream.init(fstream);
-		var data = sstream.read(sstream.available());
-		try {
-			data = decodeURIComponent(escape(data));
-		} catch (e) {}
-		sstream.close();
-		fstream.close();
-		return data;
 	}
 })();
