@@ -1075,8 +1075,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 	};
 
 	showFlagS.exec = function(path, arg) {
-		if (/^(\\)||^(\/\/)||^(\/)/.test(path))
-			path = Services.dirsvc.get("ProfD", Ci.nsILocalFile).path + path;
 		var file = Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsILocalFile);
 		var process = Cc['@mozilla.org/process/util;1'].createInstance(Ci.nsIProcess);
 		try {
