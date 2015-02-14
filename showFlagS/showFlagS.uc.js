@@ -1028,6 +1028,13 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		else
 			menuitem = document.createElement("menuitem");
 
+		if (!obj.label)
+			obj.label = obj.exec || obj.text;
+
+		if (obj.exec) {
+			obj.exec = this.handleRelativePath(obj.exec);
+		}
+
 		for (let [key, val] in Iterator(obj)) {
 			if (typeof val == "function") obj[key] = val = "(" + val.toSource() + ").call(this, event);";
 			menuitem.setAttribute(key, val);
@@ -1038,10 +1045,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		cls.add("menuitem-iconic");
 
 		if (obj.oncommand || obj.command) return menuitem;
-
-		if (obj.exec) {
-			obj.exec = this.handleRelativePath(obj.exec);
-		}
 
 		menuitem.setAttribute("oncommand", "showFlagS.onCommand(event);");
 		this.setMenusIcon(menuitem, obj);

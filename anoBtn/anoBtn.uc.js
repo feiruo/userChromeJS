@@ -12,8 +12,8 @@
 // @homepageURL	 		https://github.com/feiruo/userChromeJS/tree/master/anoBtn
 // @note         	  	支持菜单和脚本设置重载
 // @note          		需要 _anoBtn.js 配置文件
-// @version		 		1.3.1	2015.02.13 23:00	Fix exec。
-// @version		 		1.3.1	2014.09.18 19:00	Fix Path indexof '\\' or '//'。。
+// @version		 		1.3.2	2015.02.13 23:00	Fix exec。
+// @version		 		1.3.1	2014.09.18 19:00	Fix Path indexof '\\' or '//'。
 // @version		 		1.3.0	2014.08.12 19:00	支持多级菜单，不限制菜单级数。
 // @version		 		1.2.1
 // @version 			1.2 	修复按钮移动之后重载残留问题，增加菜单弹出位置选择。
@@ -93,11 +93,9 @@
 			sandbox.locale = Services.prefs.getCharPref("general.useragent.locale");
 
 			try {
-				var lineFinder = new Error();
 				Cu.evalInSandbox(data, sandbox, "1.8");
 			} catch (e) {
-				let line = e.lineNumber - lineFinder.lineNumber - 1;
-				this.alert('Error: ' + e + "\n请重新检查配置文件第 " + line + " 行");
+				this.alert('Error: ' + e + '\n请重新检查配置文件');
 				return;
 			}
 			try {
@@ -200,6 +198,12 @@
 				menuitem = document.createElement("menuitem");
 			}
 
+			if (!obj.label)
+				obj.label = obj.exec || obj.text;
+
+			if (obj.exec)
+				obj.exec = this.handleRelativePath(obj.exec);
+
 			for (let [key, val] in Iterator(obj)) {
 				if (typeof val == "function") obj[key] = val = "(" + val.toSource() + ").call(this, event);";
 				menuitem.setAttribute(key, val);
@@ -209,10 +213,6 @@
 			cls.add("menuitem-iconic");
 
 			if (obj.oncommand || obj.command) return menuitem;
-
-			if (obj.exec) {
-				obj.exec = this.handleRelativePath(obj.exec);
-			}
 
 			menuitem.setAttribute("oncommand", "anobtn.onCommand(event);");
 			this.setIcon(menuitem, obj);
