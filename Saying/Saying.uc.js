@@ -7,7 +7,7 @@
 // @include         chrome://browser/content/browser.xul
 // @id 				[09BD42EC]
 // @startup         window.Saying.init();
-// @shutdown        window.Saying.onDestroy(true);
+// @shutdown        window.Saying.onDestroy();
 // @optionsURL		about:config?filter=Saying.
 // @reviewURL		http://bbs.kafan.cn/thread-1654067-1-1.html
 // @homepageURL     https://github.com/feiruo/userChromeJS/tree/master/Saying
@@ -15,111 +15,121 @@
 // @note            目前可自动获取的有VeryCD标题上的，和hitokoto API。
 // @note            每次关闭浏览器后数据库添加获取过的内容，并去重复。
 // @note            左键图标复制内容，中键重新获取，右键弹出菜单。
-// @version         1.2
-// @version         1.1 增加地址栏文字长度设置，避免撑长地址栏。
+// @version         1.2.2 	2015.02.14 21:00	对VeryCD没办法，转为本地数据并合并到自定义数据里。选项调整。
+// @version         1.2.1 	VeryCD网站原因，取消VeryCD在线获取。请下载Github上的VeryCD.json数据库
+// @version         1.1 	增加地址栏文字长度设置，避免撑长地址栏。
 // ==/UserScript==
 location == "chrome://browser/content/browser.xul" && (function() {
-	if (window.Saying) {
-		window.Saying.onDestroy();
-		delete window.Saying;
+	if (!window.Saying) {
+		window.Saying = {
+			init: function() {
+				if (!this.dirs) {
+					for (var i = 0; i < userChrome_js.scripts.length; i++) {
+						if (userChrome_js.scripts[i].id == '[09BD42EC]' || userChrome_js.scripts[i].description == '地址栏自定义语句') {
+							this.dirs = userChrome_js.scripts[i].file.path;
+							break;
+						}
+					}
+				}
+				userChrome.import(this.dirs);
+			},
+			onDestroy: function(isAlert) {
+				try {
+					window.getBrowser().removeProgressListener(window.SayingS.progressListener);
+					SayingS.finsh('all');
+					$("Saying-popup").parentNode.removeChild($("Saying-popup"));
+					$("Saying-icon").parentNode.removeChild($("Saying-icon"));
+					$("SayingTip").parentNode.removeChild($("SayingTip"));
+					$("Saying-statusbarpanel").parentNode.removeChild($("Saying-statusbarpanel"));
+				} catch (e) {
+					log(e);
+				}
+
+				delete window.RuleS;
+				Services.obs.notifyObservers(null, "startupcache-invalidate", "");
+			},
+		};
+		window.addEventListener("unload", function() {
+			Saying.onDestroy();
+		}, false);
 	}
 
-	var Saying = {
-		//VeryCD(名言名句)或hitokoto。
-		SayingType: 'VeryCD',
+	if (window.SayingS) window.Saying.onDestroy();
 
-		//是否自动弹出文字
-		autotip: false,
+	var SayingS = {
 
-		//如果是地址栏文字，文字长度（个数，包括标点符号），留空或0则全部显示
-		SayingLong: 0,
-
-		//autotip=true时有效，设置自动弹出时，多少秒后关闭弹窗
-		autotiptime: 5000,
-
-		//是否混合随机显示
-		Random: true,
-
-		//毫秒， 延迟时间，时间内未取得在线数据，则使用本地数据库
-		Local_Delay: 2500,
+		SayingLong: 0, //地址栏文字长度（个数，包括标点符号），留空或0则全部显示
+		autotiptime: 5000, //自动弹出文字文字的延时，毫秒
+		Local_Delay: 2500, //网络获取延时，超过这个设定时间还未获得就使用本地数据
 
 		//数据库文件位置		
 		hitokoto_Path: 'lib\\hitokoto.json',
-		VeryCD_Path: 'lib\\VeryCD.json',
 		Saying_Path: 'lib\\Saying.json', //此数据库为自定义数据库，不更新只读取。
 
 		debug: true,
 		isFirestRun: true,
 		hitokoto_lib: null,
-		VeryCD_lib: null,
 		Saying_lib: null,
 		hitokoto_json: [],
-		VeryCD_json: [],
 		Saying_json: [],
 		SayingHash: [],
 		isReqHash: [],
 	};
-	Saying.init = function() {
+
+	SayingS.init = function() {
 		this.getPrefs();
 		this.addIcon();
-		this.getVeryCD();
 		this.onLocationChange();
-
-		if (!this.autotip)
-			this.addlabel();
 
 		if (this.isFirestRun) {
 			this.hitokoto_lib = this.loadFile(this.hitokoto_Path);
 			if (this.hitokoto_lib) this.hitokoto_json = JSON.parse(this.hitokoto_lib);
 
-			this.VeryCD_lib = this.loadFile(this.VeryCD_Path);
-			if (this.VeryCD_lib) this.veryCD_json = JSON.parse(this.VeryCD_lib);
-
 			this.Saying_lib = this.loadFile(this.Saying_Path);
 			if (this.Saying_lib) this.Saying_json = JSON.parse(this.Saying_lib);
 		}
 
-		Saying.progressListener = {
+		SayingS.progressListener = {
 			onLocationChange: function() {
-				Saying.onLocationChange();
+				SayingS.onLocationChange();
 			},
 			onProgressChange: function() {},
 			onSecurityChange: function() {},
 			onStateChange: function() {},
 			onStatusChange: function() {}
 		};
-		window.getBrowser().addProgressListener(Saying.progressListener);
+		window.getBrowser().addProgressListener(SayingS.progressListener);
+	};
 
-		window.addEventListener("unload", function() {
-			Saying.onDestroy();
-		}, false);
-	};
-	Saying.onDestroy = function(isAlert) {
-		window.getBrowser().removeProgressListener(Saying.progressListener);
-		if (isAlert) {
-			Saying.finsh('all');
-			$("Saying-popup").parentNode.removeChild($("Saying-popup"));
-			$("Saying-icon").parentNode.removeChild($("Saying-icon"));
-			$("SayingTip").parentNode.removeChild($("SayingTip"));
-			$("Saying-statusbarpanel").parentNode.removeChild($("Saying-statusbarpanel"));
-		}
-	};
-	Saying.getPrefs = function() {
+	SayingS.getPrefs = function() {
 		this._prefs = Components.classes["@mozilla.org/preferences-service;1"]
 			.getService(Components.interfaces.nsIPrefService)
 			.getBranch("userChromeJS.Saying.");
 		this._prefs.QueryInterface(Components.interfaces.nsIPrefBranch2);
 
 		if (!this._prefs.prefHasUserValue("SayingType") || this._prefs.getPrefType("SayingType") != Ci.nsIPrefBranch.PREF_STRING)
-			this._prefs.setCharPref("SayingType", this.SayingType);
+			this._prefs.setCharPref("SayingType", 'hitokoto,Saying');
 
-		if (!this._prefs.prefHasUserValue("Random") || this._prefs.getPrefType("Random") != Ci.nsIPrefBranch.PREF_BOOL)
-			this._prefs.setBoolPref("Random", this.Random)
+		if (!this._prefs.prefHasUserValue("autotip") || this._prefs.getPrefType("autotip") != Ci.nsIPrefBranch.PREF_BOOL)
+			this._prefs.setBoolPref("autotip", false)
+			/*
+					if (!this._prefs.prefHasUserValue("SayingLong") || this._prefs.getPrefType("SayingLong") != Ci.nsIPrefBranch.PREF_STRING)
+						this._prefs.setCharPref("SayingLong", 0);
 
+					if (!this._prefs.prefHasUserValue("autotiptime") || this._prefs.getPrefType("autotiptime") != Ci.nsIPrefBranch.PREF_STRING)
+						this._prefs.setCharPref("autotiptime", 5000);
+
+					if (!this._prefs.prefHasUserValue("Local_Delay") || this._prefs.getPrefType("Local_Delay") != Ci.nsIPrefBranch.PREF_STRING)
+						this._prefs.setCharPref("Local_Delay", 2500);
+			*/
 		this.SayingType = this._prefs.getCharPref("SayingType");
-		this.Random = this._prefs.getBoolPref("Random");
+		this.autotip = this._prefs.getBoolPref("autotip");
+		//this.SayingLong = this._prefs.getCharPref("SayingLong");
+		//this.autotiptime = this._prefs.getCharPref("autotiptime");
+		//this.Local_Delay = this._prefs.getCharPref("Local_Delay");
 	};
-	Saying.addIcon = function() {
+
+	SayingS.addIcon = function() {
 		this.icon = $('urlbar-icons').appendChild($C('image', {
 			id: 'Saying-icon',
 			context: 'Saying-popup',
@@ -132,7 +142,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			if (event.button == 0) {
 				Cc['@mozilla.org/widget/clipboardhelper;1'].createInstance(Ci.nsIClipboardHelper).copyString($("SayingPopupLabel").textContent);
 			} else if (event.button == 1) {
-				Saying.onLocationChange(true);
+				SayingS.onLocationChange(true);
 			}
 		}, false);
 
@@ -143,17 +153,17 @@ location == "chrome://browser/content/browser.xul" && (function() {
 
 		popup.appendChild($C('menuitem', {
 			label: "复制内容",
-			oncommand: "Saying.copy();"
+			oncommand: "SayingS.copy();"
 		}));
 
 		popup.appendChild($C('menuitem', {
 			label: "重新获取",
-			oncommand: "Saying.onLocationChange(true);"
+			oncommand: "SayingS.onLocationChange(true);"
 		}));
 
 		popup.appendChild($C('menuitem', {
 			label: "去重保存",
-			oncommand: "Saying.finsh('all');"
+			oncommand: "SayingS.finsh('all');"
 		}));
 
 		popup.appendChild($C('menuseparator'));
@@ -161,37 +171,50 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		popup.appendChild($C('menuitem', {
 			label: "hitokoto",
 			id: "Saying-look-hitokoto",
-			type: "radio",
-			oncommand: 'Saying.sets("set","hitokoto");'
+			type: "checkbox",
+			oncommand: 'SayingS.sets("set","hitokoto");'
 		}));
 
 		popup.appendChild($C('menuitem', {
-			label: "名言名句",
-			id: "Saying-look-VeryCD",
-			type: "radio",
-			oncommand: 'Saying.sets("set","VeryCD");'
-		}));
-
-		popup.appendChild($C('menuitem', {
-			label: "手动设定",
+			label: "本地数据",
 			id: "Saying-look-Saying",
-			type: "radio",
-			oncommand: 'Saying.sets("set","Saying");'
+			type: "checkbox",
+			oncommand: 'SayingS.sets("set","Saying");'
 		}));
 
 		popup.appendChild($C('menuseparator'));
 
 		popup.appendChild($C('menuitem', {
-			label: "混合随机",
-			id: "Saying-Random",
+			label: "自动弹出",
+			id: "Saying-autotip",
 			type: "checkbox",
-			oncommand: 'Saying.sets("Random");'
+			tooltiptext: "是否自动弹出文字，否则地址栏显示",
+			oncommand: 'SayingS.sets("autotip");'
 		}));
+		/*
+				popup.appendChild($C('menuitem', {
+					label: "文字长度",
+					id: "Saying-SayingLong",
+					type: "checkbox",
+					hidden: this.autotip,
+					tooltiptext: "文字长度（个数，包括标点符号），留空或0则全部显示",
+					oncommand: 'SayingS.sets("SayingLong");'
+				}));
+				popup.appendChild($C('menuitem', {
+					label: "弹出延时",
+					id: "Saying-autotiptime",
+					type: "checkbox",
+					tooltiptext: "自动弹出文字文字的延时，毫秒",
+					hidden: !this.autotip,
+					oncommand: 'SayingS.sets("autotiptime");'
+				}));
 
+		*/
 		$('mainPopupSet').appendChild(popup);
 
-		$("Saying-look-" + this.SayingType).setAttribute('checked', true);
-		$("Saying-Random").setAttribute('checked', this.Random);
+		$("Saying-look-hitokoto").setAttribute('checked', this.SayingType.match('hitokoto') ? true : false);
+		$("Saying-look-Saying").setAttribute('checked', this.SayingType.match('Saying') ? true : false);
+		$("Saying-autotip").setAttribute('checked', this.autotip);
 
 		var xmltt = '\
         	<tooltip id="SayingTip" style="opacity: 0.8 ;color: brown ;text-shadow:0 0 3px #CCC ;background: rgba(255,255,255,0.6) ;padding-bottom:3px ;border:1px solid #BBB ;border-radius: 3px ;box-shadow:0 0 3px #444 ;">\
@@ -214,9 +237,8 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				$("SayingTip").hidePopup();
 			}
 		}, false);
-	};
-	Saying.addlabel = function() {
-		this.Sayings = $('urlbar-icons').appendChild($C('statusbarpanel', {
+
+		this.SayingLabel = $('urlbar-icons').appendChild($C('statusbarpanel', {
 			id: 'Saying-statusbarpanel',
 			style: 'color: brown; margin: 0 0 -1px 0'
 		}));
@@ -229,7 +251,8 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		var style = document.createProcessingInstruction('xml-stylesheet', 'type="text/css" href="data:text/css;utf-8,' + encodeURIComponent(cssStr) + '"');
 		document.insertBefore(style, document.documentElement);
 	};
-	Saying.onLocationChange = function(forceRefresh) {
+
+	SayingS.onLocationChange = function(forceRefresh) {
 		if (forceRefresh) {
 			this.forceRefresh = true;
 		}
@@ -238,23 +261,45 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			this.lookup(aLocation.href);
 		}
 	};
-	Saying.sets = function(type, val) {
+
+	SayingS.sets = function(type, val) {
 		if (type == "set") {
-			this.SayingType = val;
+			if (this.SayingType.match(val))
+				this.SayingType = this.SayingType.replace(val, '');
+			else
+				this.SayingType = this.SayingType + ',' + val;
+			if (this.SayingType.length !== 0) {
+				var arr = this.SayingType.split(','),
+					newarr = [];
+				for (var i = arr.length - 1; i >= 0; i--) {
+					if (!arr[i] == '')
+						newarr = newarr.concat(arr[i]);
+				}
+				this.SayingType = newarr.join(',');
+			}
 			this._prefs.setCharPref("SayingType", this.SayingType);
 		}
-		if (type == "Random") {
-			this.Random = !this.Random;
-			this._prefs.setBoolPref("Random", this.Random)
+		if (type == "autotip") {
+			this.autotip = !this.autotip;
+			this._prefs.setBoolPref("autotip", this.autotip)
 		}
+		/*
+				if (type == "autotiptime") {
+					this.autotiptime = val;
+					this._prefs.setCharPref("autotiptime", this.autotiptime);
+				}*/
+		//$("Saying-SayingLong").hidden = this.autotip
+		//$("Saying-autotiptime").hidden = !this.autotip
+		$("Saying-autotip").setAttribute('checked', this.autotip);
 		this.onLocationChange(true)
 	};
-	Saying.lookup = function(host, type) {
-		var site = this.SayingType
-		if (this.Random) {
-			var Randoms = ['VeryCD', 'hitokoto'];
-			site = Randoms[Math.floor(Math.random() * Randoms.length)];
-		}
+
+	/*****************************************************************************************/
+
+	SayingS.lookup = function(host, type) {
+		if (this.SayingType.length == 0) return;
+		var site = this.SayingType.split(",");
+		site = site[Math.floor(Math.random() * site.length)];
 
 		if (this.forceRefresh) {
 			this.forceRefresh = false;
@@ -262,18 +307,17 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			return;
 		}
 
-		if (this.SayingHash[host]) {
+		if (this.SayingHash[host])
 			this.updateTooltipText(this.SayingHash[host]);
-		}
 
-		if (!this.isReqHash[host]) {
+		if (!this.isReqHash[host])
 			this['lookup_' + site](host);
 
-		}
 		this.isReqHash[host] = true;
 	};
-	Saying.lookup_hitokoto = function(host) {
-		var self = Saying;
+
+	SayingS.lookup_hitokoto = function(host) {
+		var self = SayingS;
 		var req = new XMLHttpRequest();
 		req.open("GET", 'http://api.hitokoto.us/rand', true);
 		req.send(null);
@@ -283,13 +327,13 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			self.updateTooltipText(obj);
 		};
 		req.onerror = onerror;
-		req.timeout = Saying.Local_Delay;
+		req.timeout = self.Local_Delay;
 		req.ontimeout = onerror;
 		req.onload = function() {
 			if (req.status == 200) {
 				var obj;
 				var responseObj = JSON.parse(req.responseText);
-				Saying.hitokoto_json.push(responseObj);
+				self.hitokoto_json.push(responseObj);
 				if (responseObj.source == "") {
 					obj = responseObj.hitokoto;
 				} else if (responseObj.source.match("《")) {
@@ -304,30 +348,22 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			}
 		};
 	};
-	Saying.lookup_VeryCD = function(host) {
-		if (Saying.VeryCD_lib) {
-			var responseObj = Saying.veryCD_json[Math.floor(Math.random() * Saying.veryCD_json.length)];
-			Saying.SayingHash[host] = responseObj;
-			Saying.updateTooltipText(responseObj);
+
+	SayingS.lookup_Saying = function(host) {
+		if (this.Saying_lib) {
+			var responseObj = this.Saying_json[Math.floor(Math.random() * this.Saying_json.length)];
+			this.SayingHash[host] = responseObj;
+			this.updateTooltipText(responseObj);
 		} else {
-			Saying.SayingHash[host] = "无VeryCD数据";
-			Saying.updateTooltipText("无VeryCD数据");
+			this.SayingHash[host] = "无本地数据";
+			this.updateTooltipText("无本地数据");
 		}
 	};
-	Saying.lookup_Saying = function(host) {
-		if (Saying.Saying_lib) {
-			var responseObj = Saying.Saying_json[Math.floor(Math.random() * Saying.Saying_json.length)];
-			Saying.SayingHash[host] = responseObj;
-			Saying.updateTooltipText(responseObj);
-		} else {
-			Saying.SayingHash[host] = "无自定义数据";
-			Saying.updateTooltipText("无自定义数据");
-		}
-	};
-	Saying.locallib = function(type) {
+
+	SayingS.locallib = function(type) {
 		var localjson;
-		if (Saying.hitokoto_lib && type == 'hitokoto') {
-			var responseObj = Saying.hitokoto_json[Math.floor(Math.random() * Saying.hitokoto_json.length)];
+		if (this.hitokoto_lib && type == 'hitokoto') {
+			var responseObj = this.hitokoto_json[Math.floor(Math.random() * this.hitokoto_json.length)];
 			if (responseObj.source == "") {
 				localjson = responseObj.hitokoto;
 			} else if (responseObj.source.match("《")) {
@@ -336,20 +372,23 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				localjson = responseObj.hitokoto + '--《' + responseObj.source + '》';
 			}
 			return localjson;
-		} else if (!hitokoto_lib && this.SayingType == 'hitokoto') {
+		} else if (!this.hitokoto_lib && this.SayingType == 'hitokoto') {
 			return "hitokoto无法访问";
 		}
 	};
-	Saying.updateTooltipText = function(val) {
-		if (this.SayingLong && this.SayingLong !== 0 && val.length > this.SayingLong) {
-			val = val.substr(0, SayingLong) + '.....';
+
+	/*****************************************************************************************/
+
+	SayingS.updateTooltipText = function(val) {
+		if (this.SayingLong > 0 && val.length > this.SayingLong) {
+			val = val.substr(0, this.SayingLong) + '.....';
 		} else {
 			val = val;
 		}
 
-		if (!this.autotip)
-			Saying.Sayings.label = val;
-		else {
+		this.SayingLabel.hidden = this.autotip;
+		this.SayingLabel.label = val;
+		if (this.autotip) {
 			var popup = $("SayingTip");
 			if (this.timer) clearTimeout(this.timer);
 			if (typeof popup.openPopup != 'undefined') popup.openPopup(this.icon, "overlap", 0, 0, true, false);
@@ -358,37 +397,19 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				popup.hidePopup();
 			}, this.autotiptime);
 		}
-
 		var label = $("SayingPopupLabel");
 		while (label.firstChild) {
 			label.removeChild(label.firstChild);
 		}
 		if (val != "") label.appendChild(document.createTextNode(val));
 	};
-	Saying.copy = function() {
+
+	SayingS.copy = function() {
 		Cc['@mozilla.org/widget/clipboardhelper;1'].createInstance(Ci.nsIClipboardHelper)
 			.copyString($("SayingPopupLabel").textContent);
 	};
-	Saying.getVeryCD = function() {
-		var self = Saying;
-		var req = new XMLHttpRequest();
-		req.open("GET", 'http://www.verycd.com/statics/title.saying', true);
-		req.send(null);
-		req.onerror = function() {
-			self.finsh('VeryCD');
-		}
-		req.onload = function() {
-			if (req.status == 200) {
-				var _VC_DocumentTitles, _VC_DocumentTitleIndex;
-				eval(req.responseText);
-				_VC_DocumentTitles.forEach(function(t) {
-					self.VeryCD_json.push(t)
-				})
-			}
-			self.finsh('VeryCD');
-		}
-	};
-	Saying.finsh = function(name) {
+
+	SayingS.finsh = function(name) {
 		if (name == 'hitokoto' || name == 'all') {
 			var hitokotolibs = {};
 			var hitokotoInfo = [];
@@ -400,19 +421,9 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			});
 			this.saveFile(this.hitokoto_Path, JSON.stringify(hitokotoInfo));
 		}
-		if (name == 'VeryCD' || name == 'all') {
-			var veryCDlibs = {};
-			var veryCDInfo = [];
-			this.veryCD_json.forEach(function(i) {
-				if (!veryCDlibs[i]) {
-					veryCDlibs[i] = true;
-					veryCDInfo.push(i);
-				}
-			});
-			this.saveFile(this.VeryCD_Path, JSON.stringify(veryCDInfo));
-		}
 	};
-	Saying.loadFile = function(file_Path) {
+
+	SayingS.loadFile = function(file_Path) {
 		var aFile = Cc["@mozilla.org/file/directory_service;1"].getService(Ci.nsIDirectoryService).QueryInterface(Ci.nsIProperties).get('UChrm', Ci.nsILocalFile);
 		aFile.appendRelativePath(file_Path);
 		if (!aFile.exists() || !aFile.isFile()) return null;
@@ -428,7 +439,8 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		fstream.close();
 		return data;
 	};
-	Saying.saveFile = function(name, data) {
+
+	SayingS.saveFile = function(name, data) {
 		var file;
 		if (typeof name == "string") {
 			var file = Services.dirsvc.get('UChrm', Ci.nsILocalFile);
@@ -447,8 +459,9 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		foStream.close();
 	};
 
+	/*****************************************************************************************/
 	function log() {
-		if (Saying.debug) Application.console.log('[Saying DEBUG] ' + Array.slice(arguments));
+		if (SayingS.debug) Application.console.log('[Saying DEBUG] ' + Array.slice(arguments));
 	}
 
 	function $(id) document.getElementById(id);
@@ -459,6 +472,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		return el;
 	}
 
-	Saying.init();
-	window.Saying = Saying;
+	SayingS.init();
+	window.SayingS = SayingS;
 })()
