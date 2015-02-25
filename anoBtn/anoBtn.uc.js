@@ -76,6 +76,7 @@
 				onclick: "if (event.button == 2) { event.preventDefault(); closeMenus(event.currentTarget);anobtn.edit(anobtn.file); }",
 			}), ins);
 			this.reload();
+			this.reload();//再次重载以解决某些不能的问题
 		},
 
 		reload: function(isAlert) {
@@ -112,10 +113,8 @@
 		unint: function(real) {
 			for (var i = 0; i < this.anomenu.length; i++) {
 				var obj = this.anomenu[i];
-				try {
-					if (!obj.clone)
-						$("main-menubar").insertBefore($(obj.id), $("main-menubar").childNodes[7]);
-				} catch (e) {}
+				if (obj.id && !obj.clone)
+					$("main-menubar").insertBefore($(obj.id), $("main-menubar").childNodes[7]);
 			}
 			$("anobtn").removeChild($("anobtn_popup"));
 			$("anobtn").parentNode.removeChild($("anobtn"));
@@ -154,7 +153,6 @@
 			var popup = document.createElement("menupopup");
 			popup.setAttribute("id", "anobtn_popup");
 			popup.setAttribute('position', this.anobtnset.position);
-			var obj, menuitem;
 
 			this.anomenu.forEach(function(obj) {
 				popup.appendChild(this.newMenuitem(obj));
