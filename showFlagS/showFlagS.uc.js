@@ -7,7 +7,7 @@
 // @include			chrome://browser/content/browser.xul
 // @id 				[FE89584D]
 // @startup         window.showFlag.init();
-// @shutdown        window.showFlag.onDestroy(true);
+// @shutdown        window.showFlag.onDestroy();
 // @optionsURL		about:config?filter=showFlagS.
 // @reviewURL		http://bbs.kafan.cn/thread-1666483-1-1.html
 // @reviewURL		http://www.firefoxfan.com/UC-Script/328.html
@@ -16,7 +16,8 @@
 // @note            左键点击复制，中间刷新，右键弹出菜单
 // @note            支持菜单和脚本设置重载
 // @note            更多功能需要 _showFlagS.js 配置文件
-// @version         1.6.2.3 	2015.02.18 22:00	Add UAchanger.
+// @version         1.6.2.4 	2015.02.25 19:00	Add RefererChange.
+// @version         1.6.2.3 	2015.02.18 22:00	Add UserAgentChanger.
 // @version         1.6.2.2 	2015.02.13 23:00	Fix exec。
 // @version         1.6.2.1 	2014.09.18 19:00	Fix Path indexof '\\' or '//'。
 // @version         1.6.2 		2014.08.29 21:30	完善卸载，完善路径兼容。
@@ -65,23 +66,19 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				}
 				userChrome.import(this.dirs);
 			},
-			onDestroy: function(isAlert) {
+			onDestroy: function() {
 				try {
 					window.showFlagS.removeMenu(window.showFlagS.Menus);
 					$("showFlagS-popup").parentNode.removeChild($("showFlagS-popup"));
 					if (window.showFlagS.Perfs.showLocationPos == "identity-box")
-						$("page-proxy-favicon").style.visibility = "";
+						$("page-proxy-favicon").hidden = false;
 				} catch (e) {
 					log(e);
 				}
-				if (isAlert) {
-					var os = Cc["@mozilla.org/observer-service;1"].getService(Ci.nsIObserverService);
-					try {
-						os.removeObserver(showFlagS.observe, "http-on-modify-request", false);
-						os.removeObserver(showFlagS.onDocumentCreated, "content-document-global-created", false);
-					} catch (e) {}					
-				}
 				window.getBrowser().removeProgressListener(window.showFlagS.progressListener);
+				var os = Cc["@mozilla.org/observer-service;1"].getService(Ci.nsIObserverService);
+				os.removeObserver(showFlagS.observe, "http-on-modify-request", false);
+				os.removeObserver(showFlagS.onDocumentCreated, "content-document-global-created", false);
 				delete window.showFlagS;
 				Services.appinfo.invalidateCachesOnRestart();
 			},
@@ -104,9 +101,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		showFlagHash: [],
 		showFlagTooltipHash: [],
 		//等待时国旗图标
-		DEFAULT_Flag: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAACG0lEQVQ4ja2TwW7aQBRF+ZDku0q/qChds5mxkDG2iY3H9jyTBFAWLAgRG7CwCawQi6BEQhgEFkiAuF3VaVXaSlWvdBazuGfx5r1c7n/H9/1rIvpCAUWS5E6S3FFAkU9+wff967+VP1FA6fPzMwaDAcbjMQaDAabTKSggEFEqpcxfLEvp5huNxnmxWGC73SIMQ9Tv6gjqAbrdLqT0Ub+rg4jOUro/S4QQV57nbZMkwel0wvF4xGazQafTgeu5GY1GA8PhEMITqRDiKhM4jnPTbrdxOBxwOByQJAlcz4UQ4heiKILruXAc52smsGzrpd/v4/X1FcPhEBQQ7Jp9kVarhdlsBsu2Xj4E1u3x/v4eRATLuv0tQT3AdDrFcrmEZd2eMoFZNXdm1cSP2DUbZtUEEYECglk1MRqNkKYp3t/fYZjGPhPohh7rhg7d0PH09IQ4jjGbzdBsNtHr9SBcAd3QMZlMMJ/PEYYhdEOPM0G5Ur7RKhoeHx+xWq2wXq+xXq/x9vaGVqsFraJBq2jQDT17l8vljyFyzq9UVd2qqoooirBarTLCMIRds6GqKgzTgOPUoKpqyjn/+MZcLpdTFCVfKpXOlm1huVwiSRIkSYLFYgGzauLh4QHNZhNaRTsrinJ5GxljeUVRUil99Ho9dLtduJ4LKX0QERRFSTnnny+Wv6dYLF4zxgqMsZhzvuec7xljMWOsUCwW/3xM/5JvTakQArDW8fcAAAAASUVORK5CYII=",
-		//默认UA图标
-		defaultUAimg: "chrome://branding/content/icon16.png",
+		DEFAULT_Flag: "chrome://branding/content/icon16.png",
 
 		get dns() {
 			return Cc["@mozilla.org/network/dns-service;1"]
@@ -154,7 +149,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				<menupopup id="showFlagS-popup">\
 				<menuitem label="复制信息" id="showFlagS-copy" oncommand="showFlagS.command(\'Copy\');" />\
 				<menuitem label="刷新信息" id="showFlagS-reload" oncommand="showFlagS.onLocationChange(true);"/>\
-				<menu label="UserAgent" id="showFlagS-UserAgent-config" class="showFlagS menu-iconic">\
+				<menu label="UserAgent" id="showFlagS-UserAgent-config" class="showFlagS menu-iconic" hidden="true">\
 				<menupopup  id="showFlagS-UserAgent-popup">\
 					<menuseparator id="showFlagS-sepalator3" hidden="true"/>\
 				</menupopup>\
@@ -163,7 +158,9 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				<menupopup  id="showFlagS-set-popup">\
 					<menuseparator id="showFlagS-sepalator1"/>\
 					<menuitem label="查询本地信息" id="showFlagS-set-MyInfo" type="checkbox"  oncommand="showFlagS.setPerfs(\'MyInfo\')" />\
-					<menuitem label="自动重新获取" id="showFlagS-set-Reacquire" type="checkbox"  oncommand="showFlagS.setPerfs(\'Reacquire\')" />\
+					<menuitem label="自动重新获取" id="showFlagS-set-Reacquire" tooltiptext="如果查询不到IP信息则再次查询" type="checkbox"  oncommand="showFlagS.setPerfs(\'Reacquire\')" />\
+					<menuitem label="RefChanger" id="showFlagS-set-RefChanger" tooltiptext="破解图片反盗链" type="checkbox"  oncommand="showFlagS.setPerfs(\'RefChanger\')" />\
+					<menuitem label="UAChanger" id="showFlagS-set-UAChanger" tooltiptext="修改浏览器UserAgent" type="checkbox"  oncommand="showFlagS.setPerfs(\'UAChanger\')" />\
 					<menuitem label="脚本菜单配置" id="showFlagS-set-setMenu" tooltiptext="左键：重载配置\r\n右键：编辑配置" onclick="if(event.button == 0){showFlagS.reload(true);}else if (event.button == 2) {showFlagS.command(\'Edit\');}" class="showFlagS menuitem-iconic" image="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABYElEQVQ4jY3TO0/VQRAF8F9yTUB6QMCCZ6KJBq4JNIQKCkoopAWMsabhC1ho5SOYaO2j0AQ+gYKPS/BeaDD0kPhJLP7nbzZA0ElOsjvnzOzOziyX2yjO8Ds4i++/bRgdzAUdjFwVMIkNDASP8QuDwXF8Nb+RGHAdb3GC72jhIxZxLViMbx/fon2XWKv4inHcx6OaQH8A3eFWot3DmmT8jImipF48y21aeI6+gp9IzA+Ywmu0k7mBF9jBDKaxjZfhxqN9k1hULepgLI90gHvFic34BqJtR6tM0D6XYKrgJ/FT1ZFa+3cu7mALR6mtkf2n3KKZ9auihMPs79aPuIvbxYn9SbIfbOFGwd/CF1XbPVC1ZARL2XdFOIihrLuwjuVod/EQevBeNXmt1P8BC6ohamA+moNojqPpqa/UxCZuBk8iKkf5abihaMsuXbBh1UvPBm3/+EznbRSnqm9c49Lv/AcsoU6W+qo3pgAAAABJRU5ErkJggg=="/>\
 				</menupopup>\
 				</menu>\
@@ -220,6 +217,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		this.MyInfo = sandbox.MyInfo || {};
 		this.UASites = sandbox.UASites || [];
 		this.UAList = sandbox.UAList || [];
+		this.RefererChange = sandbox.RefererChange || {};
 
 		this.Perfs.showLocationPos = this.Perfs.showLocationPos ? this.Perfs.showLocationPos : 'identity-box';
 		this.Inquiry_Delay = this.Perfs.Inquiry_Delay ? this.Perfs.Inquiry_Delay : 3500;
@@ -232,7 +230,8 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		this.Base64_Flag = this.Perfs.Base64_Flag ? this.Perfs.Base64_Flag : this.File_Flag;
 		this.LocahHost_Flag = this.Perfs.LocahHost_Flag ? this.Perfs.LocahHost_Flag : this.DEFAULT_Flag;
 		this.LAN_Flag = this.Perfs.LAN_Flag ? this.Perfs.LAN_Flag : this.DEFAULT_Flag;
-		this.defaultUAimg = this.Perfs.defaultUAimg ? this.Perfs.defaultUAimg : this.defaultUAimg;
+		this.RfCState = this.Perfs.RfCState ? this.Perfs.RfCState : true;
+		this.UAState = this.Perfs.UAState ? this.Perfs.UAState : true;
 
 		this.libIconPath = this.libIconPath.replace(/\//g, '\\');
 		if (/(\\)$/.test(this.libIconPath))
@@ -245,10 +244,12 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		}
 
 		try {
+			var lineFinder = new Error();
 			Cu.evalInSandbox(libData, sandbox, "1.8");
 		} catch (e) {
+			let line = e.lineNumber - lineFinder.lineNumber - 1;
 			err = true;
-			errMsg.push(e);
+			errMsg.push('Error: ' + e + "\n请重新检查配置文件第 " + line + " 行");
 			log(e);
 		}
 
@@ -258,7 +259,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		var tmp = {};
 		tmp.label = "Firefox" + Services.appinfo.version.split(".")[0];
 		tmp.ua = "";
-		tmp.image = this.defaultUAimg;
+		tmp.image = this.Perfs.DEFAULT_UA ? this.Perfs.DEFAULT_UA : this.DEFAULT_Flag;
 		this.UAList.unshift(tmp);
 
 		this.getPrefs();
@@ -267,10 +268,25 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		this.buildFreedomMenu(this.Menus);
 		this.addIcon(this.Perfs);
 		this.uaMenuStates();
-		this.uaSets(true);
+
+		if (this.UAList.length != 0) {
+			for (let i = 0; i < this.UAList.length; i++) {
+				this.UANameIdxHash[this.UAList[i].label] = i;
+			}
+			for (let j = 0; j < this.UASites.length; j++) {
+				if (this.UANameIdxHash[this.UASites[j].label])
+					this.UASites[j].idx = this.UANameIdxHash[this.UASites[j].label];
+				else
+					this.UASites[j].idx = this.def_uaIdx;
+			}
+			$("showFlagS-UserAgent-config").hidden = false;
+		} else
+			this.UAState = false;
 
 		$("showFlagS-set-Reacquire").setAttribute('checked', this.isReacquire);
 		$("showFlagS-set-MyInfo").setAttribute('checked', this.isMyInfo);
+		$("showFlagS-set-RefChanger").setAttribute('checked', this.RfCState);
+		$("showFlagS-set-UAChanger").setAttribute('checked', this.UAState);
 		$("showFlagS-set-config").hidden = $("showFlagS-sepalator2").hidden = this.isConfigFile ? false : true;
 		if (this.SourceAPI[0] && this.apiSite)
 			$("showFlagS-apiSite-" + this.apiSite).setAttribute('checked', true);
@@ -340,8 +356,16 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		if (!this._prefs.prefHasUserValue("Reacquire") || this._prefs.getPrefType("Reacquire") != Ci.nsIPrefBranch.PREF_BOOL)
 			this._prefs.setBoolPref("Reacquire", this.isReacquire);
 
+		if (!this._prefs.prefHasUserValue("RefChanger") || this._prefs.getPrefType("RefChanger") != Ci.nsIPrefBranch.PREF_BOOL)
+			this._prefs.setBoolPref("RefChanger", this.RfCState);
+
+		if (!this._prefs.prefHasUserValue("UAChanger") || this._prefs.getPrefType("UAChanger") != Ci.nsIPrefBranch.PREF_BOOL)
+			this._prefs.setBoolPref("UAChanger", this.UAState);
+
 		this.isReacquire = this._prefs.getBoolPref("Reacquire");
 		this.isMyInfo = this._prefs.getBoolPref("MyInfo");
+		this.RfCState = this._prefs.getBoolPref("RefChanger");
+		this.UAState = this._prefs.getBoolPref("UAChanger");
 		this.apiSite = this._prefs.getCharPref("SourceSite");
 	};
 
@@ -354,6 +378,16 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				this.prefs.getBranch("").setCharPref("general.useragent.override", this.UAList[val].ua);
 			this.def_uaIdx = val;
 			this.uaMenuStates(val);
+		}
+		if (tyep == "RefChanger") {
+			this.RfCState = !this.RfCState;
+			this._prefs.setBoolPref("RefChanger", this.RfCState);
+			$("showFlagS-set-RefChanger").setAttribute('checked', this.RfCState);
+		}
+		if (tyep == "UAChanger") {
+			this.UAState = !this.UAState;
+			this._prefs.setBoolPref("UAChanger", this.UAState);
+			$("showFlagS-set-UAChanger").setAttribute('checked', this.UAState);
 		}
 		if (tyep == "apiSite") {
 			this.apiSite = val;
@@ -385,6 +419,17 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				}
 			}
 		}
+
+		$("showFlagS-UserAgent-config").hidden = !this.UAState;
+
+		var os = Cc["@mozilla.org/observer-service;1"].getService(Ci.nsIObserverService);
+		try {
+			os.removeObserver(this.observe, "http-on-modify-request", false);
+			os.removeObserver(this.onDocumentCreated, "content-document-global-created", false);
+		} catch (e) {}
+		os.addObserver(this.observe, "http-on-modify-request", false);
+		os.addObserver(this.onDocumentCreated, "content-document-global-created", false);
+
 		this.onLocationChange(true);
 	};
 
@@ -413,38 +458,71 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		}
 	};
 
-	showFlagS.uaSets = function(isAlert) {
-		for (let i = 0; i < this.UAList.length; i++) {
-			this.UANameIdxHash[this.UAList[i].label] = i;
-		}
-		for (let j = 0; j < this.UASites.length; j++) {
-			if (this.UANameIdxHash[this.UASites[j].label])
-				this.UASites[j].idx = this.UANameIdxHash[this.UASites[j].label];
-			else
-				this.UASites[j].idx = this.def_uaIdx;
-		}
-		if (isAlert) {
-			var os = Cc["@mozilla.org/observer-service;1"].getService(Ci.nsIObserverService);
-			try {
-				os.removeObserver(this.observe, "http-on-modify-request", false);
-				os.removeObserver(this.onDocumentCreated, "content-document-global-created", false);
-			} catch (e) {}
-			os.addObserver(this.observe, "http-on-modify-request", false);
-			os.addObserver(this.onDocumentCreated, "content-document-global-created", false);
-		}
-	};
-
 	/*****************************************************************************************/
 	showFlagS.observe = function(subject, topic, data) {
 		var that = showFlagS;
-		if (topic != "http-on-modify-request") return;
-		var http = subject.QueryInterface(Ci.nsIHttpChannel);
-		for (var i = 0; i < that.UASites.length; i++) {
-			if (http.URI && (new RegExp(that.UASites[i].url)).test(http.URI.spec)) {
-				var idx = that.UASites[i].idx;
-				http.setRequestHeader("User-Agent", that.UAList[idx].ua, false);
+		if (that.UAState && (topic == "http-on-modify-request")) {
+			var http = subject.QueryInterface(Ci.nsIHttpChannel);
+			for (var i = 0; i < that.UASites.length; i++) {
+				if (http.URI && (new RegExp(that.UASites[i].url)).test(http.URI.spec)) {
+					var idx = that.UASites[i].idx;
+					http.setRequestHeader("User-Agent", that.UAList[idx].ua, false);
+				}
 			}
 		}
+
+		if (!that.RfCState) return;
+		for (var s = http.URI.host; s != ""; s = s.replace(/^.*?(\.|$)/, "")) {
+			if (that.adjustRef(http, s))
+				return;
+		}
+		if (http.referrer && http.referrer.host != http.originalURI.host)
+			http.setRequestHeader('Referer', http.originalURI.spec.replace(/[^/]+$/, ''), false);
+	};
+
+	showFlagS.adjustRef = function(http, site) {
+		try {
+			var sRef;
+			var refAction = undefined;
+			for (var i in this.RefererChange) {
+				if (site.indexOf(i) != -1) {
+					refAction = this.RefererChange[i];
+					break;
+				}
+			}
+
+			if (refAction == undefined)
+				return true;
+			if (refAction.charAt(0) == '@') {
+				switch (refAction) {
+					case '@NORMAL':
+						return true;
+						break;
+					case '@FORGE':
+						sRef = http.URI.scheme + "://" + http.URI.hostPort + "/";
+						break;
+					case '@BLOCK':
+						sRef = "";
+						break;
+					case '@AUTO':
+						return false;
+					case '@ORIGINAL':
+						sRef = window.content.document.location.href;
+						break;
+					default:
+						break;
+				}
+			} else if (refAction.length == 0) {
+				return true;
+			} else {
+				sRef = refAction;
+			}
+			http.setRequestHeader("Referer", sRef, false);
+			if (http.referrer)
+				http.referrer.spec = sRef;
+			return true;
+		} catch (e) {}
+		return true;
 	};
 
 	showFlagS.onDocumentCreated = function(aSubject, aTopic, aData) {
@@ -478,9 +556,9 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			var aLocation = this.contentDoc.location;
 			if (this.Perfs.showLocationPos == 'identity-box') {
 				if ((aLocation.protocol !== "about:") && (aLocation.protocol !== "chrome:"))
-					$('page-proxy-favicon').style.visibility = 'collapse';
+					$('page-proxy-favicon').hidden = true;
 				else
-					$('page-proxy-favicon').style.visibility = 'visible';
+					$('page-proxy-favicon').hidden = false;
 				this.icon.hidden = ((aLocation.protocol == "about:") || (aLocation.protocol == "chrome:"));
 			}
 			if (aLocation && /file/.test(aLocation.protocol)) {
@@ -521,9 +599,9 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			showFlagS.icon.hidden = false;
 			if (showFlagS.Perfs.showLocationPos == 'identity-box') {
 				if (aLocation.protocol !== 'https:')
-					$('page-proxy-favicon').style.visibility = 'collapse';
+					$('page-proxy-favicon').hidden = true;
 				else
-					$('page-proxy-favicon').style.visibility = 'visible';
+					$('page-proxy-favicon').hidden = false;
 			}
 			return;
 		}
@@ -550,7 +628,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		this.icon.tooltipText = '';
 		if (this.Perfs && this.Perfs.showLocationPos == 'identity-box') {
 			this.icon.hidden = true;
-			$('page-proxy-favicon').style.visibility = 'visible';
+			$('page-proxy-favicon').hidden = false;
 		}
 	};
 
@@ -577,9 +655,9 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			self.icon.hidden = false;
 			if (self.Perfs.showLocationPos == 'identity-box') {
 				if (self.contentDoc.location.protocol !== 'https:')
-					$('page-proxy-favicon').style.visibility = 'collapse';
+					$('page-proxy-favicon').hidden = true;
 				else
-					$('page-proxy-favicon').style.visibility = 'visible';
+					$('page-proxy-favicon').hidden = false;
 			}
 		}
 
@@ -682,10 +760,10 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			this.icon.src = this.icon.image = src;
 			if (this.Perfs.showLocationPos == 'identity-box') {
 				if (this.contentDoc.location.protocol !== 'https:')
-					$('page-proxy-favicon').style.visibility = 'collapse';
+					$('page-proxy-favicon').hidden = true;
 				else
-					$('page-proxy-favicon').style.visibility = 'visible';
-				if (src) $('page-proxy-favicon').style.visibility = 'collapse';
+					$('page-proxy-favicon').hidden = false;
+				if (src) $('page-proxy-favicon').hidden = true;
 				else this.icon.hidden = true;
 			}
 		}

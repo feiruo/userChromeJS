@@ -14,28 +14,34 @@ var Perfs = {
 	Inquiry_Delay: "",
 
 	//旧版国旗图标库，相对路径，Chrome文件夹，脚本内已有预设：chrome\lib\countryflags.js 文件。	
-	libIconPath: "lib\\countryflags.js", //支持Linux、WIndows格式，但请勿直接以“\\”开头。
+	libIconPath: "lib\\countryflags.js", //支持Linux、WIndows格式。
 
 	//本地PNG图标存放文件夹，相对路径，Chrome文件夹，预设： chrome\lib\LocalFlags 文件夹。	
-	LocalFlags: "lib\\LocalFlags", //支持Linux、WIndows格式，但请勿直接以“\\”开头。
+	LocalFlags: "lib\\LocalFlags", //支持Linux、WIndows格式。
 
 	//网络图标地址，预设'http://www.razerzone.com/asset/images/icons/flags/'。
 	BAK_FLAG_PATH: "", //http://www.1108.hk/images/ext/ 、http://www.myip.cn/images/country_icons/ 等等。
 
-	//等待时国旗图标,脚本内已有预设，如不喜欢内置默认，可以再这里修改。
-	DEFAULT_Flag: "",
+	//等待时国旗图标，预设Firefox内部图标【chrome://branding/content/icon16.png】。
+	DEFAULT_Flag: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAACG0lEQVQ4ja2TwW7aQBRF+ZDku0q/qChds5mxkDG2iY3H9jyTBFAWLAgRG7CwCawQi6BEQhgEFkiAuF3VaVXaSlWvdBazuGfx5r1c7n/H9/1rIvpCAUWS5E6S3FFAkU9+wff967+VP1FA6fPzMwaDAcbjMQaDAabTKSggEFEqpcxfLEvp5huNxnmxWGC73SIMQ9Tv6gjqAbrdLqT0Ub+rg4jOUro/S4QQV57nbZMkwel0wvF4xGazQafTgeu5GY1GA8PhEMITqRDiKhM4jnPTbrdxOBxwOByQJAlcz4UQ4heiKILruXAc52smsGzrpd/v4/X1FcPhEBQQ7Jp9kVarhdlsBsu2Xj4E1u3x/v4eRATLuv0tQT3AdDrFcrmEZd2eMoFZNXdm1cSP2DUbZtUEEYECglk1MRqNkKYp3t/fYZjGPhPohh7rhg7d0PH09IQ4jjGbzdBsNtHr9SBcAd3QMZlMMJ/PEYYhdEOPM0G5Ur7RKhoeHx+xWq2wXq+xXq/x9vaGVqsFraJBq2jQDT17l8vljyFyzq9UVd2qqoooirBarTLCMIRds6GqKgzTgOPUoKpqyjn/+MZcLpdTFCVfKpXOlm1huVwiSRIkSYLFYgGzauLh4QHNZhNaRTsrinJ5GxljeUVRUil99Ho9dLtduJ4LKX0QERRFSTnnny+Wv6dYLF4zxgqMsZhzvuec7xljMWOsUCwW/3xM/5JvTakQArDW8fcAAAAASUVORK5CYII=",
 
-	//未知的国旗图标，预设为脚本内置的等待时国旗图标。
+	//未知的国旗图标，预设同上，如不喜欢内置默认，可以再这里修改。
 	Unknown_Flag: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABwUlEQVQ4jZWRMahScRjFL40REW9ojqaGhoaGprg0eL3//3fkj0pCDrYp2hARmRItjk4ND0EuSFMgSEQIiuMjEjdnwUGIvLdF+bxc/j6ut8X3eM9X7z3P+vE7nPMdw9gRgPdEdCSlPJRS3t+9Xyrbtp8A4FqtFmQyGQbARHRERAXLsg6uNADwMZ1O83q9jpbLZdjtdnW5XPa3Rksi+iqEeA7g5j8NFosFu64bRjuaz+dhu93WhULBB8AAXCll3TTNO6fweDx+qLWOwvACf06TySR0HCdQSjGAt2fjKwA8m83+6zCdTsNWqxXkcjkG4Nq2/ezUgIg+ZbNZ3mw25yDP88JOp6NLpdLJL/4AaAkhnu4+cFyv14MoiiJmjvr9vq5Wq34ikeBt7+8AXpimeevC8+Lx+D0APBgMdK/X08lk8gT6KaV8HYvF7l46nxDiJQD2PC+sVCo+Ef0A8ODK3c/0/5zP5/0gCCKlFBPRu2vD2/6/ms1mMBqNjgGwEOLxtWEhxCMAPBwOjx3H0UT02zCMG/vEf6OU4tVqFRWLRZ+IvuwVn4g+pFIpbjQawXbnV3sZWJZ1IKU8BDAhom+2bd/eh/8LEFU+M9Rx2boAAAAASUVORK5CYII=",
 
-	//本地文件图标，预设为脚本内置的等待时国旗图标。
+	//本地文件图标，预设同上，如不喜欢内置默认，可以再这里修改。
 	File_Flag: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABYAAAAQCAYAAAAS7Y8mAAAB3ElEQVQ4jZ3QT2vTcBzH8YGPxpt4EHwmHoc+BRV8ADuu+8MG2w47DJINVkLHWDrFKXpYBtqmttl+JV3/Zk1/SX5pfklq09TCx8O0yLB/0g+8j9/X4bu09GB7ex9fHB8XqSgqVBQVKgj3iaJCj46+0f39r8Wtrezzh3czl0plXxUKLjj/BcuKYNv3MRbDMEKk0wWIonKTSp0+SwSvrmaXVdUGY33Uau64RsODrts4OVFhGH2I4tWPlZXTp4ngfN6C4/RBCEWp1IammSCEQtM6kKQcwnAEyxpCknLft7c/PJkbzuUoGIug6zYIoSiXKSoVB4RQCIICVTVAiAVFMbC7+/nq4ODL47lh141QrbrQdQeVioPbW4ZazYUsl5DJ5JHJqJDlIi4uGtjZ+fQuATxAvd5FtcrGNZscphnANAO02wE4j1Euc6ytya/nhj0vQqvlodHo/pM7rl53Yds9XF93k8IDGIaPVov/t2aTg7H+InCMdjvE3V0wMdeNksOcx+h0Qpjm5LrdwWKwZfVA6eQ8L4amLQDb9s+pcZ4QzucpfH8Ix+lPzfeHSV7x/mWhwBAEIzAWTy0IRiAkwMbG+duZ8OZmdjmdLoaHh5ehIFz2ZiVJWri+fvbmz/mjv85vk5TTd5np7HoAAAAASUVORK5CYII=",
 
-	//LocalHOST【127.0.0.1】【::1】，预设为脚本内置的等待时国旗图标。
+	//Base64图标，预设同上，如不喜欢内置默认，可以再这里修改。
+	Base64_Flag: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAANCAYAAACgu+4kAAABC0lEQVQokZXTTSvEcRDA8Q/ZcvBQLlIeXoCDUl6Aq4tQzm7egHZtCoUk70EOXEjC3UEuDk4uHo8ODkIu2l27Djubv4e1a2qa38PMd2b6zQ92kUPpn5rHjlhcYREZpDETtpouRExO0JZ8SgN61JbliFVCNnExjhtM1ABkfwN04CTOztGdCGiN6v4ETOMZ63gI24ghHGOsGmAWnbjAAVqwgscI2g+/S/RXA6Qj+3A4dOEsKnkK4DWO0Kb8YiV4xyZusYFUosxRvGIbzZjEC+YxVwEUIsM9Bn2VFEbQF/smrEZrp5FcIUhr6pN2HKJYAeSjtwFM+Tl1mW+axlYkzlOe5yx6cae+f1DEG/Y+AKR8auXF6Pi+AAAAAElFTkSuQmCC",
+
+	//LocalHOST【127.0.0.1】【::1】，预设同上，如不喜欢内置默认，可以再这里修改。
 	LocahHost_Flag: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABYAAAAQCAYAAAAS7Y8mAAABNklEQVQ4ja2UwUpCQRSGPwx9gyAfooVLF0GLXiFo5QsUlkHcUgjcCZVEqIueQGjlIqwWbXqAom2IVJu2Bobg4raYM93D8ard7IeBuf/85xtm7szApA6BUNq6eGfKC4GdmLq5CqS4It+nBurbdlJwFahL/0SBRkB7EfhKDDQENsU/WgRul79lxv8Er8+BepVNrvgf0Gnw/bjQeUKolz6eE/ALNTBMAPU6AMaKUQLYMzM2VMESkAHSBpQWP6W8O8PhWDpj4AuoqfAl0AeegWXxckBP/EBlO8BAgzNAAcgDL0BLhW/UpFnx1lRxU2UfgGtgg+jM/+jNgDsC+CS6OKvAI/AE7BrwrQV6vf4CPE0zwe9E7wTAlYAHuC2bpXvcD4xVH7fEAHc+e0T7WcNd5YppZcl+AF0P+gbk74HicL4aGwAAAABJRU5ErkJggg==",
 
-	//局域网【192.168.xxx.xxx】【169.254.xxx.xxx】，预设为脚本内置的等待时国旗图标。
+	//局域网【192.168.xxx.xxx】【169.254.xxx.xxx】，预设同上，如不喜欢内置默认，可以再这里修改。
 	LAN_Flag: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABYAAAAQCAYAAAAS7Y8mAAABLklEQVQ4jeXUO0vcURAF8F8pxDqdAdFCZLUQ/ARiZ6f4AjWua2dhq4IaNEWKgNjFSi3ED2AhmEKxUXw3PrBQQwQbI6SSiJhiR1nwv6uwlXhguJc5cw4zl3svhTGIM1ziV8RvXGD4BW1BfMFDnvhejPEo7hJM7/HtfRlPJpg+xlQxxhlsYEv2dpxjG5sYKMb4Az6hHEMYQSXKUPpakxI0II0efEYnmtGCH5hBW+Q6curSaIxGnuGj7LmNoxt96A9RGnOYj1xvrBl0YQzTMd0TqlGLJsyiHTWoQkXs6zCBr6iPXGXUpNAa2pbgUrCCfRzhCofYwWJMsIZd2Wd8gT2sR4cLUXsY2pMc3h/J1+kUP/EvgbvHKo7zaG/JfipJ5AGWcJPA/cVydJekvX57xv8BD7eoP535NRkAAAAASUVORK5CYII=",
+
+	//默认UA图标，预设同上，如不喜欢内置默认，可以再这里修改。
+	DEFAULT_UA: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAACKklEQVQ4jbWPT4gSURzHXzqDzr6ZgefD+fd0YJynjI62ghhqZApLdCnwkpAn87CXvO4SHTqKhw4JIl5aloiCIBChBTstHj10CXYpIRbSdXGLWDoG0ynZFSNY6Ae/y+/zPl++D4D/OBAAsHZZmfA8/7Lb7bKXskVRfCVJ0kQUxTbLsrssyz53uVxbAAD7n7IgCHcJIXPLsj7puj4lhEw0TZv6/f5TnuePGIZ5vFJkGOYGQui6JEm7lNJJPB4/jEaji7Us6yAUCn3GGJ95vd4ny74LQrgXDoergUBgn1I6Nk1zbJrmhFI6MQxjaprmOBKJ/AmZQAivLmxN03SE0FE2m70dCoXeKoryw7btj9Vq9VG9Xt8sl8sN27ZHuq6PDcM4VFX1FCG0tQgwDGMdY/w1nU7ngsHgu42NjdedTufa+Yq5XG5bVdUTXdcPFUU5lmW5tYCFQoH6fL4TVVU3W63WuuM4zPIfIYQNjPE3VVUP/H7/jBDydAF3dna8iqKMeJ7fd7vd95ZlSmkgkUi8CYfDQ4TQGCE0tyzr4YVHmUxmm+O4nyzLfgcA3D/P2u02P5/PBULIC0EQjjHGXyqVSuJCwHA4RJFI5D1CaFwoFBqWZeGlIh6O40Yej+csmUy2l1sCAADo9/t6Pp/fLZVKNx3HubKEH7jd7l+xWGyv1+vJKwMAAMBxHK7ZbGrnTi4I4S1Zlj8Ui8Vns9lM+qu8alKp1FqtVrszGAySq/hvbPGRIDMl+58AAAAASUVORK5CYII=",
 
 	//显示文字自定义设置：
 	tipArrHost: "网站域名：", //域名
@@ -49,9 +55,6 @@ var Perfs = {
 	tipArrSep3: "--------------------------------", //分割线，留空就没有
 	tipArrThanks: "Thx&From：", //感谢：xxxxx
 
-	//默认UA图标
-	defaultUAimg: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAACKklEQVQ4jbWPT4gSURzHXzqDzr6ZgefD+fd0YJynjI62ghhqZApLdCnwkpAn87CXvO4SHTqKhw4JIl5aloiCIBChBTstHj10CXYpIRbSdXGLWDoG0ynZFSNY6Ae/y+/zPl++D4D/OBAAsHZZmfA8/7Lb7bKXskVRfCVJ0kQUxTbLsrssyz53uVxbAAD7n7IgCHcJIXPLsj7puj4lhEw0TZv6/f5TnuePGIZ5vFJkGOYGQui6JEm7lNJJPB4/jEaji7Us6yAUCn3GGJ95vd4ny74LQrgXDoergUBgn1I6Nk1zbJrmhFI6MQxjaprmOBKJ/AmZQAivLmxN03SE0FE2m70dCoXeKoryw7btj9Vq9VG9Xt8sl8sN27ZHuq6PDcM4VFX1FCG0tQgwDGMdY/w1nU7ngsHgu42NjdedTufa+Yq5XG5bVdUTXdcPFUU5lmW5tYCFQoH6fL4TVVU3W63WuuM4zPIfIYQNjPE3VVUP/H7/jBDydAF3dna8iqKMeJ7fd7vd95ZlSmkgkUi8CYfDQ4TQGCE0tyzr4YVHmUxmm+O4nyzLfgcA3D/P2u02P5/PBULIC0EQjjHGXyqVSuJCwHA4RJFI5D1CaFwoFBqWZeGlIh6O40Yej+csmUy2l1sCAADo9/t6Pp/fLZVKNx3HubKEH7jd7l+xWGyv1+vJKwMAAMBxHK7ZbGrnTi4I4S1Zlj8Ui8Vns9lM+qu8alKp1FqtVrszGAySq/hvbPGRIDMl+58AAAAASUVORK5CYII=",
-
 };
 /******************************************************************************************
  *这里是设置文字显示的，可以自定义多个，可以根据需要截取，只支持函数操作。
@@ -62,7 +65,7 @@ var ServerInfo = [{
 }, {
 	label: "网站编码：", //项目名
 	words: "Content-Type", //http头信息关键字
-	//截取或替换的函数，返回的是“未知类型”就是在没有结果的时候自动隐藏该项
+	//截取或替换的函数，返回的是null就是在没有结果的时候自动隐藏该项
 	regx: function(word) {
 		if (word && word.match("=")) {
 			word = word.substring(word.indexOf("charset="));
@@ -79,7 +82,7 @@ var ServerInfo = [{
 	words: "X-Powered-By"
 }];
 /******************************************************************************************
- * 。
+ *这里是UA自动切换规则列表 。
  *******************************************************************************************/
 var UASites = [{ //直接可以看kankan视频，无需高清组件
 	url: "http:\/\/vod\.kankan\.com/",
@@ -91,69 +94,86 @@ var UASites = [{ //直接可以看kankan视频，无需高清组件
 	url: "http:\/\/browser\.qq\.com\/*",
 	label: "Chrome - Win7"
 }, {
-	url: "http://www\\.google\\.co\\.jp\\m/",
-	label: "iPhone"
-}, {
-	url: "http://wapp\\.baidu\\.com/",
-	label: "iPhone"
-}, {
-	url: "http://wappass\\.baidu\\.com/",
-	label: "iPhone"
-}, {
-	url: "http://wapbaike\\.baidu\\.com/",
-	label: "iPhone"
-}, {
-	url: "http://weibo\\.cn/",
-	label: "iPhone"
-}, {
-	url: "http://m\\.hao123\\.com/",
-	label: "iPhone"
-}, {
-	url: "http://m\\.mail\\.163\\.com/",
-	label: "iPhone"
-}, {
-	url: "http://w\\.mail\\.qq\\.com//",
-	label: "iPhone"
-}, {
-	url: "http:\/\/m\\.qzone\\.com/",
-	label: "iPhone"
-}, {
-	url: "http://wap\\.58\\.com/",
-	label: "iPhone"
-}, {
-	url: "http://i\\.jandan\\.net/",
-	label: "iPhone"
-}, {
-	url: "http://www\\.tianya\\.com\\m/",
-	label: "iPhone"
-}, {
-	url: "http://m\\.xianguo\\.com\\wap/",
-	label: "iPhone"
-}, {
-	url: "http:\/\/ti\\.3g\\.qq\\.com/",
-	label: "iPhone"
-}, {
-	url: "http:\/\/[a-zA-Z0-9]*\\.z\\.qq\\.com/",
-	label: "iPhone"
-}, { //工商銀行
-	url: "https?://(?:mybank|mybank1?|b2c1)\\.icbc\\.com\\.cn/",
-	label: "Firefox20.0"
+	url: "http:\/\/tieba\.baidu\.com\/mo",
+	label: "UCBrowser"
 }, { //百度何苦为难火狐~~~
-	url: "https?://(.*?)n\\.baidu\\.com/.*",
+	url: "https?://(.*?)\\.baidu\\.com/.*",
 	//url: "https?://(.*?)\\.baidu\\.com/.*",
 	label: "BaiduYunGuanJia"
 }];
 /******************************************************************************************
-child:[  ]内为当前菜单的二级菜单配置，只支持二级菜单；
+ *RefererChange，破解图片外链
+ *@NORMAL：不改变referer
+ *@FORGE：发送根站点referer
+ *@ORIGINAL：发送打开站点referer
+ *@BLOCK : 发送空referer
+ *******************************************************************************************/
+var RefererChange = {
+	'bimg.126.net': '@FORGE',
+	'tankr.net': '@FORGE',
+	'51cto.com': '@FORGE',
+	'wsj.com': 'https://www.google.com/', //免登陆或订阅看全文
+	'pconline.com.cn': '@FORGE',
+	'postimg.org': '@FORGE',
+	'chiphell.com': '@FORGE',
+	'niunews.cn': '@FORGE',
+	'poco.cn': '@FORGE',
+	'about:blank': '@NORMAL',
+	'jump.bdimg.com': '@NORMAL',
+	'img.liufen.com': 'http://www.liufen.com.cn/',
+	't4.mangafiles.com': 'http://www.imanhua.com/',
+	't5.mangafiles.com': 'http://www.imanhua.com/',
+	'laibafile.cn': 'http://www.tianya.cn/',
+	'zol.com.cn': '@FORGE',
+	'tmoke.com': '@BLOCK',
+	'51img1.com': '@FORGE',
+	'zol-img.com.cn': '@FORGE',
+	'douban.com': 'http://www.douban.com',
+	'yyets.com': 'http://www.yyets.com/',
+	'img.cnbeta.com': '@FORGE',
+	'hiphotos.baidu.com': '@FORGE',
+	'hiphotos.bdimg.com': '@FORGE',
+	'imgsrc.baidu.com': '@FORGE',
+	'baidu-img.cn': 'http://www.baidu.com/',
+	'photo.sina.com.cn': '@BLOCK',
+	'sinaimg.cn': 'http://blog.sina.com.cn/',
+	'pixiv.net': '@FORGE',
+	'ph.126.net': '@FORGE',
+	'isnowfy.com': '@FORGE',
+	'image.itmedia.co.jp': '@FORGE',
+	'2ch.net': '@FORGE',
+	'imepita.jp': '@ORIGINAL',
+	'tumblr.com': '@FORGE',
+	'photo.store.qq.com': '@FORGE',
+	'img.pconline.com.cn': '@FORGE',
+	'fc2.com': '@BLOCK',
+	'blogs.yahoo.co.jp': '@BLOCK',
+	'hentaiverse.net': '@BLOCK',
+	'qlogo.cn': '@BLOCK',
+	'qpic.cn': '@BLOCK',
+	'fmn.rrfmn.com': '@BLOCK',
+	'postimage.org': '@FORGE',
+	'bdstatic.com': 'http://tieba.baidu.com/',
+	'space.wenxuecity.com': 'http://bbs.wenxuecity.com/',
+	'www.autoimg.cn': 'http://club.autohome.com.cn/',
+	'kkkmh.com': 'http://www.kkkmh.com/',
+	'nonie.1ting.com': 'http://www.1ting.com/',
+	'img.knb.im': 'http://www.kenengba.com/',
+	'tianya.cn': 'http://bbs.tianya.cn/',
+	'xici.net': 'http://www.xici.net/',
+	'media.chinagate.com': 'http://www.wenxuecity.com/',
+	'jdstatic.tankr.net': 'http://jandan.net/',
+	'sankakustatic.com': 'http://chan.sankakucomplex.com/',
+};
+/******************************************************************************************
+child:[  ]内为当前菜单的下级菜单配置；
 text 为运行参数，如果无需参数，直接删除text属性，目前只支持 %u 为当前网页完整地址；
 exec 为打开路径，可以是任意文件和文件夹，支持相对路径，相对于配置文件；
-文件夹不支持直接“\\”开头的相对路径，需要用“Services.dirsvc.get("ProfD", Ci.nsILocalFile).path”开头
-=======================
 除了以上属性外，可以自定义添加其他属性，如果快捷键accesskey等
 =======================
 {}, 为分隔条 
 =======================
-如果设置了id属性，会尝试获取此id并移动，如果在浏览器中没有找到此id，则这个id就不会生效
+如果设置了id属性，会尝试获取此id并移动，如果在浏览器中没有找到此id，则创建此ID
 =======================
 自带命令函数：【showFlagS.command】-----形式类型：
 1、是非常简单的POST,如：
@@ -294,6 +314,9 @@ var Menus = [{
 		oncommand: 'showFlagS.command(this.tooltipText, "host");',
 		image: "http://rbls.org/favicon.ico"
 	}]
+}, {
+	label: "抓包工具",
+	exec: '\\chrome\\Tools\\Hacker\\HookSocket.exe'
 }, {
 	label: "网站安全",
 	image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABd0lEQVQ4jYWTMUtcURSEj4u2YmGZSh5rsdzzfU3+gq0QLISFhFhom3R2lkLSpA4Ee22sJIaYNkIC1kkpaiF2wUZhk+a95bk+NxemOjNzhsPciI5XSlkCdtUr9QrYLaUsdXEfPHUhM9eBU/VO/VvjDjjNzHV14ZEwM5eBDfUQ+NMSPkA9OwQ2MnO50ffU/YmNXeJRO5G6HxG9iIgecNwifs3Ml8CLBuoQeAuctHjHjcEMsNcMMvNVk6whZOazwWDwHHjdMtiLiJnmBjvAqI75Rv2i/mzhB/C5TjECRpm50z7imnpfD7fV6447XAPb9ZL7zFwbGwAD4KKONtWg5lwAg7FBVVXz6kF9g3fACfB9At/U97XZQVVV85MlGqq3wK/M/Kh+aAP4pP5Wb9XhozL1+/1F9WhaF2oc9fv9xc4qAyvq5RTxJbDy5F+IiFlgS73pEN8AWxExO80gImJO3QTOW6U5VzcjYu5/4nGSUsoqcAaclVJWn9r8D9Ly4rUXRHEbAAAAAElFTkSuQmCC",
@@ -528,9 +551,6 @@ var Menus = [{
 		saveImageURL(canvas.toDataURL(), content.document.title + ".png", null, null, null, null, document);
 	},
 	image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAm0lEQVQ4jbWTUQrDIBBEH9QcokjZe+T+ieQaJXiKfvSjIyyJRmzpwHzsuo47qwJMgIlBvIpPMGAFEnAXUyOOLYEEbG7D1oirAsEV3sQoltivdwWO6Ap4C7UWIwMzqBUY8BTtGwvDAmWIBjyAGcjirJypJhwt+HvfdWoGXmJWbgeW0tHPAoHzvQ9Z6KE7xL8LRD5+FxoPqYfL7/wGEBc4QhYRpZIAAAAASUVORK5CYII="
-}, {
-	label: "抓包工具",
-	exec: '\\chrome\\Tools\\Hacker\\HookSocket.exe'
 }];
 /******************************************************************************************************************
  *这里是自定义UserAgent设置
@@ -541,10 +561,6 @@ var UAList = [{}, //分割线
 		ua: "Mozilla/5.0 (compatible; MSIE 8.0; Windows NT 6.1; Trident/4.0; GTB7.4; InfoPath.2; SV1; .NET CLR 3.3.69573; WOW64; zh-CN)", //UA
 		//下面的是图标
 		image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAB7klEQVQ4jbWSu2tUQRTGbyT4QDF2ggRRtFvZ3DvfkaAEWcEXWwoGtxEbFXyAQsjK7p0zVlFERcw/oNhYWVhYSCCdrUSIhRZBLEzcnTnHRyIubrRws3uXjQQLD3zFzPD75sw3J4r+d+VOza4fsj5nrB8lDqV8qrvXhPZe8VuTVI/A6hixPiHWeXLyCqxlsJaT8dqOv8Kw9WFifQ4ni+T0V1usdbDcIQ4l2PrwqnBi/QGwvl2B4LQJpz/AutxZy0xckbj35nIYAOuLNsz6hjhcMKk/YVjuwcnX1v6yYXE9BpSGIjn9/sdAPiP1x9qHhel+42Qya96TA1gnMm/2xskkWG+1NEEszzpPkcWkKoey7e+Ek9lMYD/B8i0rYvkCJwIWhdOaYX+8bWBYz8FpsxOezBH7o6ioMVZhrCK29f2ohhFUw0hc9Qfjq7Kthd9YByePiPUlWMNKi8Sh1JmLdxtgw3VimSKWKTi5O3jtw6YoiqJo19m5jWB5alI5CZaHmRw+Eofbxup5cvKYWJZaATYMh0vZ/Prg9GZiw+mkWiOwvO4aoIzA2gDLg/zY/OauH8iP+0GycobSUKRUCmC5DyfvwdqA0yaxLMHJDNlwOXfx05ZVp7CrCtP9SBf2UBqKxvpRsBzeV1nYHkVR39rwP9ZvsJlc4gd6n5MAAAAASUVORK5CYII="
-	}, {
-		label: "IE6 - XP",
-		ua: "Mozilla/4.0 (compatible; MSIE 6.1; Windows XP; .NET CLR 1.1.4322; .NET CLR 2.0.50727)",
-		image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAB8klEQVQ4jY2Tu2tUQRTGD4REC434AAtf63Ld7GVmzu+D/AEpUkQEX6ghCAEl+ChsDCTapBFRFPtYCKKoYCmSUokKCj4qQYmKYGxMNCpaGEl8NHfDukbJwAdTzPkec84xW+CRVJJ0ADgBnAPOp5S2zPe2Gai4ew9wHDgGDEm6CuyPMa42M4sx5sChPypDCBlwRtIbSTPAD+BngWnglrv3mFlzpVJZ5e6b54pjjLmkUUmzkiaBieL+qwEfgP4Y47o8zzeZmVmWZa3AZWBa0n1Jd4Cvkl5KGgXG60mAj+6+bU7d3TuBKeA6cKWwezelVA0htKSUOgqyeic3QghLzMwMGAIuuPtJ4EuhctPd+9y9DzgCPGlwMSZJZmZNkvYUeDVP5n/hvbtvNTOzlNJySdcaFN5KelyHh3V4BNx2985ahC5JnxsIhvM83xBCWF+0t1fSoKQBSYPAYWCNmVkTcLHRIvA0pdSRZVmru+8GXgPfi07NShqpVqsrLcbokp4B74BvDSQTkl4AU435U0rbazO+DxgHeoHhQuF/nzcJHM2ybFEtfz8w5u5r29ralko6CNwr3MzUAHySNALsDCG01A/RLuB5Smmvu29MKbVLGgBOA91At6QdKaX2EMKKv1avXC4vc/ezwANJlySdArpKpdLihaz5b/pi+ogGeBgzAAAAAElFTkSuQmCC"
 	}, {}, {
 		label: "Chrome - Win7",
 		ua: "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.99 Safari/537.36",
@@ -572,20 +588,8 @@ var UAList = [{}, //分割线
 	}, {
 		label: "iPhone", //伪装 iPhone，查询http://www.zytrax.com/tech/web/mobile_ids.html
 		ua: "Mozilla/5.0 (iPhone; U; CPU iPhone OS 3_1_2 like Mac OS X; en-us) AppleWebKit/528.18 (KHTML, like Gecko) Version/4.0 Mobile/7D11 Safari/528.16",
-		image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAADLSURBVCiRddA/C0FRGMfxc4UyGdQNpQzIKzDhFViNZvKn7y5loow3Ay/AaLQpeQUMkkWhjBbFonQM13X9efRM5/l9zjlPj9Lqu4hSJeycfuMUKy5E/wB8TNEM3I4beTHxE+HIiBjBD4BBhSVH1lj0mbDlwJgMhlZKKzw00ULNMG2Q4yzEOxLPL2iL91uvGRiKoOSCjggsFxS5C+BCAY8NYizFN26UnT3URHAi74AAcwE03lZNkg0azZ4F168hnyRNjypxQmTpUsdr9x/STR736IkaIQAAAABJRU5ErkJggg=="
-	}, {
-		label: "Apple iPad 2",
-		ua: "Mozilla/5.0 (iPad; CPU OS 6_0 like Mac OS X) AppleWebKit/536.26 (KHTML, like Gecko) Version/6.0 Mobile/10A5355d Safari/8536.25",
-		image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAA+UlEQVQ4jWNgoCaQkZHh1NXVdFFWVg5QUVHxR8daWur+mpqa8jgN0NDQUHN0dHiQlZX5Iycn+3t2NgLn5OR8DwkJ/m1goFeC0wApKSmNzMzMR58/f/77+/fvf79+/YLjf//+/Vu7du1/fX3dCrwGZGVlPvrx48e//1jAhg3rRw0Y/AYoKEhpxMfHP75y5cq/27dv/b9z587/e/fu/b9169b/u3fv/p85cwZ+A/T0VGRMTU22OTs7n3N2djobGhp6NjEx8ayzs9NZFxfns3Z2tucMDHSjcBrAwMDAqK6uzqugICAgICAgoKCgIKAA40D5DAwMrPgMoD8AAE0eOfg/Mfz/AAAAAElFTkSuQmCC"
-	}, {
-		label: "iOS/微信浏览器",
-		ua: "Mozilla/5.0 (iPhone; CPU iPhone OS 6_1_4 like Mac OS X)AppleWebKit/536.26 (KHTML, like Gecko) Mobile/10B350MicroMessenger/4.5",
 		image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABB0lEQVQ4jZXSSyvEURgG8N8MkcaGsGCnWGAxIZqymA2lpCFsZilJESKUS0nDgpLbQqyUlc/gu1mck+am/99Tp845z3me93JektGNE3yjmOJ9Ddpwhg3cofBfgwKuMItbdKYRZZCN+yV84RrDacQjOEIFh1jDJo5jJpeYF0prQB4vmMOQ0LA9oYEL8S4fjQ7QUi3uEGqcTlHeLk7RWk1MxPSyTUTVGI+BcvVECesJYijH1YBF4a+TUMJWM2ISFykM+vGMsXqiC/foS2EyhXeM1hPbWElhkMOTMDM1GMQDehIMVoVhyzQjyzhHbzQqYjlGy2EGjxj4y70dO/jEB26wj9d4fhOm8Rc/nDkiWslhowkAAAAASUVORK5CYII="
 	}, {}, {
-		label: "DoCoMo",
-		ua: "DoCoMo/1.0/P502i/c10 (Google CHTML Proxy/1.0)",
-		image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAXElEQVQ4jWM4w2D8nxLMMGoAwoCXk1f+P8Ng/P//////X05c/v+2Zy5pBvz//598F7ycuPw/DMDY14xjUPjYaLgBMHDbMxcrfcsDuzhRLoApRKYxXDA4onEEGwAAOydBL6/POBgAAAAASUVORK5CYII="
-	}, {
 		label: "UCBrowser",
 		ua: "Mozilla/5.0 (Linux; U; Android 4.4.4; zh-CN) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 UCBrowser/10.1.3.546 U3/0.8.0 Mobile Safari/534.30",
 		image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABFklEQVQ4jc2TsWoCQRCG9w0sgqX4CHZpfQrxGkOwC1jZKDY2NhIUUgTsghDBQgsLW21EqyuuEeGuMQge6+7tDcT6t7hweuqdB7GwGGaHYT6Y/59ljDFGRAjE7/72mwjs6nCMwdM6HBAz7gQQNlxjGmyaOmhjHevtGmrSgxp3QMv5GWC1AM8/gYTt7yiqWajRB4gIatIDf0lBfr7BGb5DtotngOU8HGAZ4FoS7mIUIaKphwKcfgO7UubSicgViI6Abg2i/HxDRFMHzyVAPyu/sStloMYduLMhuJYEWUa0jaKahWxqcI0pnK8K+Gvad0G2Ch5wNgCZupcv7kDYvsLOdz1o4Z8TslWAbGpe/8Eu8T+AyB8ZY/gAY1aTwt2Ru2IAAAAASUVORK5CYII="
@@ -594,16 +598,12 @@ var UAList = [{}, //分割线
 		ua: "netdisk;4.4.0.6;PC;PC - Windows;6.2.9200;WindowsBaiduYunGuanJia",
 		image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABWUlEQVQ4jaWSy0sCURjF/XfuRugukha1CzeBCBKIFFFIBEGrCoRwE4EErlskoYW0EFy0iBAkCMFNBCGuKrqjNg6OgzOTjY+5nhbh3ehMrw/O8vud73E8hDL8Rx5CGf5ajoBCsQuvT0IubwIATk51xA/bsPkPAdFtBYQyLIXeUCpbYtybQtcd0Na+LHb2WiCUYTXaRC5vCsBdyXIG3D/0QCjD2qaCl9cB9g9UPFb66OgcuzEVmayBpmKjVLamAxJJTTg9PQ+mHm1+sQ5CGS4ujUlAJmuAUIaZOQkdnaNS7SMYlhGKyKjVh7B6I2EQi6uTAJsDV9fvqFT7YNIQsws10eAPNNDWODa2FHh9Eoq3H85faKk2/IHGRGCWV2RYvZH7Fzo6n9o8VmS9CcPkzoBUWv82umfnhjNgfEg3pdK6M8AwuUihP9DA0bGGRFJDMCyLYLmu8NsSgP/oExgMERjFwInkAAAAAElFTkSuQmCC"
 	}, {}, {
-		label: "Firefox20.0 ",
-		ua: "Mozilla/5.0 (Windows NT 6.1; Win64; x64;) Gecko/20100101 Firefox/20.0",
-		image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAclBMVEUAAAD/xAD0xgD0xgD0xgD3xgDwwQD//wD0xgD1xgD0xwD0xgD0xgD0xQD1xwDzxwD4xwD0xgDzxwD0xgD0xgD1xwD0xgDzxgDzxQDyxgDyyQDzxgD0xQD0xgD1xwD0xgD1xgD0xgD1xQDzxQDzwgD0xgD0+NzRAAAAJXRSTlMABOft5R4QAfr10aVzXlA+CuHHopuTb2lYJhPd2bOshn1INRYVmnz94QAAAIpJREFUGNONj9cOwzAIRXESj3jEzh7dg///xWIUVX2plPuAuAfEgGMSwYfJx6+N/UMAvNyQgNUUswsAurFXyeCGiP1CiWpHBgWBKnLWaYoy+5lLZS0orhmo9AbwWPCSE5HaWCUcdtx4J3BedLpUODGQJrdYmt2q/ZASWeUTdm2jITtsv9/IVf959AOR1gmNMGci6QAAAABJRU5ErkJggg=="
-	}, {
-		label: "Firefox3.6-Linux",
-		ua: "Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.2.8) Gecko/20100723 Ubuntu/10.04 (lucid) Firefox/3.6.8",
+		label: "Firefox31-Linux",
+		ua: "Mozilla/5.0 (X11; Linux i586; rv:31.0) Gecko/20100101 Firefox/31.0",
 		image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAB1UlEQVQ4jW2SO2hUYRCFJ7qIGGOhorig2WLZu9f/3vmOvaDBwsbGB4Eoltbx2aaJBLExpBAtDGJhI0hstbBQtPBBBImwCRLQzseCaLESXZt/w+V6fzjVnDP/zJlj9v+rAcHdJ9x9MmICCGa2sYJvQ+12e4eZ1UII+4FpSXclzbr7ZeASMAc8BKbzPG+b2dC6OkmSEeCapHOSFtz9KnBB0uHSVMeBj8AH4Gyz2dxmZmYhBID3wE9JHUmPJT0IIewrjhk/Gpf0Gvgu6War1dppwBjwSVJ/AOAtcDBJkpHyvsABSe+ArrufNOCOpLVig4hl4Gi5gbvvAp5L6rv7dZP0tSwG/kqaCSFsLTdI03QP8CZyV03SSkn8Q9KTPM9PV50sz/NDkl4M+CZpuTTBF+CEuw9nWbbb3ZMQwqaCBxej4X3gs0laqti/A9wDnklaBI5F/QZ3v1HgLZik+xUNBqu8knQ+y7K9jUZjc8xKJ9Z77j5pwDjQLYl7wDwwFkLYnqbpKDAFfCtwXoYQmoOAzFdM0JO0BDyVtCjpd6HWlXRm3VlJDUmPgD9V65TwC5iq1+tbyvcdBW7FmFaKY2KvVOVjkLJhdz8VjV2NwjVJK8Btdz9iZrWi5h+UYfMbxqhMHAAAAABJRU5ErkJggg=="
 	}, {
-		label: "Firefox3.6-Mac",
-		ua: "Mozilla/5.0 (Macintosh; U; PPC Mac OS X 10.5; en-US; rv:1.9.2.8) Gecko/20100724 Firefox/3.6.8",
+		label: "Firefox33-Mac",
+		ua: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10; rv:33.0) Gecko/20100101 Firefox/33.0",
 		image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABaElEQVQ4jX3Sz0vUURQF8M/MYDWRCS2arIgiIZEEXQQSSBFBm6BFC4kKIkjEQCmFaGUUGSoo9GNqkVNBm6AW0a6/I/p7WnzPyJcnduDC495zzn3vvkuFAXTQwDk8xTZ6+JR4gjP2wDV8wU28xlt0Y3YAJ3EbP8Jt1MUtvMQ3/MVHvMd3HCsaLeMPbqHZTx7CBkZxKTGSm1zH/prBqTynm5uAE9jCUNHtCn7iaC3XxDPciKYDd/CwEJ/FemZSYiHmc7gLm7hQIxzBm5AapRqLuIzJaG2rptxHBx9wP10WMJ7aAF6pfud4tHoYLrqM52n38Eu1FzCFtRgN9w26GCsMJvAVv7GE05gOdzKcMbyDx5gpDPZlBs/TcQMrMe5jJlrnM4zDdqOh2sSDaosT7ma0YD5RJ+2FZo2/g0G8wCza/xG38SDcwbI4hEeqN19VfWc70UluLZxya3fQwkWs4rNq73s5r6bWqgv+AYBxON0vXviZAAAAAElFTkSuQmCC"
 	}
 ];
@@ -651,7 +651,18 @@ var SourceAPI = [{
 			s_local = s_local.substring(0, s_local.indexOf("<"));
 			s_local = s_local.replace(/ +CZ88.NET ?/g, "");
 
+			var myip_pos = docum.indexOf("cz_ip");
+			myip = docum.substring(myip_pos + 7);
+			myip = myip.substring(0, myip.indexOf("<"));
+
+			var myAddr_pos = docum.indexOf("cz_addr");
+			myAddr = docum.substring(myAddr_pos + 9);
+			myAddr = myAddr.substring(0, myAddr.indexOf("<"));
+
+
 			var obj = {}; //※必须，返回结果必须为object类型，此处为声明。
+			if (myip) s_local = s_local + '\n' + '--------------------------------' + '\n' + '我的IP：' + myip;
+			if (myAddr) s_local = s_local + '\n' + '我的地址：' + myAddr;
 			obj.SiteInfo = s_local || null; //※必须，此处为返回结果中你需要显示的信息;当前项仅为图标查询源的时候可以非必须。
 			//以下两项非必须，在此项目不作为国旗图标查询源的时候可以不用
 			obj.countryCode = null; //此处为返回结果的国家CODE。
