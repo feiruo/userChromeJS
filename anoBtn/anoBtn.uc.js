@@ -12,6 +12,7 @@
 // @homepageURL	 		https://github.com/feiruo/userChromeJS/tree/master/anoBtn
 // @note         	  	支持菜单和脚本设置重载
 // @note          		需要 _anoBtn.js 配置文件
+// @version		 		1.3.3	2015.02.18 22:00	调整代码。
 // @version		 		1.3.2	2015.02.13 23:00	Fix exec。
 // @version		 		1.3.1	2014.09.18 19:00	Fix Path indexof '\\' or '//'。
 // @version		 		1.3.0	2014.08.12 19:00	支持多级菜单，不限制菜单级数。
@@ -71,7 +72,6 @@
 				label: "AnotherButton",
 				tooltiptext: "左键：重载配置\n右键：编辑配置",
 				oncommand: "setTimeout(function(){ anobtn.reload(true); }, 10);",
-				image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABBElEQVQ4ja2SMWoDMRBFx2CSzp17F1sEtkolsNFq3oAL+wg+THIAHyPp4spnSMpcIVXYhXSuDd40WpCTiN2FDAyI0fwn/ZFEMuGcm5nZE/DsnJvl+v4MM1sCH2bWmlkb18teoapOgQfgHMXvMVvgrKqPqjrNiRfAa2y+qOq+KIrbsixvVHUPXOLem6oursTAzsxOsaEJIax/HhBCWANNvNkJ2HV+XzqvZnb03s9zFr33czM7JrM5SDosEZn0DkpkkgC+RFXvEsCg6Pqrqrq/KowF5AsiEkLYADVQhxA2owFAnXitRwOSl8nu/T8AWPUBgNUvQOp3aAJNCtgm33RIfgJbEZFvV1jYjFeO1K0AAAAASUVORK5CYII=",
 				class: "menuitem-iconic",
 				onclick: "if (event.button == 2) { event.preventDefault(); closeMenus(event.currentTarget);anobtn.edit(anobtn.file); }",
 			}), ins);
@@ -93,9 +93,11 @@
 			sandbox.locale = Services.prefs.getCharPref("general.useragent.locale");
 
 			try {
+				var lineFinder = new Error();
 				Cu.evalInSandbox(data, sandbox, "1.8");
 			} catch (e) {
-				this.alert('Error: ' + e + '\n请重新检查配置文件');
+				let line = e.lineNumber - lineFinder.lineNumber - 1;
+				this.alert('Error: ' + e + "\n请重新检查配置文件第 " + line + " 行");
 				return;
 			}
 			try {
@@ -104,7 +106,6 @@
 			this.anomenu = sandbox.anomenu;
 			this.anobtnset = sandbox.anobtnset;
 			this.makebtn();
-			$("anobtn").appendChild(this.makepopup());
 			if (isAlert) this.alert('配置已经重新载入');
 		},
 
@@ -112,7 +113,8 @@
 			for (var i = 0; i < this.anomenu.length; i++) {
 				var obj = this.anomenu[i];
 				try {
-					$("main-menubar").insertBefore($(obj.id), $("main-menubar").childNodes[7]);
+					if (!obj.clone)
+						$("main-menubar").insertBefore($(obj.id), $("main-menubar").childNodes[7]);
 				} catch (e) {}
 			}
 			$("anobtn").removeChild($("anobtn_popup"));
@@ -135,6 +137,9 @@
 				removable: "true",
 				image: iconImage,
 			});
+
+			$('anobtn_set').setAttribute('image', iconImage);
+
 			if (orientation == 'before')
 				intags.parentNode.insertBefore(anoButton, intags);
 			else if (orientation == 'after') {
@@ -145,29 +150,17 @@
 					parentEl.insertBefore(anoButton, intags.nextSibling);
 				}
 			}
-		},
 
-		makepopup: function() {
 			var popup = document.createElement("menupopup");
 			popup.setAttribute("id", "anobtn_popup");
 			popup.setAttribute('position', this.anobtnset.position);
 			var obj, menuitem;
-			for (var i = 0; i < this.anomenu.length; i++) {
-				obj = this.anomenu[i];
-				menuitem = $(obj.id);
-				if (menuitem) {
-					for (let [key, val] in Iterator(obj)) {
-						if (typeof val == "function") obj[key] = val = "(" + val.toSource() + ").call(this, event);";
-						menuitem.setAttribute(key, val);
-					}
-					menuitem.classList.add("anobtn");
-					menuitem.classList.add("menu-iconic");
-				} else {
-					menuitem = obj.child ? this.newMenu(obj) : this.newMenuitem(obj);
-				}
-				popup.appendChild(menuitem);
-			}
-			return popup;
+
+			this.anomenu.forEach(function(obj) {
+				popup.appendChild(this.newMenuitem(obj));
+			}, this);
+
+			anoButton.appendChild(popup);
 		},
 
 		newMenu: function(menuObj) {
@@ -190,32 +183,71 @@
 		},
 
 		newMenuitem: function(obj) {
-			if (obj.child) return this.newMenu(obj);
 			var menuitem;
-			if (obj.label === "separator" || (!obj.label && !obj.text && !obj.oncommand && !obj.command)) {
-				menuitem = document.createElement("menuseparator");
-			} else {
-				menuitem = document.createElement("menuitem");
+			if (obj.id && (menuitem = $(obj.id))) {
+				menuitem = obj.clone ? menuitem.cloneNode(true) : menuitem;
+				for (let [key, val] in Iterator(obj)) {
+					if (typeof val == "function") obj[key] = val = "(" + val.toSource() + ").call(this, event);";
+					menuitem.setAttribute(key, val);
+				}
+
+				let type = menuitem.nodeName,
+					cls = menuitem.classList;
+				if (type == 'menuitem' || type == 'menu' && (!cls.contains(type + '-iconic')))
+					cls.add(type + '-iconic');
+
+				return menuitem;
 			}
 
-			if (!obj.label)
-				obj.label = obj.exec || obj.text;
+			if (obj.child) return this.newMenu(obj);
 
-			if (obj.exec)
-				obj.exec = this.handleRelativePath(obj.exec);
+			if (obj.label === "separator" || (!obj.label && !obj.image && !obj.text && !obj.url && !obj.oncommand && !obj.command))
+				menuitem = document.createElement("menuseparator");
+			else if (obj.oncommand || obj.command) {
+				let org = obj.command ? document.getElementById(obj.command) : null;
+				if (org && org.localName === "menuseparator") {
+					menuitem = document.createElement("menuseparator");
+				} else {
+					menuitem = document.createElement("menuitem");
+					if (obj.command)
+						menuitem.setAttribute("command", obj.command);
+					if (!obj.label)
+						obj.label = obj.command || obj.oncommand;
+				}
+			} else {
+				menuitem = document.createElement("menuitem");
+
+				if (!obj.label)
+					obj.label = obj.exec || obj.url || obj.text;
+
+				if (obj.exec) {
+					obj.exec = this.handleRelativePath(obj.exec);
+				}
+			}
 
 			for (let [key, val] in Iterator(obj)) {
-				if (typeof val == "function") obj[key] = val = "(" + val.toSource() + ").call(this, event);";
+				if (key === "command") continue;
+				if (typeof val == "function")
+					obj[key] = val = "(" + val.toSource() + ").call(this, event);";
 				menuitem.setAttribute(key, val);
 			}
 			var cls = menuitem.classList;
 			cls.add("anobtn");
 			cls.add("menuitem-iconic");
 
-			if (obj.oncommand || obj.command) return menuitem;
+			if (menuitem.localName == "menuseparator")
+				return menuitem;
+
+			if (!obj.onclick)
+				menuitem.setAttribute("onclick", "checkForMiddleClick(this, event)");
+
+			if (obj.oncommand || obj.command)
+				return menuitem;
 
 			menuitem.setAttribute("oncommand", "anobtn.onCommand(event);");
+
 			this.setIcon(menuitem, obj);
+
 			return menuitem;
 		},
 

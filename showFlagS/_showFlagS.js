@@ -49,6 +49,9 @@ var Perfs = {
 	tipArrSep3: "--------------------------------", //分割线，留空就没有
 	tipArrThanks: "Thx&From：", //感谢：xxxxx
 
+	//默认UA图标
+	defaultUAimg: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAACKklEQVQ4jbWPT4gSURzHXzqDzr6ZgefD+fd0YJynjI62ghhqZApLdCnwkpAn87CXvO4SHTqKhw4JIl5aloiCIBChBTstHj10CXYpIRbSdXGLWDoG0ynZFSNY6Ae/y+/zPl++D4D/OBAAsHZZmfA8/7Lb7bKXskVRfCVJ0kQUxTbLsrssyz53uVxbAAD7n7IgCHcJIXPLsj7puj4lhEw0TZv6/f5TnuePGIZ5vFJkGOYGQui6JEm7lNJJPB4/jEaji7Us6yAUCn3GGJ95vd4ny74LQrgXDoergUBgn1I6Nk1zbJrmhFI6MQxjaprmOBKJ/AmZQAivLmxN03SE0FE2m70dCoXeKoryw7btj9Vq9VG9Xt8sl8sN27ZHuq6PDcM4VFX1FCG0tQgwDGMdY/w1nU7ngsHgu42NjdedTufa+Yq5XG5bVdUTXdcPFUU5lmW5tYCFQoH6fL4TVVU3W63WuuM4zPIfIYQNjPE3VVUP/H7/jBDydAF3dna8iqKMeJ7fd7vd95ZlSmkgkUi8CYfDQ4TQGCE0tyzr4YVHmUxmm+O4nyzLfgcA3D/P2u02P5/PBULIC0EQjjHGXyqVSuJCwHA4RJFI5D1CaFwoFBqWZeGlIh6O40Yej+csmUy2l1sCAADo9/t6Pp/fLZVKNx3HubKEH7jd7l+xWGyv1+vJKwMAAMBxHK7ZbGrnTi4I4S1Zlj8Ui8Vns9lM+qu8alKp1FqtVrszGAySq/hvbPGRIDMl+58AAAAASUVORK5CYII=",
+
 };
 /******************************************************************************************
  *这里是设置文字显示的，可以自定义多个，可以根据需要截取，只支持函数操作。
@@ -74,6 +77,71 @@ var ServerInfo = [{
 }, {
 	label: "网站语言：",
 	words: "X-Powered-By"
+}];
+/******************************************************************************************
+ * 。
+ *******************************************************************************************/
+var UASites = [{ //直接可以看kankan视频，无需高清组件
+	url: "http:\/\/vod\.kankan\.com/",
+	label: "Safari - Mac"
+}, { //WAP用UC浏览器
+	url: "http:\/\/wap\.*",
+	label: "UCBrowser"
+}, {
+	url: "http:\/\/browser\.qq\.com\/*",
+	label: "Chrome - Win7"
+}, {
+	url: "http://www\\.google\\.co\\.jp\\m/",
+	label: "iPhone"
+}, {
+	url: "http://wapp\\.baidu\\.com/",
+	label: "iPhone"
+}, {
+	url: "http://wappass\\.baidu\\.com/",
+	label: "iPhone"
+}, {
+	url: "http://wapbaike\\.baidu\\.com/",
+	label: "iPhone"
+}, {
+	url: "http://weibo\\.cn/",
+	label: "iPhone"
+}, {
+	url: "http://m\\.hao123\\.com/",
+	label: "iPhone"
+}, {
+	url: "http://m\\.mail\\.163\\.com/",
+	label: "iPhone"
+}, {
+	url: "http://w\\.mail\\.qq\\.com//",
+	label: "iPhone"
+}, {
+	url: "http:\/\/m\\.qzone\\.com/",
+	label: "iPhone"
+}, {
+	url: "http://wap\\.58\\.com/",
+	label: "iPhone"
+}, {
+	url: "http://i\\.jandan\\.net/",
+	label: "iPhone"
+}, {
+	url: "http://www\\.tianya\\.com\\m/",
+	label: "iPhone"
+}, {
+	url: "http://m\\.xianguo\\.com\\wap/",
+	label: "iPhone"
+}, {
+	url: "http:\/\/ti\\.3g\\.qq\\.com/",
+	label: "iPhone"
+}, {
+	url: "http:\/\/[a-zA-Z0-9]*\\.z\\.qq\\.com/",
+	label: "iPhone"
+}, { //工商銀行
+	url: "https?://(?:mybank|mybank1?|b2c1)\\.icbc\\.com\\.cn/",
+	label: "Firefox20.0"
+}, { //百度何苦为难火狐~~~
+	url: "https?://(.*?)n\\.baidu\\.com/.*",
+	//url: "https?://(.*?)\\.baidu\\.com/.*",
+	label: "BaiduYunGuanJia"
 }];
 /******************************************************************************************
 child:[  ]内为当前菜单的二级菜单配置，只支持二级菜单；
@@ -460,9 +528,88 @@ var Menus = [{
 		saveImageURL(canvas.toDataURL(), content.document.title + ".png", null, null, null, null, document);
 	},
 	image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAm0lEQVQ4jbWTUQrDIBBEH9QcokjZe+T+ieQaJXiKfvSjIyyJRmzpwHzsuo47qwJMgIlBvIpPMGAFEnAXUyOOLYEEbG7D1oirAsEV3sQoltivdwWO6Ap4C7UWIwMzqBUY8BTtGwvDAmWIBjyAGcjirJypJhwt+HvfdWoGXmJWbgeW0tHPAoHzvQ9Z6KE7xL8LRD5+FxoPqYfL7/wGEBc4QhYRpZIAAAAASUVORK5CYII="
+}, {
+	label: "抓包工具",
+	exec: '\\chrome\\Tools\\Hacker\\HookSocket.exe'
 }];
 /******************************************************************************************************************
- *这里是查询源设置，只支持"GET"方式获取，taobao为脚本内置,可以自行按照示例添加，不限定于IP，可以是其他相关的API，只要是你想要显示的都可以
+ *这里是自定义UserAgent设置
+ *******************************************************************************************************************/
+var UAList = [{}, //分割线
+	{
+		label: "IE8 - Win7", //此处菜单文字显
+		ua: "Mozilla/5.0 (compatible; MSIE 8.0; Windows NT 6.1; Trident/4.0; GTB7.4; InfoPath.2; SV1; .NET CLR 3.3.69573; WOW64; zh-CN)", //UA
+		//下面的是图标
+		image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAB7klEQVQ4jbWSu2tUQRTGbyT4QDF2ggRRtFvZ3DvfkaAEWcEXWwoGtxEbFXyAQsjK7p0zVlFERcw/oNhYWVhYSCCdrUSIhRZBLEzcnTnHRyIubrRws3uXjQQLD3zFzPD75sw3J4r+d+VOza4fsj5nrB8lDqV8qrvXhPZe8VuTVI/A6hixPiHWeXLyCqxlsJaT8dqOv8Kw9WFifQ4ni+T0V1usdbDcIQ4l2PrwqnBi/QGwvl2B4LQJpz/AutxZy0xckbj35nIYAOuLNsz6hjhcMKk/YVjuwcnX1v6yYXE9BpSGIjn9/sdAPiP1x9qHhel+42Qya96TA1gnMm/2xskkWG+1NEEszzpPkcWkKoey7e+Ek9lMYD/B8i0rYvkCJwIWhdOaYX+8bWBYz8FpsxOezBH7o6ioMVZhrCK29f2ohhFUw0hc9Qfjq7Kthd9YByePiPUlWMNKi8Sh1JmLdxtgw3VimSKWKTi5O3jtw6YoiqJo19m5jWB5alI5CZaHmRw+Eofbxup5cvKYWJZaATYMh0vZ/Prg9GZiw+mkWiOwvO4aoIzA2gDLg/zY/OauH8iP+0GycobSUKRUCmC5DyfvwdqA0yaxLMHJDNlwOXfx05ZVp7CrCtP9SBf2UBqKxvpRsBzeV1nYHkVR39rwP9ZvsJlc4gd6n5MAAAAASUVORK5CYII="
+	}, {
+		label: "IE6 - XP",
+		ua: "Mozilla/4.0 (compatible; MSIE 6.1; Windows XP; .NET CLR 1.1.4322; .NET CLR 2.0.50727)",
+		image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAB8klEQVQ4jY2Tu2tUQRTGD4REC434AAtf63Ld7GVmzu+D/AEpUkQEX6ghCAEl+ChsDCTapBFRFPtYCKKoYCmSUokKCj4qQYmKYGxMNCpaGEl8NHfDukbJwAdTzPkec84xW+CRVJJ0ADgBnAPOp5S2zPe2Gai4ew9wHDgGDEm6CuyPMa42M4sx5sChPypDCBlwRtIbSTPAD+BngWnglrv3mFlzpVJZ5e6b54pjjLmkUUmzkiaBieL+qwEfgP4Y47o8zzeZmVmWZa3AZWBa0n1Jd4Cvkl5KGgXG60mAj+6+bU7d3TuBKeA6cKWwezelVA0htKSUOgqyeic3QghLzMwMGAIuuPtJ4EuhctPd+9y9DzgCPGlwMSZJZmZNkvYUeDVP5n/hvbtvNTOzlNJySdcaFN5KelyHh3V4BNx2985ahC5JnxsIhvM83xBCWF+0t1fSoKQBSYPAYWCNmVkTcLHRIvA0pdSRZVmru+8GXgPfi07NShqpVqsrLcbokp4B74BvDSQTkl4AU435U0rbazO+DxgHeoHhQuF/nzcJHM2ybFEtfz8w5u5r29ralko6CNwr3MzUAHySNALsDCG01A/RLuB5Smmvu29MKbVLGgBOA91At6QdKaX2EMKKv1avXC4vc/ezwANJlySdArpKpdLihaz5b/pi+ogGeBgzAAAAAElFTkSuQmCC"
+	}, {}, {
+		label: "Chrome - Win7",
+		ua: "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.99 Safari/537.36",
+		image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABZUlEQVQ4jX3SPUiWYRQG4AstJ4ewwiV3EQJrCXIJBIPIBBcpEBxcWvsBSQeDoNDBEKNNFGkQaW2sraYCB4WQSrAQ/b7SwZ/ox6/hPS+8Pr524F7Oc+77nPs8h8NxEl2Ywyp+Yh+fMYNOnHBMNGMCVdSOwSbGcCYlN+Hlf4gp5nE2JzegFe9LCn9hO/AD3wNVDKEOrmIKt8NzDRsYx3VcxAVcwy3cDPTkU8xhFwN4hQq6gzSMB2jDJXzAWuArJuFLdH2DfoygHR8LVpZwPpZctLhC9k01/MYdNGK0ZB/3cSPq8twO7BUSy2iJKVKBuyUCW/CpkDjAkxh3qZBfjD2kFpZhOklW0Bsi96JzKzpkh1SsfQZXSh4qeBpCXTjn6KGt4zLZ/T+O8VPff7GAwWRXf/AQ9SJO40WJSBV9eJuIzuKUJJrwKEbLiydlx5QLf4vOR8h51MeynuO17JTfyX5kKjzXFQn/APgEoX8xUiqtAAAAAElFTkSuQmCC"
+	}, {
+		label: "Chrome - linux",
+		ua: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2227.0 Safari/537.36",
+		image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAB50lEQVQ4jWNgoD4wZlWLWBVrWvVinXndh+vmdR9um9W83amZtLdASMWTD69WGZcOXbOad9fM6z78x4FfqkVt8MKqWcQwScq89sM7PJph+LdmwrYAdP3MJuXPPU1r3p9GVmxW+/6eWd2H02Z1H06b1344A8Nmte/3Mkj5csF1KwbNCzGv+/DSuOq1t1nth3/mtR9eGBY/8NROPxapErEmid+mQlA75UCkdtqhJhhWi1yDcIVRyb3F5nUf/pvVvO0yq327yrjsfgCya8xq3z8yKr1na1734TeS2BW4AWa1H05BBD/8MCy+ZaedtC8Y3e962aerzGreHkcY8OEXwoC6D3DbTCqfr1WPXBOGboB+9rk6s5p3cAPMaz/8YWBgYIR4ofT+CiST/5lUvvAzq/1wA0nsjVHFEycUL9R9uAl3gUrwwhj0+DaueRNgmH85TzfnbJl00GwZk8pna5HVGORf60OKRW02s9r3t1Gj8MM/89oPt8xqP+w0qnzhY1b74R9SAH4RNM6XQ02Fbt3mZnXvv6L73bTqVYJpzbtLyAZrJ++Jx5oa5fwmW5vVvX8M11z77phZzatchIHvP2sm7IrFqhkORB14NOO3F5rVvDtsUvbQ1az2/T2z2vfndDJPtooYJknh10wGAACB6IAc8VaKWAAAAABJRU5ErkJggg=="
+	}, {
+		label: "Android Droid",
+		ua: "Mozilla/5.0 (Linux; U; Android 2.0; en-us; Droid Build/ESD20) AppleWebKit/530.17 (KHTML, like Gecko) Version/4.0 Mobile Safari/530.17",
+		image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAASElEQVQ4jWNgQANLjln+RxcjRg5D4apTrv+XHLNEwURrhtHomgkagq4JF6adAWQBdD8S6wI4e9SA/1gDdODTAbpCkhMQXQ0AAEsuZja4+pi7AAAAAElFTkSuQmCC"
+	}, {
+		label: "Googlebot",
+		ua: "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+		image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAPCAYAAADtc08vAAABRklEQVQokXXSv0uVURwG8M+Sg5FrjoHYHyCIWyIiOCmITTa1uLq4NLi5aYrSKHRJwuGGy1WHBiEdvKUpuAiKcBMvai03CrTs2vCeC8fDe79w4D3n+f543uf5cj9aMYIizvAH1zhFAQN4oEl04C1quGtyvuM1HqfFnfiUJN/gHCeBwVWEfYibPML7pPgYSyFxCMM4QD3gdcygBcbwO5n8Esvhvo6noUE85BLPoJQANfRgIdwv0I2tHE0WhP+MH/8Fev3YxAqm8SunwQ78zAH+YheT6MK3Jq4c5TG4ww+UMYcnQae8vDKsJY+HGMcGKviCPryKXGicRXiRuDCF0SSxiImkwRV6oS0I1QBKQfU32MPn8P01yqljVtgDMp+3I3BftkgFfEQ1YbSKdkl04l0TV2Jx5/OKG/EQz8OEKm5lllZkmzkY04b/fzejj8A3wWEAAAAASUVORK5CYII="
+	}, {}, {
+		label: "Opera",
+		ua: "Opera/9.80 (Windows NT 6.1;zh-CN) Presto/2.12.388 Version/12.14",
+		image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABpUlEQVQ4jaVSsUpdQRQ8iBJExMby2lwe94J3d2bQSkG0EqxtJSABC408/QUhgqSIYCCEIAims42NXxFIow+bGBKTVjHk+aLXZp+sy+s8MM3O7JzdOccsqizLBr33CyT3JbUk3Qa0SH4kOd9oNF5YryqKYlTSW5K/JdUk2yRPA9rh7FLSm6IoRp9cLstymORe6FaTvCf5wTk35pwbk/SJ5L2kWtItgHcAhh4NALyUdBMENcmzqqrGu3xVVeMkzyL+GsCimZnleT4i6aRLBsFhlmWDcTYkDxPNlzzPR0zSHMkfCbmVZkRyK9ZI+g5gxgC86oYU0CG53sNgXVInavKP5LIBaCbd2wBWUwMAq0mjGkDz+QYkl+IJSOoAaPb4wqak/5HuhuSSAZgIWxcHtN3DYCfRtABMmJkNkPyckEdlWQ7HiybpKNEcmNmAmZl572cl/YxyuPDeT3YNnHPTkn7FPICZ+IX9kjZIXseLImku4Dg6vyL52sz605SHJK1JOg/CO5J/Au6CwbmklXhL0+pzzk2TfE/yWxjbX0lfJe1676fMrC++8ADAy++mZ2aeNgAAAABJRU5ErkJggg=="
+	}, {}, {
+		label: "Safari - Mac",
+		ua: "Mozilla/5.0 (Macintosh; U; PPC Mac OS X 10_5_8; ja-jp) AppleWebKit/533.16 (KHTML, like Gecko) Version/5.0 Safari/533.16",
+		image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABd0lEQVQ4jYXTv0vWURQG8I9lvP4oCQvRIRN/VkPSlLzkJCRBUoJkiP+DDg3iKNTQkC01qKBCSLw1NBoRQaENLREILQ0RlIODhGIgosM9wtc3Xz1w4d5zz/Pcc55zLkdbNc7ixDFxoAMPcBu9eIRlfMUrDON8KXAZRtGPd9jBFr7hM35jN863SpEM4WMELuAmzuEMLmMEq0F85zCCqQCPoTx8tWjLxFzHd/xBu6KLLbxwULAcGmJ/D63owjaeZgke4h9uFGU1jAk8jpUL/xv8xEWoxKdIrT5erMN9Sdj3WMEltEitfYJN5OE0vkgK16MGFRgM0hlM4kqsqgxBt6h5XlK4JVJsxkvMRnnXikqbw1907jvuSh0YifM4BmLf4KA1Sl1YzGiiBkvSwPREmnASTRlwDoV47L9ZyGMDv9CXIamWJrUVrwP8rBi8b71Se3bxAdOSiAWshf+5JHxJa5ZU/iEpvYl1vJX+StlR4KxdkKYuj6s4dVjQHmMlTZu/PHeoAAAAAElFTkSuQmCC"
+	}, {
+		label: "iPhone", //伪装 iPhone，查询http://www.zytrax.com/tech/web/mobile_ids.html
+		ua: "Mozilla/5.0 (iPhone; U; CPU iPhone OS 3_1_2 like Mac OS X; en-us) AppleWebKit/528.18 (KHTML, like Gecko) Version/4.0 Mobile/7D11 Safari/528.16",
+		image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAADLSURBVCiRddA/C0FRGMfxc4UyGdQNpQzIKzDhFViNZvKn7y5loow3Ay/AaLQpeQUMkkWhjBbFonQM13X9efRM5/l9zjlPj9Lqu4hSJeycfuMUKy5E/wB8TNEM3I4beTHxE+HIiBjBD4BBhSVH1lj0mbDlwJgMhlZKKzw00ULNMG2Q4yzEOxLPL2iL91uvGRiKoOSCjggsFxS5C+BCAY8NYizFN26UnT3URHAi74AAcwE03lZNkg0azZ4F168hnyRNjypxQmTpUsdr9x/STR736IkaIQAAAABJRU5ErkJggg=="
+	}, {
+		label: "Apple iPad 2",
+		ua: "Mozilla/5.0 (iPad; CPU OS 6_0 like Mac OS X) AppleWebKit/536.26 (KHTML, like Gecko) Version/6.0 Mobile/10A5355d Safari/8536.25",
+		image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAA+UlEQVQ4jWNgoCaQkZHh1NXVdFFWVg5QUVHxR8daWur+mpqa8jgN0NDQUHN0dHiQlZX5Iycn+3t2NgLn5OR8DwkJ/m1goFeC0wApKSmNzMzMR58/f/77+/fvf79+/YLjf//+/Vu7du1/fX3dCrwGZGVlPvrx48e//1jAhg3rRw0Y/AYoKEhpxMfHP75y5cq/27dv/b9z587/e/fu/b9169b/u3fv/p85cwZ+A/T0VGRMTU22OTs7n3N2djobGhp6NjEx8ayzs9NZFxfns3Z2tucMDHSjcBrAwMDAqK6uzqugICAgICAgoKCgIKAA40D5DAwMrPgMoD8AAE0eOfg/Mfz/AAAAAElFTkSuQmCC"
+	}, {
+		label: "iOS/微信浏览器",
+		ua: "Mozilla/5.0 (iPhone; CPU iPhone OS 6_1_4 like Mac OS X)AppleWebKit/536.26 (KHTML, like Gecko) Mobile/10B350MicroMessenger/4.5",
+		image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABB0lEQVQ4jZXSSyvEURgG8N8MkcaGsGCnWGAxIZqymA2lpCFsZilJESKUS0nDgpLbQqyUlc/gu1mck+am/99Tp845z3me93JektGNE3yjmOJ9Ddpwhg3cofBfgwKuMItbdKYRZZCN+yV84RrDacQjOEIFh1jDJo5jJpeYF0prQB4vmMOQ0LA9oYEL8S4fjQ7QUi3uEGqcTlHeLk7RWk1MxPSyTUTVGI+BcvVECesJYijH1YBF4a+TUMJWM2ISFykM+vGMsXqiC/foS2EyhXeM1hPbWElhkMOTMDM1GMQDehIMVoVhyzQjyzhHbzQqYjlGy2EGjxj4y70dO/jEB26wj9d4fhOm8Rc/nDkiWslhowkAAAAASUVORK5CYII="
+	}, {}, {
+		label: "DoCoMo",
+		ua: "DoCoMo/1.0/P502i/c10 (Google CHTML Proxy/1.0)",
+		image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAXElEQVQ4jWM4w2D8nxLMMGoAwoCXk1f+P8Ng/P//////X05c/v+2Zy5pBvz//598F7ycuPw/DMDY14xjUPjYaLgBMHDbMxcrfcsDuzhRLoApRKYxXDA4onEEGwAAOydBL6/POBgAAAAASUVORK5CYII="
+	}, {
+		label: "UCBrowser",
+		ua: "Mozilla/5.0 (Linux; U; Android 4.4.4; zh-CN) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 UCBrowser/10.1.3.546 U3/0.8.0 Mobile Safari/534.30",
+		image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABFklEQVQ4jc2TsWoCQRCG9w0sgqX4CHZpfQrxGkOwC1jZKDY2NhIUUgTsghDBQgsLW21EqyuuEeGuMQge6+7tDcT6t7hweuqdB7GwGGaHYT6Y/59ljDFGRAjE7/72mwjs6nCMwdM6HBAz7gQQNlxjGmyaOmhjHevtGmrSgxp3QMv5GWC1AM8/gYTt7yiqWajRB4gIatIDf0lBfr7BGb5DtotngOU8HGAZ4FoS7mIUIaKphwKcfgO7UubSicgViI6Abg2i/HxDRFMHzyVAPyu/sStloMYduLMhuJYEWUa0jaKahWxqcI0pnK8K+Gvad0G2Ch5wNgCZupcv7kDYvsLOdz1o4Z8TslWAbGpe/8Eu8T+AyB8ZY/gAY1aTwt2Ru2IAAAAASUVORK5CYII="
+	}, {}, {
+		label: "BaiduYunGuanJia ",
+		ua: "netdisk;4.4.0.6;PC;PC - Windows;6.2.9200;WindowsBaiduYunGuanJia",
+		image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABWUlEQVQ4jaWSy0sCURjF/XfuRugukha1CzeBCBKIFFFIBEGrCoRwE4EErlskoYW0EFy0iBAkCMFNBCGuKrqjNg6OgzOTjY+5nhbh3ehMrw/O8vud73E8hDL8Rx5CGf5ajoBCsQuvT0IubwIATk51xA/bsPkPAdFtBYQyLIXeUCpbYtybQtcd0Na+LHb2WiCUYTXaRC5vCsBdyXIG3D/0QCjD2qaCl9cB9g9UPFb66OgcuzEVmayBpmKjVLamAxJJTTg9PQ+mHm1+sQ5CGS4ujUlAJmuAUIaZOQkdnaNS7SMYlhGKyKjVh7B6I2EQi6uTAJsDV9fvqFT7YNIQsws10eAPNNDWODa2FHh9Eoq3H85faKk2/IHGRGCWV2RYvZH7Fzo6n9o8VmS9CcPkzoBUWv82umfnhjNgfEg3pdK6M8AwuUihP9DA0bGGRFJDMCyLYLmu8NsSgP/oExgMERjFwInkAAAAAElFTkSuQmCC"
+	}, {}, {
+		label: "Firefox20.0 ",
+		ua: "Mozilla/5.0 (Windows NT 6.1; Win64; x64;) Gecko/20100101 Firefox/20.0",
+		image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAclBMVEUAAAD/xAD0xgD0xgD0xgD3xgDwwQD//wD0xgD1xgD0xwD0xgD0xgD0xQD1xwDzxwD4xwD0xgDzxwD0xgD0xgD1xwD0xgDzxgDzxQDyxgDyyQDzxgD0xQD0xgD1xwD0xgD1xgD0xgD1xQDzxQDzwgD0xgD0+NzRAAAAJXRSTlMABOft5R4QAfr10aVzXlA+CuHHopuTb2lYJhPd2bOshn1INRYVmnz94QAAAIpJREFUGNONj9cOwzAIRXESj3jEzh7dg///xWIUVX2plPuAuAfEgGMSwYfJx6+N/UMAvNyQgNUUswsAurFXyeCGiP1CiWpHBgWBKnLWaYoy+5lLZS0orhmo9AbwWPCSE5HaWCUcdtx4J3BedLpUODGQJrdYmt2q/ZASWeUTdm2jITtsv9/IVf959AOR1gmNMGci6QAAAABJRU5ErkJggg=="
+	}, {
+		label: "Firefox3.6-Linux",
+		ua: "Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.2.8) Gecko/20100723 Ubuntu/10.04 (lucid) Firefox/3.6.8",
+		image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAB1UlEQVQ4jW2SO2hUYRCFJ7qIGGOhorig2WLZu9f/3vmOvaDBwsbGB4Eoltbx2aaJBLExpBAtDGJhI0hstbBQtPBBBImwCRLQzseCaLESXZt/w+V6fzjVnDP/zJlj9v+rAcHdJ9x9MmICCGa2sYJvQ+12e4eZ1UII+4FpSXclzbr7ZeASMAc8BKbzPG+b2dC6OkmSEeCapHOSFtz9KnBB0uHSVMeBj8AH4Gyz2dxmZmYhBID3wE9JHUmPJT0IIewrjhk/Gpf0Gvgu6War1dppwBjwSVJ/AOAtcDBJkpHyvsABSe+ArrufNOCOpLVig4hl4Gi5gbvvAp5L6rv7dZP0tSwG/kqaCSFsLTdI03QP8CZyV03SSkn8Q9KTPM9PV50sz/NDkl4M+CZpuTTBF+CEuw9nWbbb3ZMQwqaCBxej4X3gs0laqti/A9wDnklaBI5F/QZ3v1HgLZik+xUNBqu8knQ+y7K9jUZjc8xKJ9Z77j5pwDjQLYl7wDwwFkLYnqbpKDAFfCtwXoYQmoOAzFdM0JO0BDyVtCjpd6HWlXRm3VlJDUmPgD9V65TwC5iq1+tbyvcdBW7FmFaKY2KvVOVjkLJhdz8VjV2NwjVJK8Btdz9iZrWi5h+UYfMbxqhMHAAAAABJRU5ErkJggg=="
+	}, {
+		label: "Firefox3.6-Mac",
+		ua: "Mozilla/5.0 (Macintosh; U; PPC Mac OS X 10.5; en-US; rv:1.9.2.8) Gecko/20100724 Firefox/3.6.8",
+		image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABaElEQVQ4jX3Sz0vUURQF8M/MYDWRCS2arIgiIZEEXQQSSBFBm6BFC4kKIkjEQCmFaGUUGSoo9GNqkVNBm6AW0a6/I/p7WnzPyJcnduDC495zzn3vvkuFAXTQwDk8xTZ6+JR4gjP2wDV8wU28xlt0Y3YAJ3EbP8Jt1MUtvMQ3/MVHvMd3HCsaLeMPbqHZTx7CBkZxKTGSm1zH/prBqTynm5uAE9jCUNHtCn7iaC3XxDPciKYDd/CwEJ/FemZSYiHmc7gLm7hQIxzBm5AapRqLuIzJaG2rptxHBx9wP10WMJ7aAF6pfud4tHoYLrqM52n38Eu1FzCFtRgN9w26GCsMJvAVv7GE05gOdzKcMbyDx5gpDPZlBs/TcQMrMe5jJlrnM4zDdqOh2sSDaosT7ma0YD5RJ+2FZo2/g0G8wCza/xG38SDcwbI4hEeqN19VfWc70UluLZxya3fQwkWs4rNq73s5r6bWqgv+AYBxON0vXviZAAAAAElFTkSuQmCC"
+	}
+];
+/******************************************************************************************************************
+ *这里是查询源设置，只支持"GET"方式获取，taobao为脚本内置,可以自行按照示例添加，不限定于IP，可以是其他相关的API，
+ 只要是你想要显示的都可以
  *******************************************************************************************************************/
 //查询本地信息
 var MyInfo = {

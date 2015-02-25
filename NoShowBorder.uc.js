@@ -7,11 +7,11 @@
 // @startup         window.chromemargin.init();
 // @shutdown        window.chromemargin.onDestroy();
 // @homepageURL   	https://github.com/feiruo/userchromejs/
+// @version         1.2.3 	2015.02.18 22:00	设延迟0.1S，避免初次启动白边.
 // @version         1.2.2
 // ==/UserScript==
 (function() {
 	var gav = Services.wm.getEnumerator("navigator:browser");
-	var inIDOMUtils = Cc["@mozilla.org/inspector/dom-utils;1"].getService(Ci.inIDOMUtils);
 	while (gav.hasMoreElements()) {
 		if (gav.getNext().chromemargin && !document.documentElement.outerHTML.match('chromehidden=""')) return;
 	}
@@ -26,7 +26,9 @@
 			window.addEventListener("resize", this, true);
 			window.addEventListener("aftercustomization", this, false);
 			window.addEventListener("customizationchange", this, false);
-			document.documentElement.setAttribute("chromemargin", "0,7,7,7");
+			setTimeout(function() {
+				document.documentElement.setAttribute("chromemargin", "0,7,7,7");
+			}, 100);
 		},
 		onDestroy: function() {
 			window.removeEventListener("resize", this, true);

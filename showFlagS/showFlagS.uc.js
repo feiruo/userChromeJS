@@ -16,6 +16,7 @@
 // @note            左键点击复制，中间刷新，右键弹出菜单
 // @note            支持菜单和脚本设置重载
 // @note            更多功能需要 _showFlagS.js 配置文件
+// @version         1.6.2.3 	2015.02.18 22:00	Add UAchanger.
 // @version         1.6.2.2 	2015.02.13 23:00	Fix exec。
 // @version         1.6.2.1 	2014.09.18 19:00	Fix Path indexof '\\' or '//'。
 // @version         1.6.2 		2014.08.29 21:30	完善卸载，完善路径兼容。
@@ -73,9 +74,16 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				} catch (e) {
 					log(e);
 				}
+				if (isAlert) {
+					var os = Cc["@mozilla.org/observer-service;1"].getService(Ci.nsIObserverService);
+					try {
+						os.removeObserver(showFlagS.observe, "http-on-modify-request", false);
+						os.removeObserver(showFlagS.onDocumentCreated, "content-document-global-created", false);
+					} catch (e) {}					
+				}
 				window.getBrowser().removeProgressListener(window.showFlagS.progressListener);
 				delete window.showFlagS;
-				Services.obs.notifyObservers(null, "startupcache-invalidate", "");
+				Services.appinfo.invalidateCachesOnRestart();
 			},
 		};
 		window.addEventListener("unload", function() {
@@ -87,6 +95,9 @@ location == "chrome://browser/content/browser.xul" && (function() {
 
 	var showFlagS = {
 		debug: true,
+		def_uaIdx: 0,
+		Current_idx: 0,
+		UANameIdxHash: [],
 		dnsCache: [],
 		isReqHash: [],
 		isReqHash_tooltip: [],
@@ -94,6 +105,9 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		showFlagTooltipHash: [],
 		//等待时国旗图标
 		DEFAULT_Flag: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAACG0lEQVQ4ja2TwW7aQBRF+ZDku0q/qChds5mxkDG2iY3H9jyTBFAWLAgRG7CwCawQi6BEQhgEFkiAuF3VaVXaSlWvdBazuGfx5r1c7n/H9/1rIvpCAUWS5E6S3FFAkU9+wff967+VP1FA6fPzMwaDAcbjMQaDAabTKSggEFEqpcxfLEvp5huNxnmxWGC73SIMQ9Tv6gjqAbrdLqT0Ub+rg4jOUro/S4QQV57nbZMkwel0wvF4xGazQafTgeu5GY1GA8PhEMITqRDiKhM4jnPTbrdxOBxwOByQJAlcz4UQ4heiKILruXAc52smsGzrpd/v4/X1FcPhEBQQ7Jp9kVarhdlsBsu2Xj4E1u3x/v4eRATLuv0tQT3AdDrFcrmEZd2eMoFZNXdm1cSP2DUbZtUEEYECglk1MRqNkKYp3t/fYZjGPhPohh7rhg7d0PH09IQ4jjGbzdBsNtHr9SBcAd3QMZlMMJ/PEYYhdEOPM0G5Ur7RKhoeHx+xWq2wXq+xXq/x9vaGVqsFraJBq2jQDT17l8vljyFyzq9UVd2qqoooirBarTLCMIRds6GqKgzTgOPUoKpqyjn/+MZcLpdTFCVfKpXOlm1huVwiSRIkSYLFYgGzauLh4QHNZhNaRTsrinJ5GxljeUVRUil99Ho9dLtduJ4LKX0QERRFSTnnny+Wv6dYLF4zxgqMsZhzvuec7xljMWOsUCwW/3xM/5JvTakQArDW8fcAAAAASUVORK5CYII=",
+		//默认UA图标
+		defaultUAimg: "chrome://branding/content/icon16.png",
+
 		get dns() {
 			return Cc["@mozilla.org/network/dns-service;1"]
 				.getService(Components.interfaces.nsIDNSService);
@@ -103,6 +117,19 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		},
 		get contentDoc() {
 			return window.content.document;
+		},
+		get usingUA() {
+			var prefs = Components.classes["@mozilla.org/preferences-service;1"].getService(Ci.nsIPrefService).getBranch("");
+			if (prefs.getPrefType("general.useragent.override") != 0)
+				return prefs.getCharPref("general.useragent.override");
+			else
+				return null;
+		},
+		get ContentBrowser() {
+			var windowMediator = Cc["@mozilla.org/appshell/window-mediator;1"].getService(Ci.nsIWindowMediator);
+			var topWindowOfType = windowMediator.getMostRecentWindow("navigator:browser");
+			if (topWindowOfType) return topWindowOfType.document.getElementById("content");
+			return null;
 		},
 	};
 
@@ -127,6 +154,11 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				<menupopup id="showFlagS-popup">\
 				<menuitem label="复制信息" id="showFlagS-copy" oncommand="showFlagS.command(\'Copy\');" />\
 				<menuitem label="刷新信息" id="showFlagS-reload" oncommand="showFlagS.onLocationChange(true);"/>\
+				<menu label="UserAgent" id="showFlagS-UserAgent-config" class="showFlagS menu-iconic">\
+				<menupopup  id="showFlagS-UserAgent-popup">\
+					<menuseparator id="showFlagS-sepalator3" hidden="true"/>\
+				</menupopup>\
+				</menu>\
 				<menu label="脚本设置" id="showFlagS-set-config" class="showFlagS menu-iconic" hidden="true" image="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAWCAYAAADJqhx8AAABlElEQVQ4jaXUSWtUQRQF4M9hYTuEuDAmGl0Yp0QkcQBFRFEXQhB3ATf+gKziwrU/wr8RcK04EY04JuBSQXQRhziEhEDAdDe6qKqkuuiHAQsOvHte3Vv3nlPvwRLqaKCZofEP/jOGxKCJb5jJ8BW/2/BfYs4sjokVv+MS9mU4gze4XPCn8BE/UoFmPG2/1rULkzhc8F14167AwWJjbywwUPDdeL+WDnoqOthRdtCIwTCOZLiIaVwt+PP4lBeoC2q/xpMML7EgCJnzLwTrW1yYxdnYdsJxvIon5vwgPrTT4EAxa3Khv+C7qkT8bxf6io09eIpDBd/WhZ8YEW5ZwhW8xbWCHxau9Jyg04oLz/EQjyKeYV5QPecfC+LeT90lF05ie4aBmHw6xp3Zu050YEOuQenCbqsurENNxVqLCxtxC6PYWVWgdKFbq403BL2m4vNerE8a/MJ1XMgwEjeni3RU+G8sYgK3cQ7+RNSxnKEeE9LXuAl3cQfbsBVb4B4eVGAce7KxxnCz1KCGzRWopTnj6seJPPkvhrmYqehLVdcAAAAASUVORK5CYII=">\
 				<menupopup  id="showFlagS-set-popup">\
 					<menuseparator id="showFlagS-sepalator1"/>\
@@ -186,11 +218,13 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		this.ServerInfo = sandbox.ServerInfo || {};
 		this.SourceAPI = sandbox.SourceAPI || {};
 		this.MyInfo = sandbox.MyInfo || {};
+		this.UASites = sandbox.UASites || [];
+		this.UAList = sandbox.UAList || [];
 
 		this.Perfs.showLocationPos = this.Perfs.showLocationPos ? this.Perfs.showLocationPos : 'identity-box';
 		this.Inquiry_Delay = this.Perfs.Inquiry_Delay ? this.Perfs.Inquiry_Delay : 3500;
-		this.libIconPath = this.Perfs.libIconPath ? this.Perfs.libIconPath : "lib\\countryflags.js",
-			this.LocalFlags = this.Perfs.LocalFlags ? this.Perfs.LocalFlags : "lib\\LocalFlags\\";
+		this.libIconPath = this.Perfs.libIconPath ? this.Perfs.libIconPath : "lib\\countryflags.js";
+		this.LocalFlags = this.Perfs.LocalFlags ? this.Perfs.LocalFlags : "lib\\LocalFlags\\";
 		this.BAK_FLAG_PATH = this.Perfs.BAK_FLAG_PATH ? this.Perfs.BAK_FLAG_PATH : 'http://www.razerzone.com/asset/images/icons/flags/';
 		this.DEFAULT_Flag = this.Perfs.DEFAULT_Flag ? this.Perfs.DEFAULT_Flag : this.DEFAULT_Flag;
 		this.Unknown_Flag = this.Perfs.Unknown_Flag ? this.Perfs.Unknown_Flag : this.DEFAULT_Flag;
@@ -198,6 +232,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		this.Base64_Flag = this.Perfs.Base64_Flag ? this.Perfs.Base64_Flag : this.File_Flag;
 		this.LocahHost_Flag = this.Perfs.LocahHost_Flag ? this.Perfs.LocahHost_Flag : this.DEFAULT_Flag;
 		this.LAN_Flag = this.Perfs.LAN_Flag ? this.Perfs.LAN_Flag : this.DEFAULT_Flag;
+		this.defaultUAimg = this.Perfs.defaultUAimg ? this.Perfs.defaultUAimg : this.defaultUAimg;
 
 		this.libIconPath = this.libIconPath.replace(/\//g, '\\');
 		if (/(\\)$/.test(this.libIconPath))
@@ -220,10 +255,20 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		this.CountryNames = sandbox.CountryNames || [];
 		this.CountryFlags = sandbox.CountryFlags || [];
 
+		var tmp = {};
+		tmp.label = "Firefox" + Services.appinfo.version.split(".")[0];
+		tmp.ua = "";
+		tmp.image = this.defaultUAimg;
+		this.UAList.unshift(tmp);
+
 		this.getPrefs();
 		this.buildSiteMenu(this.SourceAPI);
+		this.buildUserAgentMenu(this.UAList);
 		this.buildFreedomMenu(this.Menus);
 		this.addIcon(this.Perfs);
+		this.uaMenuStates();
+		this.uaSets(true);
+
 		$("showFlagS-set-Reacquire").setAttribute('checked', this.isReacquire);
 		$("showFlagS-set-MyInfo").setAttribute('checked', this.isMyInfo);
 		$("showFlagS-set-config").hidden = $("showFlagS-sepalator2").hidden = this.isConfigFile ? false : true;
@@ -255,6 +300,16 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			sites[i].parentNode.removeChild(sites[i]);
 		}
 
+		let usList = document.querySelectorAll("menuitem[id^='showFlagS-UserAgent-']");
+		for (let i = 0; i < usList.length; i++) {
+			usList[i].parentNode.removeChild(usList[i]);
+		}
+
+		let uamenuseparator = document.querySelectorAll("menuseparator[id^='showFlagS-UserAgent-']");
+		for (let i = 0; i < uamenuseparator.length; i++) {
+			uamenuseparator[i].parentNode.removeChild(uamenuseparator[i]);
+		}
+
 		let menuitems = document.querySelectorAll("menuitem[id^='showFlagS-item-']");
 		let menus = document.querySelectorAll("menu[id^='showFlagS-menu-']");
 
@@ -271,10 +326,10 @@ location == "chrome://browser/content/browser.xul" && (function() {
 	};
 
 	showFlagS.getPrefs = function() {
-		this._prefs = Components.classes["@mozilla.org/preferences-service;1"]
-			.getService(Components.interfaces.nsIPrefService)
-			.getBranch("userChromeJS.showFlagS.");
-		this._prefs.QueryInterface(Components.interfaces.nsIPrefBranch2);
+		this.prefs = Components.classes["@mozilla.org/preferences-service;1"]
+			.getService(Ci.nsIPrefService);
+		this._prefs = this.prefs.getBranch("userChromeJS.showFlagS.");
+		this._prefs.QueryInterface(Ci.nsIPrefBranch2);
 
 		if (!this._prefs.prefHasUserValue("SourceSite") || this._prefs.getPrefType("SourceSite") != Ci.nsIPrefBranch.PREF_STRING)
 			this._prefs.setCharPref("SourceSite", (this.SourceAPI ? (this.SourceAPI[0] ? this.SourceAPI[0].id : "") : ""));
@@ -291,6 +346,15 @@ location == "chrome://browser/content/browser.xul" && (function() {
 	};
 
 	showFlagS.setPerfs = function(tyep, val) {
+		if (tyep == "UA") {
+			if (val == 0) {
+				if (this.prefs.getBranch("").getPrefType("general.useragent.override") == 0) return;
+				this.prefs.getBranch("").clearUserPref("general.useragent.override");
+			} else
+				this.prefs.getBranch("").setCharPref("general.useragent.override", this.UAList[val].ua);
+			this.def_uaIdx = val;
+			this.uaMenuStates(val);
+		}
 		if (tyep == "apiSite") {
 			this.apiSite = val;
 			this._prefs.setCharPref("SourceSite", this.apiSite);
@@ -324,8 +388,89 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		this.onLocationChange(true);
 	};
 
+	showFlagS.uaMenuStates = function(idx) {
+		var usingUAIdx;
+		for (var j = 0; j < this.UAList.length; j++) {
+			if (this.UAList[j].ua || this.UAList[j].ua == "") {
+				if (this.UAList[j].ua == this.usingUA || this.UAList[j].ua == "")
+					usingUAIdx = j;
+				$("showFlagS-UserAgent-" + j).setAttribute("style", 'font-weight: normal;');
+				$("showFlagS-UserAgent-" + j).style.color = 'black';
+			}
+		}
+		if (idx || typeof(usingUAIdx) != 'undefined') {
+			var i = idx || usingUAIdx;
+			$("showFlagS-UserAgent-" + i).setAttribute("style", 'font-weight: bold;');
+			$("showFlagS-UserAgent-" + i).style.color = 'brown';
+			$("showFlagS-UserAgent-config").setAttribute("label", this.UAList[i].label);
+			$("showFlagS-UserAgent-config").setAttribute("image", this.UAList[i].image);
+			$("showFlagS-UserAgent-config").style.padding = "0px 2px";
+			this.Current_idx = i;
+		} else {
+			$("showFlagS-UserAgent-config").setAttribute("label", "未知UserAgent");
+			$("showFlagS-UserAgent-config").setAttribute("tooltiptext", this.usingUA);
+			$("showFlagS-UserAgent-config").setAttribute("image", null);
+		}
+	};
+
+	showFlagS.uaSets = function(isAlert) {
+		for (let i = 0; i < this.UAList.length; i++) {
+			this.UANameIdxHash[this.UAList[i].label] = i;
+		}
+		for (let j = 0; j < this.UASites.length; j++) {
+			if (this.UANameIdxHash[this.UASites[j].label])
+				this.UASites[j].idx = this.UANameIdxHash[this.UASites[j].label];
+			else
+				this.UASites[j].idx = this.def_uaIdx;
+		}
+		if (isAlert) {
+			var os = Cc["@mozilla.org/observer-service;1"].getService(Ci.nsIObserverService);
+			try {
+				os.removeObserver(this.observe, "http-on-modify-request", false);
+				os.removeObserver(this.onDocumentCreated, "content-document-global-created", false);
+			} catch (e) {}
+			os.addObserver(this.observe, "http-on-modify-request", false);
+			os.addObserver(this.onDocumentCreated, "content-document-global-created", false);
+		}
+	};
+
+	/*****************************************************************************************/
+	showFlagS.observe = function(subject, topic, data) {
+		var that = showFlagS;
+		if (topic != "http-on-modify-request") return;
+		var http = subject.QueryInterface(Ci.nsIHttpChannel);
+		for (var i = 0; i < that.UASites.length; i++) {
+			if (http.URI && (new RegExp(that.UASites[i].url)).test(http.URI.spec)) {
+				var idx = that.UASites[i].idx;
+				http.setRequestHeader("User-Agent", that.UAList[idx].ua, false);
+			}
+		}
+	};
+
+	showFlagS.onDocumentCreated = function(aSubject, aTopic, aData) {
+		var aChannel = aSubject.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIWebNavigation).QueryInterface(Ci.nsIDocShell).currentDocumentChannel;
+		if (aChannel instanceof Ci.nsIHttpChannel) {
+			var navigator = aSubject.navigator;
+			var userAgent = aChannel.getRequestHeader("User-Agent");
+			if (navigator.userAgent != userAgent) Object.defineProperty(XPCNativeWrapper.unwrap(navigator), "userAgent", {
+				value: userAgent,
+				enumerable: true
+			});
+		}
+	};
+
 	/*****************************************************************************************/
 	showFlagS.onLocationChange = function(forceRefresh) {
+		var isUAChange;
+		for (var i = 0; i < this.UASites.length; i++) {
+			if ((new RegExp(this.UASites[i].url)).test(this.ContentBrowser.currentURI.spec)) {
+				var idx = this.UASites[i].idx;
+				isUAChange = idx;
+				this.uaMenuStates(idx);
+			}
+		}
+		if (!isUAChange) this.uaMenuStates(this.def_uaIdx);
+
 		if (forceRefresh) {
 			this.forceRefresh = true;
 		}
@@ -408,6 +553,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			$('page-proxy-favicon').style.visibility = 'visible';
 		}
 	};
+
 	/*****************************************************************************************/
 	showFlagS.lookupIP = function(ip, host) {
 		var self = showFlagS;
@@ -602,7 +748,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 
 		this.icon.tooltipText = tooltipArr.join('\n');
 	};
-	/************************************/
+	/*****************************************************************************************/
 	showFlagS.lookup_Myinfo = function(api, host, callback) {
 		var self = showFlagS;
 		var myinfo;
@@ -738,7 +884,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		}
 		callback(sTip.join('\n'));
 	};
-	/************************************/
+	/*****************************************************************************************/
 	showFlagS.getServInformation = function(words) {
 		var word;
 		try {
@@ -982,6 +1128,33 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		};
 	};
 
+	showFlagS.buildUserAgentMenu = function(UAList) {
+		var menu = $("showFlagS-UserAgent-popup"),
+			menuitem;
+		for (var i = 0; i < UAList.length; i++) {
+			if (UAList[i].label === "separator" || (!UAList[i].label && !UAList[i].id && !UAList[i].ua))
+				menuitem = menu.appendChild($C("menuseparator", {
+					id: "showFlagS-UserAgent-" + i,
+					class: "showFlagS-UserAgent-menuseparator",
+				}));
+			else {
+				menuitem = menu.appendChild($C("menuitem", {
+					label: UAList[i].label,
+					id: "showFlagS-UserAgent-" + i,
+					class: "showFlagS-UserAgent-item",
+					image: UAList[i].image,
+					tooltiptext: UAList[i].ua,
+					oncommand: "showFlagS.setPerfs('UA','" + i + "');"
+				}));
+
+				var cls = menuitem.classList;
+				cls.add("showFlagS");
+				cls.add("menuitem-iconic");
+			}
+			menu.insertBefore(menuitem, $("showFlagS-sepalator3"));
+		};
+	};
+
 	showFlagS.buildFreedomMenu = function(menu) {
 		var popup = $("showFlagS-popup");
 		var obj, menuitem;
@@ -1029,11 +1202,10 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			menuitem = document.createElement("menuitem");
 
 		if (!obj.label)
-			obj.label = obj.exec || obj.text;
+			obj.label = obj.exec || obj.text || "NoName" + i;
 
-		if (obj.exec) {
+		if (obj.exec)
 			obj.exec = this.handleRelativePath(obj.exec);
-		}
 
 		for (let [key, val] in Iterator(obj)) {
 			if (typeof val == "function") obj[key] = val = "(" + val.toSource() + ").call(this, event);";
@@ -1143,6 +1315,10 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		fstream.close();
 		return data;
 	};
+
+	function logs(str) {
+		if (showFlagS.debug) Application.console.log("[showFlagS] " + Array.slice(arguments));
+	}
 
 	function log(str) {
 		if (showFlagS.debug) Application.console.log("[showFlagS] " + Array.slice(arguments));
