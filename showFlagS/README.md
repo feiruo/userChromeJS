@@ -10,16 +10,36 @@ showFlagS
  - 多个查询信息，网站SEO信息，本地信息等，可以于配置文件根据需求和网络情况等自行定制。
  - 只要你想要显示的，都可以根据定制显示出来 show everything what you want。
  - 集成RefererChange，破解反外链连接（全局）。
-
-		RefererChange格式：
-			@NORMAL：不改变referer
-			@FORGE：发送根站点referer
-			@ORIGINAL：发送打开站点referer
-			@BLOCK : 发送空referer
-			"anyURI"
  - 集成UA切换，支持appVersion和platform修改，支持切换规则。
+ - 其他更多自定义设置，请参考配置文件。
+ - 模拟提交（感谢FlagFox!!），可以参考FlagFox,本脚本可以按钮class类名识别。
 
-		UA格式：
+ 		(具体使用请参考：http://bbs.kafan.cn/thread-1701286-1-1.html)
+ - 本地国旗图标库
+
+ 		Chrome\lib\LocalFlags 	
+ - 菜单配置文件和本地数据库位置：
+
+		Chrome\lib\_showFlagS.js  \\菜单和脚本配置文件
+		Chrome\lib\countryflags.js  \\本地数据库
+ - 可以使用本地国旗图标，可以自定义，也可以使用以下样式：
+1. ![](FlagFoxFlags24x16.png)FlagFoxFlags24x16 
+2. ![](FlagFoxFlags原版.png)FlagFoxFlags原版
+3. ![](WorldIPFlags1.png)WorldIPFlags1 
+4. ![](WorldIPFlags2.png)WorldIPFlags2 
+
+说明书：
+--------------
+ - RefererChange格式：
+ 		
+		@NORMAL：不改变referer
+		@FORGE：发送根站点referer
+		@ORIGINAL：发送打开站点referer
+		@BLOCK : 发送空referer
+		"anyURI"
+			
+ - UA格式：
+ 		
 		{
 		label: "IE8-Win7",//Name,用于切换规则和菜单显示
 		//浏览器标识字符串 UA
@@ -34,7 +54,7 @@ showFlagS
 		//显示的图标
 		image: "base64/url"
 		}
- - 其他更多自定义设置，请参考配置文件。
+
  - 自带命令函数：【showFlagS.command】形式类型：
 
 		1、是非常简单的POST,如：
@@ -61,22 +81,6 @@ showFlagS
 		还有一些其他的，比如编辑文件
 		showFlagS.command("Edit", "文件路径，支持相对路径")
 		showFlagS.command("Copy", "函数或者字符串")
- - 模拟提交（感谢FlagFox!!），可以参考FlagFox,本脚本可以按钮class类名识别。
-
- 		(具体使用请参考：http://bbs.kafan.cn/thread-1701286-1-1.html)
- - 本地国旗图标库
-
- 		Chrome\lib\LocalFlags 	
- - 菜单配置文件和本地数据库位置：
-
-		Chrome\lib\_showFlagS.js  \\菜单和脚本配置文件
-		Chrome\lib\countryflags.js  \\本地数据库
- - 可以使用本地国旗图标，可以自定义，也可以使用以下样式：
-1. ![](FlagFoxFlags24x16.png)FlagFoxFlags24x16 
-2. ![](FlagFoxFlags原版.png)FlagFoxFlags原版
-3. ![](WorldIPFlags1.png)WorldIPFlags1 
-4. ![](WorldIPFlags2.png)WorldIPFlags2 
-
 注意：
 --------------
 
@@ -85,5 +89,7 @@ showFlagS
 
 		#page-proxy-favicon{visibility: visible !important;}
 
+图片：
+--------------
 ![](3.png)![](1.png)
 ![](2.png)

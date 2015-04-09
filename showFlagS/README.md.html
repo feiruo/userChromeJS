@@ -24,19 +24,43 @@
 <li>更多的网站详细信息，支持自定义定制，具体可在查看配置文件。</li>
 <li>多个查询信息，网站SEO信息，本地信息等，可以于配置文件根据需求和网络情况等自行定制。</li>
 <li>只要你想要显示的，都可以根据定制显示出来 show everything what you want。</li>
-<li><p>集成RefererChange，破解反外链连接（全局）。</p>
+<li>集成RefererChange，破解反外链连接（全局）。</li>
+<li>集成UA切换，支持appVersion和platform修改，支持切换规则。</li>
+<li>其他更多自定义设置，请参考配置文件。</li>
+<li><p>模拟提交（感谢FlagFox!!），可以参考FlagFox,本脚本可以按钮class类名识别。</p>
 
-<pre><code>RefererChange格式：
-    @NORMAL：不改变referer
-    @FORGE：发送根站点referer
-    @ORIGINAL：发送打开站点referer
-    @BLOCK : 发送空referer
-    "anyURI"
+<pre><code>(具体使用请参考：http://bbs.kafan.cn/thread-1701286-1-1.html)
 </code></pre></li>
-<li><p>集成UA切换，支持appVersion和platform修改，支持切换规则。</p>
+<li><p>本地国旗图标库</p>
 
-<pre><code>UA格式：
-{
+<pre><code>Chrome\lib\LocalFlags   
+</code></pre></li>
+<li><p>菜单配置文件和本地数据库位置：</p>
+
+<pre><code>Chrome\lib\_showFlagS.js  \\菜单和脚本配置文件
+Chrome\lib\countryflags.js  \\本地数据库
+</code></pre></li>
+<li>可以使用本地国旗图标，可以自定义，也可以使用以下样式：
+<ol><li><img src="FlagFoxFlags24x16.png" alt="" title="" />FlagFoxFlags24x16 </li>
+<li><img src="FlagFoxFlags原版.png" alt="" title="" />FlagFoxFlags原版</li>
+<li><img src="WorldIPFlags1.png" alt="" title="" />WorldIPFlags1 </li>
+<li><img src="WorldIPFlags2.png" alt="" title="" />WorldIPFlags2 </li></ol></li>
+</ul>
+
+<h2>说明书：</h2>
+
+<ul>
+<li><p>RefererChange格式：</p>
+
+<pre><code>@NORMAL：不改变referer
+@FORGE：发送根站点referer
+@ORIGINAL：发送打开站点referer
+@BLOCK : 发送空referer
+"anyURI"
+</code></pre></li>
+<li><p>UA格式：</p>
+
+<pre><code>{
 label: "IE8-Win7",//Name,用于切换规则和菜单显示
 //浏览器标识字符串 UA
 ua: "Mozilla/5.0 (compatible; MSIE 8.0; Windows NT 6.1; Trident/4.0; GTB7.4; InfoPath.2; SV1; .NET CLR 3.3.69573; WOW64; zh-CN)",
@@ -51,7 +75,6 @@ appVersion: "5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) 
 image: "base64/url"
 }
 </code></pre></li>
-<li>其他更多自定义设置，请参考配置文件。</li>
 <li><p>自带命令函数：【showFlagS.command】形式类型：</p>
 
 <pre><code>1、是非常简单的POST,如：
@@ -79,24 +102,6 @@ but:        点击使你输入的数据生效或提交按钮的类名（class）
 showFlagS.command("Edit", "文件路径，支持相对路径")
 showFlagS.command("Copy", "函数或者字符串")
 </code></pre></li>
-<li><p>模拟提交（感谢FlagFox!!），可以参考FlagFox,本脚本可以按钮class类名识别。</p>
-
-<pre><code>(具体使用请参考：http://bbs.kafan.cn/thread-1701286-1-1.html)
-</code></pre></li>
-<li><p>本地国旗图标库</p>
-
-<pre><code>Chrome\lib\LocalFlags   
-</code></pre></li>
-<li><p>菜单配置文件和本地数据库位置：</p>
-
-<pre><code>Chrome\lib\_showFlagS.js  \\菜单和脚本配置文件
-Chrome\lib\countryflags.js  \\本地数据库
-</code></pre></li>
-<li>可以使用本地国旗图标，可以自定义，也可以使用以下样式：
-<ol><li><img src="FlagFoxFlags24x16.png" alt="" title="" />FlagFoxFlags24x16 </li>
-<li><img src="FlagFoxFlags原版.png" alt="" title="" />FlagFoxFlags原版</li>
-<li><img src="WorldIPFlags1.png" alt="" title="" />WorldIPFlags1 </li>
-<li><img src="WorldIPFlags2.png" alt="" title="" />WorldIPFlags2 </li></ol></li>
 </ul>
 
 <h2>注意：</h2>
@@ -108,6 +113,8 @@ Chrome\lib\countryflags.js  \\本地数据库
 <pre><code>#page-proxy-favicon{visibility: visible !important;}
 </code></pre></li>
 </ul>
+
+<h2>图片：</h2>
 
 <p><img src="3.png" alt="" title="" /><img src="1.png" alt="" title="" />
 <img src="2.png" alt="" title="" /></p>
