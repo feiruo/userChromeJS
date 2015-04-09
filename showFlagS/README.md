@@ -2,6 +2,7 @@ showFlagS
 ============
  - author：ywzhaiqi、feiruo。
  - 参考 Show Location 扩展、Flagfox 扩展、http://files.cnblogs.com/ziyunfei/showFlag.uc.js 。
+ - 支持e10s window。
  - 显示网站IP地址和国旗，帮助识别网站真实性。
  - 国旗图标左键复制内容，中键刷新，右键弹出菜单。
  - 位置为identity-box时,https,about和chrome页面，隐藏脚本图标，还原identity-box显示。

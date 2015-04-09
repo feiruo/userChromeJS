@@ -18,7 +18,7 @@
 // @note            Begin 2013-12-16
 // @note            显示网站IP地址和所在国家国旗，帮助识别网站真实性。
 // @note            左键点击图标复制信息，中间刷新信息，右键弹出菜单。
-// @note            修改浏览器标识，破解反盗链，地址栏摘录语句，更多功能需要【_showFlagS.js】配置文件。
+// @note            修改浏览器标识，破解反盗链，更多功能需要【_showFlagS.js】配置文件。
 // @version         1.7.0.0 	2015.03.27 10:00	Final!!Rebuild&Fix more。
 // @version         1.6.2.5 	2015.03.09 11:00	UA add appVersion example:115.com。
 // @version         1.6.2.4.2 	2015.03.06 17:00	Fix e10s Window。
