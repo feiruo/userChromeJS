@@ -17,6 +17,7 @@
 // @note			目前可自动获取的有VeryCD标题上的，和hitokoto API。
 // @note			每次关闭浏览器后数据库添加获取过的内容，并去重复。
 // @note			左键图标复制内容，中键重新获取，右键弹出菜单。
+// @version			1.4.1 	2015.04.10 19:00	修改图标机制。
 // @version			1.4.0 	2015.03.29 19:00	修改机制。
 // @version			1.3.0 	2015.03.09 19:00	Rebuild。
 // @version			1.2.2 	2015.02.14 21:00	对VeryCD没办法，转为本地数据并合并到自定义数据里。选项调整。
@@ -160,7 +161,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 										<label value="文字长度："/>\
 										<textbox id="SayingLong" type="number" preference="SayingLong" tooltiptext="地址栏文字长度（个数，包括标点符号），0则全部显示"/>\
 									</row>\
-									<radio label="自动弹出" id="AutoTip" value="0" oncommand="Change();"/>\
+									<radio label="自动弹出" id="AutoTip" value="1" oncommand="Change();"/>\
 									<row align="center">\
 										<label value="显示时间："/>\
 										<textbox id="AutoTipTime" type="number" preference="AutoTipTime"  tooltiptext="自动弹出文字文字的显示时间，毫秒"/>\
@@ -373,8 +374,8 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				label.appendChild(document.createTextNode(""));
 			}
 			try {
-				$('Saying-statusbarpanel').label = "";
-				$('Saying-icon').hidden = true;
+				$('Saying-statusbarpanel').label = "刷新一下？";
+				$('Saying-icon').hidden = false;
 			} catch (e) {}
 		},
 
