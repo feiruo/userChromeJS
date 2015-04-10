@@ -285,10 +285,12 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			}
 
 			if (!type || type === "RefChanger")
-				this.RfCState = this.getPrefs(0, "RefChanger", true);
+				this.RfCState = this.getPrefs(0, "RefChanger", false);
 
-			if (!type || type === "UAChanger")
-				this.UAState = this.getPrefs(0, "UAChanger", true);
+			if (!type || type === "UAChanger") {
+				this.UAState = this.getPrefs(0, "UAChanger", false);
+				$("showFlagS-UserAgent-config").hidden = !this.UAState;
+			}
 		},
 
 		getPrefs: function(type, name, val) {
@@ -500,6 +502,8 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				path = path.replace(/^(file:\\\\\\)/, '');
 				file.initWithPath(path);
 			} else {
+				if (/^(\\)/.test(path))
+					path = path.replace(/^(\\)/, "");
 				file = Services.dirsvc.get("UChrm", Ci.nsILocalFile);
 				file.appendRelativePath(path);
 			}
@@ -858,6 +862,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		/*****************************************************************************************/
 		onLocationChange: function(forceRefresh) {
 			var isUAChange;
+			$("showFlagS-UserAgent-config").hidden = !this.UAState;
 			if (this.UASites) {
 				for (var i = 0; i < this.UASites.length; i++) {
 					if ((new RegExp(this.UASites[i].url)).test(this.currentURI.spec)) {
@@ -1355,6 +1360,8 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				console.log(path);
 				file.initWithPath(path + filename + ".png");
 			} else {
+				if (/^(\\)/.test(path))
+					path = path.replace(/^(\\)/, "");
 				if (!/(\\)$/.test(path))
 					path = path + '\\';
 				file = Services.dirsvc.get("UChrm", Ci.nsILocalFile);
@@ -1828,8 +1835,8 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				_$("MyInfo").value = false;
 				_$("Reacquire").value = false;
 				_$("SeoInfo").value = false;
-				_$("RefChanger").value = true;
-				_$("UAChanger").value = true;
+				_$("RefChanger").value = false;
+				_$("UAChanger").value = false;
 				this.Change();
 			},
 
