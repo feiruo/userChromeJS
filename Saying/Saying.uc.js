@@ -410,29 +410,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			var self = Saying;
 			if (type == 'Saying') {
 				self.SayingLocal(url, 'Saying');
-				var req = new XMLHttpRequest();
-				req.open("GET", 'http://www.verycd.com/statics/title.saying', true);
-				req.send(null);
-				var onerror = function() {
-					self.SayingLocal(url, 'Saying');
-				};
-				req.onerror = onerror;
-				req.timeout = self.SayingLocal_Delay;
-				req.ontimeout = onerror;
-				req.onload = function() {
-					if (req.status == 200) {
-						var _VC_DocumentTitles, _VC_DocumentTitleIndex, val;
-						eval(req.responseText);
-						_VC_DocumentTitles.forEach(function(t) {
-							self.Saying_json.push(t);
-						})
-						val = _VC_DocumentTitles[Math.floor(Math.random() * _VC_DocumentTitles.length)];
-						self.SayingHash[url] = val;
-						self.updateSaying(val);
-					} else {
-						onerror();
-					}
-				};
 			}
 			if (type == 'hitokoto') {
 				var req = new XMLHttpRequest();
