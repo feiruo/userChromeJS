@@ -523,7 +523,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		},
 
 		/*****************************************************************************************/
-		copy: function() {
+		Copy: function() {
 			Cc['@mozilla.org/widget/clipboardhelper;1']
 				.createInstance(Ci.nsIClipboardHelper)
 				.copyString($("SayingPopupLabel").textContent);
