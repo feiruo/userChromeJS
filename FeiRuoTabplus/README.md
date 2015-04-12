@@ -5,7 +5,7 @@ FeiRuoTabplus
  - 完全自定义鼠标操作（作者鼠标只有3键）。
  - 完全自定义事件执行命令。
  - 选项即时生效。
- - 配置文件位置：【chrome\lib\_FeiRuoTabplus.js】
+ - 配置文件位置：【chrome\lib\\_FeiRuoTabplus.js】
  
  ![](1.png)
  ![](2.png)
