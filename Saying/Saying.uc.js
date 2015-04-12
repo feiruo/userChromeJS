@@ -409,7 +409,9 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		SayingOnLine: function(url, type) {
 			var self = Saying;
 			if (type == 'Saying') {
+			
 				self.SayingLocal(url, 'Saying');
+				
 			}
 			if (type == 'hitokoto') {
 				var req = new XMLHttpRequest();
