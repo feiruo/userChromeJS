@@ -4,8 +4,15 @@ FeiRuoTabplus
  - 标签事件管理。
  - 完全自定义鼠标操作（作者鼠标只有3键）。
  - 完全自定义事件执行命令。
+ - 选项即时生效。
+ - 配置文件位置：【chrome\lib\_FeiRuoTabplus.js】
+ 
+ ![](1.png)
+ ![](2.png)
+ ![](3.png)
 选项说明书：
 --------------
+
  - 自动聚焦：鼠标移动到标签上自动切换到该标签。
  - 聚焦延时：鼠标移动到标签上，多少毫秒之后自动切换到该标签。
  - 鼠标中键点击时bookmark菜单不关闭：bookmark菜单上鼠标中键点击时不关闭bookmark菜单。
@@ -45,7 +52,3 @@ FeiRuoTabplus
 					gBrowser.addTab('http://www.google.com/search?q=site:' + encodeURIComponent(content.location.host) + ' ' + encodeURIComponent(s));
 			}
 		}
-图片：
---------------
-![](1.jpg)
-![](2.jpg)
