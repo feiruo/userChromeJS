@@ -15,8 +15,7 @@
 // @shutdown        window.FeiRuoTabplus.onDestroy();
 // @optionsURL		about:config?filter=FeiRuoTabplus.
 // @config 			window.FeiRuoTabplus.openPref();
-// @reviewURL		http://bbs.kafan.cn/thread-1666483-1-1.html
-// @reviewURL		http://www.firefoxfan.com/UC-Script/328.html
+// @reviewURL		http://bbs.kafan.cn/thread-1822408-1-1.html
 // @homepageURL		https://github.com/feiruo/userChromeJS/tree/master/FeiRuoTabplus
 // @downloadURL		https://github.com/feiruo/userChromeJS/raw/master/FeiRuoTabplus/FeiRuoTabplus.uc.js
 // @note            Begin 	2015-04-01
