@@ -17,6 +17,7 @@
 // @note			目前可自动获取的有VeryCD标题上的，和hitokoto API。
 // @note			每次关闭浏览器后数据库添加获取过的内容，并去重复。
 // @note			左键图标复制内容，中键重新获取，右键弹出菜单。
+// @version			1.4.2 	2015.04.18 10:00	Fix Online,Icon,Label;
 // @version			1.4.1 	2015.04.10 19:00	修改图标机制。
 // @version			1.4.0 	2015.03.29 19:00	修改机制。
 // @version			1.3.0 	2015.03.09 19:00	Rebuild。
@@ -24,7 +25,7 @@
 // @version			1.2.1 	VeryCD网站原因，取消VeryCD在线获取。请下载Github上的VeryCD.json数据库
 // @version			1.1 	增加地址栏文字长度设置，避免撑长地址栏。
 // ==/UserScript==
-location == "chrome://browser/content/browser.xul" && (function() {
+location == "chrome://browser/content/browser.xul" && (function(CSS) {
 
 	if (window.Saying) {
 		window.Saying.onDestroy();
@@ -35,7 +36,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 
 	var Saying = {
 
-		//数据库文件位置		
+		//数据库文件位置
 		hitokoto_Path: 'lib\\hitokoto.json',
 		Saying_Path: 'lib\\Saying.json', //此数据库为自定义数据库，不更新只读取。
 
@@ -78,7 +79,6 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			this.loadSetting();
 			this.addIcon();
 			this.option = this.option();
-
 			this.onLocationChange();
 
 			this.progressListener = {
@@ -136,11 +136,11 @@ location == "chrome://browser/content/browser.xul" && (function() {
 						</preferences>\
 						<script>\
 							function reset() {\
-								$("ShowType").value = "0";\
-								$("SayingLong").value = "0";\
-								$("AutoTipTime").value = "5000";\
-								$("Local_Delay").value = "2500";\
-								$("Online").value = true;\
+								$("ShowType").value = 0;\
+								$("SayingLong").value = 0;\
+								$("AutoTipTime").value = 5000;\
+								$("Local_Delay").value = 2500;\
+								$("Online").value = false;\
 								Change();\
 							}\
 							function Change() {\
@@ -154,6 +154,10 @@ location == "chrome://browser/content/browser.xul" && (function() {
 							<groupbox>\
 							<caption label="显示类型" align="center"/>\
 							<grid>\
+							<columns>\
+									<column/>\
+									<column/>\
+							</columns>\
 							<rows>\
 								<radiogroup id="ShowType" preference="ShowType">\
 									<radio label="地址栏文字" id="ShowTypeU" value="0" oncommand="Change();"/>\
@@ -207,7 +211,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 					case 'Local_Delay':
 					case 'SayingType':
 					case 'ShowType':
-					case 'online':
+					case 'Online':
 						Saying.loadSetting(data);
 						break;
 				}
@@ -216,14 +220,14 @@ location == "chrome://browser/content/browser.xul" && (function() {
 
 		loadSetting: function(type) {
 			if (!type || type === "SayingType") {
-				var SayingType = this.getPrefs(2, "SayingType", 'hitokoto,Saying,FireFoxFan');
+				var SayingType = this.getPrefs(2, "SayingType", 'hitokoto,Saying');
 				if (this.SayingType === SayingType) return;
 				this.SayingType = SayingType;
 				this.onLocationChange(true);
 			}
 
-			if (!type || type === "online") {
-				this.online = this.getPrefs(0, "online", true);
+			if (!type || type === "Online") {
+				this.Online = this.getPrefs(0, "Online", true);
 				this.onLocationChange(true);
 			}
 
@@ -242,6 +246,8 @@ location == "chrome://browser/content/browser.xul" && (function() {
 
 			if (!type || type === "Local_Delay")
 				this.Local_Delay = this.getPrefs(1, "Local_Delay", 2500);
+
+			this.onLocationChange();
 		},
 
 		getPrefs: function(type, name, val) {
@@ -278,28 +284,34 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		},
 
 		addIcon: function(isAlert) {
-			this.icon = $('urlbar-icons').appendChild($C('image', {
+			this.icon = $C('image', {
 				id: 'Saying-icon',
 				context: 'Saying-popup',
 				src: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAADbklEQVQ4jTWKW0ybZQBA/8Rnn40PvhgfNIsajTHenozTZMZb9MlF4+XBYGam28wWXBySMfkCImxcZMKADGqhgVK0XAstLRRKaQcUKLRQWqAttD8t/bmW9uP44DzJeTpHOcjnz0kphZRSNLjj4rW7S+JsQ0C8fHNE6G0zQspjkZNSZB8+UuZE7jAlpNwXUkqhqMf5ah5SNx7jzC037xmSvNUa5+2GAN0Pov9n8kA6k2IptkWTN40jAUpS00Q+f4Q8PeHusJ9HP2vmyctdvFlu5ePGWT6snaS0x8P1xkGe+Lwa04iN33pcvFgX5JnyWZRtTRNoEdDW+aXdyRtXdDRMbGCJZLGu57BuSIyBY+pdO1ztmOXBtJ22PgvPFVl4vzOFEt8/FKe7a2zNOen1q4wnwZUE2+Z/WiJ5rFFwxU9Y3NplL70Ch8tcqrzPmbI5FFVdEcdLI0z7Anh2wbUNjugptk1Jf+gEvW+XuskYo5FDdnbWOEj6ON3zc6P8T54vNKNoc2aRXnCwmJEs7Erc21kGw3s4onk65lUM8yrf66dp9u4yE02T14LAJj+3/MPTP5pRVLtepNNx1rIwqx5gj+1hCKiMRY+od4Xp8ie5ZJiiqHcRdyLHxPIqairM/lGCL6rMKAGHWfi1fTypHMPrGRrdMX4fC9Mb0Ljc5qKkd4mS1iEK6ocxL2cwrRxT2jUOchvIonhGTGIgnKHFl6TSuU5xl5syk5vW6TiFTUOUdE1hMhr5qeIe3VMhrFtQcN/LnR4HAMpMf7todYW52DXPN21efm3txzAwStVQAKPDzfWKJi58fZHHHn8dUdPGSALEUIiXrnWyEIujRGx6oR+Y5FyFjfOVgzgmxkmpIVrtPjZjAabdDj658RdPnb/NHx1DGINZKkbWeOFaN6X9ARTNrhOhlQAfVFh495aZ7uYavFYDCXUNUIE9+kedjI/b+XvKT+1kku90Hp69YuCCbg4ladMJkNwZnOfVIjPN99rIL9g4TQfQNnyo3lEIumDVSV2vhx+My7xzs4dhX5iKXh+K9JhEd0cfHxV38q3eR0F1Pwn/FGhBovoW9i095OPzRPyTfFkzyFe1Y1gmggD0eUIoxaU68cgrVzlb2M5ta4Qm4yxVOhvmqWmWPGNoc3aOVu14B9r5tKyHPucKZHPAKZmDE/4FfP05vqO/HLUAAAAASUVORK5CYII=',
 				tooltip: 'SayingTip',
-				onclick: 'if (event.button == 0) {Saying.Copy();} else if (event.button == 1) {Saying.onLocationChange(true);}',
-				//hidden: true,
-				style: 'padding: 0px 2px'
-			}));
+				onclick: 'if (event.button == 0) {Saying.Copy();} else if (event.button == 1) {Saying.onLocationChange(true);}'
+			});
+
+			var ins = $('urlbar-icons');
+		if ($("star-button"))
+				ins.insertBefore(this.icon, $("star-button"));
+			else if ($("reader-mode-button"))
+				ins.insertBefore(this.icon, $("reader-mode-button"));
+			else
+				ins.insertBefore(this.icon, ins.firstChild);
 
 			let xml = '\
 				<menupopup id="Saying-popup">\
-				<menuitem label="复制内容" id="Saying-Copy" oncommand="Saying.Copy();" />\
-				<menuitem label="重新获取" id="Saying-Reload" oncommand="Saying.onLocationChange(true);"/>\
-				<menuseparator id="Saying-sepalator0"/>\
-				<menuitem label="Hitokoto" id="Saying-hitokoto" type="checkbox"  oncommand="Saying.setPerfs(\'hitokoto\')" />\
-				<menuitem label="自定摘录" id="Saying-Saying" type="checkbox"  oncommand="Saying.setPerfs(\'Saying\')" />\
-				<menuseparator id="Saying-sepalator1"/>\
-				<menuitem label="脚本设置" id="Saying-Reload" oncommand="Saying.openPref();"/>\
+					<menuitem label="复制内容" id="Saying-Copy" oncommand="Saying.Copy();" />\
+					<menuitem label="重新获取" id="Saying-Reload" oncommand="Saying.onLocationChange(true);"/>\
+					<menuseparator id="Saying-sepalator0"/>\
+					<menuitem label="Hitokoto" id="Saying-hitokoto" type="checkbox"  oncommand="Saying.setPerfs(\'hitokoto\')" />\
+					<menuitem label="自定摘录" id="Saying-Saying" type="checkbox"  oncommand="Saying.setPerfs(\'Saying\')" />\
+					<menuseparator id="Saying-sepalator1"/>\
+					<menuitem label="脚本设置" id="Saying-Reload" oncommand="Saying.openPref();"/>\
 				</menupopup>\
-				<tooltip id="SayingTip" style="opacity: 0.8;color: brown;text-shadow:0 0 3px #CCC;background: rgba(255,255,255,0.6);padding-bottom:3px;border:1px solid #BBB;border-radius: 3px ;box-shadow:0 0 3px #444 ;">\
-        		<label id="SayingPopupLabel" flex="1" />\
+				<tooltip id="SayingTip">\
+        			<label id="SayingPopupLabel" flex="1" />\
     			</tooltip>\
 				';
 			let range = document.createRange();
@@ -317,19 +329,12 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				}
 			}, false);
 
-			$('urlbar-icons').appendChild($C('statusbarpanel', {
+			this.statusbarpanel = $C('statusbarpanel', {
 				id: 'Saying-statusbarpanel',
 				style: 'color: brown; margin: 0 0 -1px 0'
-			}));
-
-			var cssStr = ('\
-			#Saying-statusbarpanel,#Saying-icon{-moz-box-ordinal-group: 0 !important;}\
-			#urlbar:hover #Saying-statusbarpanel,#Saying-icon{visibility: collapse !important;}\
-			#urlbar:hover #Saying-icon,#Saying-statusbarpanel{visibility: visible !important;}\
-			#Saying-statusbarpanel{-moz-appearance: none !important;padding: 0px 0px 0px 0px !important;border: none !important;border-top: none !important;border-bottom: none !important;}\
-			');
-			var style = document.createProcessingInstruction('xml-stylesheet', 'type="text/css" href="data:text/css;utf-8,' + encodeURIComponent(cssStr) + '"');
-			document.insertBefore(style, document.documentElement);
+			});
+			ins.insertBefore(this.statusbarpanel, ins.firstChild);
+			Saying.style = addStyle(CSS);
 
 			$("Saying-hitokoto").setAttribute('checked', this.SayingType.match("hitokoto") ? true : false);
 			$("Saying-Saying").setAttribute('checked', this.SayingType.match("Saying") ? true : false);
@@ -374,7 +379,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				label.appendChild(document.createTextNode(""));
 			}
 			try {
-				$('Saying-statusbarpanel').label = "刷新一下？";
+				this.statusbarpanel.label = "";
 				$('Saying-icon').hidden = false;
 			} catch (e) {}
 		},
@@ -386,8 +391,9 @@ location == "chrome://browser/content/browser.xul" && (function() {
 
 			var type = this.SayingType.split(",");
 			type = type[Math.floor(Math.random() * type.length)];
+
 			if (this.forceRefresh) {
-				if (this.online)
+				if (this.Online)
 					this.SayingOnLine(url, type);
 				else
 					this.SayingLocal(url, type);
@@ -398,7 +404,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				this.updateSaying(this.SayingHash[url]);
 
 			if (!this.isReqHash[url]) {
-				if (this.online)
+				if (this.Online)
 					this.SayingOnLine(url, type);
 				else
 					this.SayingLocal(url, type);
@@ -409,9 +415,30 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		SayingOnLine: function(url, type) {
 			var self = Saying;
 			if (type == 'Saying') {
-			
 				self.SayingLocal(url, 'Saying');
-				
+				/*var req = new XMLHttpRequest();
+				req.open("GET", 'http://www.verycd.com/statics/title.saying', true);
+				req.send(null);
+				var onerror = function() {
+					self.SayingLocal(url, 'Saying');
+				};
+				req.onerror = onerror;
+				req.timeout = self.SayingLocal_Delay;
+				req.ontimeout = onerror;
+				req.onload = function() {
+					if (req.status == 200) {
+						var _VC_DocumentTitles, _VC_DocumentTitleIndex, val;
+						eval(req.responseText);
+						_VC_DocumentTitles.forEach(function(t) {
+							self.Saying_json.push(t);
+						})
+						val = _VC_DocumentTitles[Math.floor(Math.random() * _VC_DocumentTitles.length)];
+						self.SayingHash[url] = val;
+						self.updateSaying(val);
+					} else {
+						onerror();
+					}
+				};*/
 			}
 			if (type == 'hitokoto') {
 				var req = new XMLHttpRequest();
@@ -472,7 +499,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			if (!val) return this.resetState();
 			try {
 				$('Saying-icon').hidden = false;
-				$('Saying-statusbarpanel').hidden = (this.ShowType === 0 ? false : true);
+				this.statusbarpanel.hidden = (this.ShowType === 0 ? false : true);
 			} catch (e) {}
 
 			if (this.ShowType === 1) {
@@ -496,9 +523,8 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			if (this.SayingLong > 0 && val.length > this.SayingLong)
 				val = val.substr(0, this.SayingLong) + '.....';
 			try {
-				$('Saying-statusbarpanel').label = val;
+				this.statusbarpanel.label = val;
 			} catch (e) {}
-
 		},
 
 		/*****************************************************************************************/
@@ -535,6 +561,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				Path = this.Saying_Path;
 				data = newInfo;
 			}
+
 			this.saveFile(this.getData(Path, true), JSON.stringify(data));
 		},
 
@@ -568,6 +595,14 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		},
 	};
 	/*****************************************************************************************/
+	function addStyle(css) {
+		var pi = document.createProcessingInstruction(
+			'xml-stylesheet',
+			'type="text/css" href="data:text/css;utf-8,' + encodeURIComponent(css) + '"'
+		);
+		return document.insertBefore(pi, document.documentElement);
+	}
+
 	function log() {
 		Application.console.log('[Saying] ' + Array.slice(arguments));
 	}
@@ -582,4 +617,31 @@ location == "chrome://browser/content/browser.xul" && (function() {
 
 	Saying.init();
 	window.Saying = Saying;
-})()
+})('\
+#Saying-icon {\
+    padding: 0px 2px;\
+}\
+#urlbar:hover #Saying-statusbarpanel,#Saying-icon {\
+    visibility: collapse;\
+}\
+#urlbar:hover #Saying-icon,#Saying-statusbarpanel {\
+    visibility: visible;\
+}\
+#Saying-statusbarpanel {\
+    -moz-appearance: none;\
+    padding: 0px 0px 0px 0px;\
+    border: none;\
+    border-top: none;\
+    border-bottom: none;\
+}\
+#SayingTip {\
+    opacity: 0.8;\
+    color: brown;\
+    text-shadow: 0 0 3px #CCC;\
+    background: rgba(255,255,255,0.6);\
+    padding-bottom: 3px;\
+    border: 1px solid #BBB;\
+    border-radius: 3px;\
+    box-shadow: 0 0 3px #444;\
+}\
+'.replace(/\n|\t/g, ''));

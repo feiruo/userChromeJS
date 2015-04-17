@@ -12,4 +12,9 @@ saying
 
 		Chrome\lib\saying.json
 		Chrome\lib\hitokoto.json
-    
+
+![](2.png)
+![](1.gif)
+
+![](1.jpg)
+![](2.gif)
