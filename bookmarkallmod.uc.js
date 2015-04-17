@@ -56,6 +56,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				id: "BookmarkAll_set",
 				label: "BookmarkAll配置",
 				oncommand: "BookmarkAll.openPref();",
+				image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAVCAYAAABPPm7SAAABLklEQVQ4je3UQSuEURgF4MdsLCwsWFBs0PwaykIpTYok/A47/AYre9spNRZWLGWhpKSwUJhsNMZYzFHfDBkWdm6dxXvuOee+9/Z+H/RjFWd4QasHXqJdjdc6HrPZxGsPNKN9jNd5iAPMY7YH5qNtxauRYsXP10o8DYW7Lf0iYKng+w/4q4A+lDEdlMP9KGAYm9rjehKchRv+LmAR49jHMWYwFMyE28dYtB0Bb9jWHtEqpnLSQCBcNZrteDoC6tjDCEbT8lGwGW4kmnp3QAu7GMRETur+jKvZG4z20xtUMIla6ifsBE/hatFUvnqDLRymfsAaSsFauFY0W8UrvAXPIe6xHOPHKoW7j+Y5niZcF9q5TXtFczGkgruC/pL2b+kKp5jTOXHdqw8LuMANNt4Bftqn5GqcsQAAAAAASUVORK5CYII=",
 				class: "menuitem-iconic",
 			}), ins);
 
