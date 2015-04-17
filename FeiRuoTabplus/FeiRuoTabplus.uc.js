@@ -3,12 +3,6 @@
 // @description		标签管理
 // @modby	        feiruo
 // @charset       	UTF-8
-// @include			chrome://browser/content/browser.xul
-// @include			chrome://browser/content/bookmarks/bookmarksPanel.xul
-// @include			chrome://browser/content/history/history-panel.xul
-// @include			chrome://browser/content/places/places.xul
-// @include        	chrome://mozapps/content/downloads/unknownContentType.xul
-// @include        	chrome://mozapps/content/downloads/downloads.xul
 // @id              [ACCDD25E]
 // @inspect         window.FeiRuoTabplus
 // @startup         window.FeiRuoTabplus.init();
@@ -38,6 +32,7 @@
 		DefaultBookmarksEventHandler: BookmarksEventHandler.onClick.toString(),
 		DefaultcheckForMiddleClick: checkForMiddleClick.toString(),
 		DefaultgBrowser: gBrowser.mTabProgressListener.toString(),
+		DefaultopenNodeWithEvent: PlacesUIUtils.openNodeWithEvent.toString(),
 
 		get prefs() {
 			delete this.prefs;
@@ -59,6 +54,7 @@
 				id: "FeiRuoTabplus_set",
 				label: "FeiRuoTabplus配置",
 				oncommand: "FeiRuoTabplus.openPref();",
+				image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAxUlEQVQ4jaXSsW0CQRCF4U+OyC4hgqvARZAQUgUNEOEaXAIt4EZIXIJD3wEHLWAfgeckZPZgESM9aaSd949mdmCAJWq0Cf3iG29RexUz7HvMlzpgmgKsMsyd3lOArwcAG7xijCFexIy5gFOMW+MTc/HwgyaWdUtVmI/RuO4ADSYYobyjUdQ24dUGvUwtqCfK8PQCikTnIhdQYI1dzFhHvr6A3AV8/ANsHwE8PUJOXAGe+sbK31HkHFKnJjwVLCLJPedOFRZnf9aScov1PDsAAAAASUVORK5CYII=",
 				class: "menuitem-iconic",
 			}), ins);
 
@@ -189,6 +185,12 @@
 			if (!type || type === "TabFocus_Time")
 				this.TabFocus_Time = this.getPrefs(1, "TabFocus_Time", 250);
 
+			if (!type || type === "whereToOpen")
+				this.Cutover("whereToOpen", this.getPrefs(0, "whereToOpen", false));
+
+			if (!type || type === "SideBarNewTab")
+				this.Cutover("SideBarNewTab", this.getPrefs(0, "SideBarNewTab", false));
+
 			if (!type || type === "CloseDownloadBankTab")
 				this.Cutover("CloseDownloadBankTab", this.getPrefs(0, "CloseDownloadBankTab", false));
 
@@ -291,6 +293,11 @@
 					window.addEventListener("aftercustomization", FeiRuoTabplus.NoShowBorder, false);
 					window.addEventListener("customizationchange", FeiRuoTabplus.NoShowBorder, false);
 					this.NoShowBorder();
+					break;
+				case "SideBarNewTab":
+					eval("PlacesUIUtils.openNodeWithEvent = " + this.DefaultopenNodeWithEvent);
+					if (!val) return;
+					eval("PlacesUIUtils.openNodeWithEvent = " + this.DefaultopenNodeWithEvent.replace("window.whereToOpenLink", "FeiRuoTabplus.whereToOpenLink"));
 					break;
 				case "whereToOpen":
 					eval('whereToOpenLink=' + this.DefaultwhereToOpenLink);
@@ -588,7 +595,53 @@
 				window.openDialog("data:application/vnd.mozilla.xul+xml;charset=UTF-8," + option, '', 'chrome,titlebar,toolbar,centerscreen,dialog=no');
 			}
 		},
+		whereToOpenLink: function(e, ignoreButton, ignoreAlt) {
+			if (!e)
+				return "current";
 
+			var shift = e.shiftKey;
+			var ctrl = e.ctrlKey;
+			var meta = e.metaKey;
+			var alt = e.altKey && !ignoreAlt;
+			var middle = !ignoreButton && e.button == 1;
+			var middleUsesTabs = getBoolPref("browser.tabs.opentabfor.middleclick", true);
+			if (ctrl || (middle && middleUsesTabs))
+				return shift ? "tabshifted" : "tab";
+
+			if (alt && getBoolPref("browser.altClickSave", false))
+				return "save";
+
+			if (shift || (middle && !middleUsesTabs))
+				return "window";
+
+			var Class = e.target ? e.target.getAttribute('class') : null;
+			try {
+				if (Class == '')
+					Class = e.target.parentNode.getAttribute('class');
+			} catch (e) {}
+			if ((!isBlankPageURL(gBrowser.currentURI.spec) || gBrowser.webProgress.isLoadingDocument) && Class && (Class.indexOf('bookmark-item') >= 0 || Class.indexOf('placesTree') >= 0 || Class == 'subviewbutton') && !FeiRuoTabplus.IsInSideBar(e.target))
+				return 'tab';
+
+			return "current";
+		},
+
+		IsInSideBar: function(target) {
+			if (!target) return false;
+			try {
+				var node = target._placesNode;
+			} catch (e) {
+				node = null;
+			}
+			try {
+				if (!node && (target.parentNode.id == 'placeContent' || target.parentNode.id == 'bookmarks-view'))
+					node = target.parentNode.selectedNode;
+				return node && PlacesUtils.nodeIsBookmark(node) &&
+					PlacesUtils.annotations.itemHasAnnotation(node
+						.itemId, PlacesUIUtils.LOAD_IN_SIDEBAR_ANNO);
+			} catch (e) {
+				return false;
+			}
+		},
 		/*****************************************************************************************/
 		option: function() {
 			xul = '<?xml version="1.0"?><?xml-stylesheet href="chrome://global/skin/" type="text/css"?>\
@@ -605,6 +658,8 @@
 					windowtype="FeiRuoTabplus:Preferences">\
 					<prefpane id="main" flex="1">\
 						<preferences>\
+							<preference id="SideBarNewTab" type="bool" name="userChromeJS.FeiRuoTabplus.SideBarNewTab"/>\
+							<preference id="whereToOpen" type="bool" name="userChromeJS.FeiRuoTabplus.whereToOpen"/>\
 							<preference id="NewTabUrlbar" type="bool" name="userChromeJS.FeiRuoTabplus.NewTabUrlbar"/>\
 							<preference id="NewTabHistory" type="bool" name="userChromeJS.FeiRuoTabplus.NewTabHistory"/>\
 							<preference id="NewTabNear" type="int" name="userChromeJS.FeiRuoTabplus.NewTabNear"/>\
@@ -619,6 +674,8 @@
 							<preference id="loadBookmarksInBackground" name="browser.tabs.loadBookmarksInBackground" type="bool"/>\
 							<preference id="open_newwindow" name="browser.link.open_newwindow" type="int"/>\
 							<preference id="open_newwindow.restriction" name="browser.link.open_newwindow.restriction" type="int"/>\
+							<preference id="searchloadInBackground" name="browser.search.context.loadInBackgroundn" type="bool"/>\
+							<preference id="tabsloadInBackground" name="browser.tabs.loadInBackground" type="bool"/>\
 						</preferences>\
 						<script>\
 							function Change() {\
@@ -635,63 +692,60 @@
 								<hbox>\
 									<groupbox>\
 										<caption label="新建和关闭"/>\
-										<row>\
-											<checkbox id="NewTabUrlbar" label="地址栏新标签打开" preference="NewTabUrlbar"/>\
-										</row>\
-										<row>\
-											<checkbox id="NewTabHistor" label="新标签打开书签，历史和搜索栏" preference="NewTabHistory" oncommand="Change();"/>\
-										</row>\
-										<row class="indent">\
-											<checkbox id="loadBookmarksInBackground" label="在后台打开" preference="loadBookmarksInBackground"/>\
-										</row>\
-										<grid>\
-											<rows>\
-												<row align="center">\
-													<label value="新建标签在："/>\
-													<menulist preference="NewTabNear" id="NewTabNear" style="width:120px">\
-														<menupopup>\
-															<menuitem label="不做任何修改" value="0"/>\
-															<menuitem label="当前标签左边" value="1"/>\
-															<menuitem label="当前标签右边" value="2"/>\
-														</menupopup>\
-													</menulist>\
-												</row>\
-												<row align="center">\
-													<label value="关闭标签后转到："/>\
-													<menulist preference="ToNearTab" id="ToNearTab">\
-														<menupopup>\
-															<menuitem label="不做任何修改" value="0"/>\
-															<menuitem label="当前标签左边" value="1"/>\
-															<menuitem label="当前标签右边" value="2"/>\
-														</menupopup>\
-													</menulist>\
-												</row>\
-												<row align="center">\
-												<label value=""/>\
-												<label value=""/>\
-												</row>\
-												<row align="center">\
-													<label value="新窗口打开到："/>\
-													<menulist preference="open_newwindow" style="width:120px">\
-														<menupopup>\
-															<menuitem label="当前标签页" value="1"/>\
-															<menuitem label="新窗口" value="2"/>\
-															<menuitem label="新标签页" value="3"/>\
-														</menupopup>\
-													</menulist>\
-												</row>\
-												<row align="center">\
+											<checkbox id="NewTabUrlbar" label="新标签打开地址栏" preference="NewTabUrlbar"/>\
+											<checkbox id="NewTabHistor" label="新标签打开书签、历史和搜索栏" preference="NewTabHistory" oncommand="Change();"/>\
+											<checkbox id="SideBarNewTab" label="新标签打开侧栏、历史记录管理" preference="SideBarNewTab"/>\
+											<checkbox id="loadBookmarksInBackground" label="后台打开书签" preference="loadBookmarksInBackground"/>\
+											<checkbox id="tabsloadInBackground" label="后台打开标签" preference="tabsloadInBackground"/>\
+												<checkbox id="searchloadInBackground" label="后台打开搜索" preference="searchloadInBackground"/>\
+											<grid>\
+												<rows>\
+													<row align="center">\
+														<label value="新建标签在："/>\
+														<menulist preference="NewTabNear" id="NewTabNear" style="width:120px">\
+															<menupopup>\
+																<menuitem label="不做任何修改" value="0"/>\
+																<menuitem label="当前标签左边" value="1"/>\
+																<menuitem label="当前标签右边" value="2"/>\
+															</menupopup>\
+														</menulist>\
+													</row>\
+													<row align="center">\
+														<label value="关闭标签后转到："/>\
+														<menulist preference="ColseToNearTab" id="ColseToNearTab">\
+															<menupopup>\
+																<menuitem label="不做任何修改" value="0"/>\
+																<menuitem label="当前标签左边" value="1"/>\
+																<menuitem label="当前标签右边" value="2"/>\
+															</menupopup>\
+														</menulist>\
+													</row>\
+													<row align="center">\
 													<label value=""/>\
-													<menulist preference="open_newwindow.restriction" style="width:150px">\
-														<menupopup>\
-															<menuitem label="没有例外" value="0"/>\
-															<menuitem label="全部在新窗口中打开" value="1"/>\
-															<menuitem label="弹出窗口除外" value="2"/>\
-														</menupopup>\
-													</menulist>\
-												</row>\
-											</rows>\
-										</grid>\
+													<label value=""/>\
+													</row>\
+													<row align="center">\
+														<label value="新窗口打开到："/>\
+														<menulist preference="open_newwindow" style="width:120px">\
+															<menupopup>\
+																<menuitem label="当前标签页" value="1"/>\
+																<menuitem label="新窗口" value="2"/>\
+																<menuitem label="新标签页" value="3"/>\
+															</menupopup>\
+														</menulist>\
+													</row>\
+													<row align="center">\
+														<label value=""/>\
+														<menulist preference="open_newwindow.restriction" style="width:150px">\
+															<menupopup>\
+																<menuitem label="没有例外" value="0"/>\
+																<menuitem label="全部在新窗口中打开" value="1"/>\
+																<menuitem label="弹出窗口除外" value="2"/>\
+															</menupopup>\
+														</menulist>\
+													</row>\
+												</rows>\
+											</grid>\
 									</groupbox>\
 									<groupbox>\
 										<caption label="其他功能" />\
@@ -713,7 +767,7 @@
 											</row>\
 											<row align="center" class="indent">\
 												<label value="边框像素："/>\
-												<textbox id="ShowBorder" preference="ShowBorder" tooltiptext="顺序依次为【上，左，下，右】"/>\
+												<textbox id="ShowBorder" preference="ShowBorder" style="width:125px" tooltiptext="顺序依次为【上，左，下，右】"/>\
 											</row>\
 									</groupbox>\
 								</hbox>\
@@ -1274,6 +1328,9 @@
 				_$("CloseDownloadBankTab").value = false;
 				_$("KeepBookmarksOnMiddleClick").value = false;
 				_$("ShowBorderChange").value = false;
+				_$("searchloadInBackground").value = false;
+				_$("tabsloadInBackground").value = false;
+				_$("SideBarNewTab").value = false;
 				_$("ShowBorder").value = "0,7,7,7";
 				this.changeStatus();
 			}
