@@ -14,6 +14,7 @@
 // @reviewURL		http://bbs.kafan.cn/thread-1640643-1-1.html
 // @homepageURL		https://github.com/feiruo/userChromeJS/
 // @downloadURL		https://github.com/feiruo/userChromeJS/blob/master/bookmarkallmod.uc.js
+// @version 		1.3.1 	2015.04.18 	20:00 	修复创建文件夹逻辑问题。
 // @version 		1.3 	2015.04.12 	10:00 	重建、优化代码。
 // @version 		1.2.1 	
 // @version 		1.2 	修改动作方式，可以通过函数调用实时启用禁用和实时保存
@@ -137,23 +138,30 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			var TTF = that.FindFolders(rootNode);
 			rootNode.containerOpen = false;
 
-			if (TTF)
-				TF = TTF.itemId;
-			else
-				TF = that.BMSV.createFolder(TF, that.Dirs[i], 0);
+			var Tid = TTF.itemId,
+				nu = TTF.nu;
 
+			if (TTF.itemId)
+				TF = TTF.itemId;
+
+			if (TTF.nu != that.Dirs.length) {
+				for (var i in that.Dirs) {
+					if (i < TTF.nu) continue;
+					TF = that.BMSV.createFolder(TF, that.Dirs[i], 0);
+				}
+			}
 
 			var TFT = that.BMSV.createFolder(TF, that.Time, 0);
 
 			var isTF = that.Exce(TFT);
 
 			if (!isTF)
-				return that.BMSV.removeItem(TFT);
+				that.BMSV.removeItem(TFT);
 			that.DelOld(TF);
 		},
 
 		FindFolders: function(TF, dir) {
-			var TFs, nu = 0;
+			let itemId, nu = 0;
 
 			function FindFolder(TF, Dirs) {
 				for (var i = 0; i < TF.childCount; i++) {
@@ -162,7 +170,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 					if (node instanceof Ci.nsINavHistoryContainerResultNode) {
 						if (node.title != Dirs[nu]) continue;
 						nu = nu + 1;
-						TFs = node;
+						itemId = node.itemId;
 						if (!Dirs[nu]) break;
 						var oldOpen = node.containerOpen;
 						node.containerOpen = true;
@@ -174,7 +182,10 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			}
 
 			FindFolder(TF, this.Dirs);
-			return TFs;
+			return {
+				itemId: itemId,
+				nu: nu
+			};
 		},
 
 		Exce: function(TFT) {
@@ -210,7 +221,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				var temp_folder = this.BMSV.getIdForItemAt(TF, i);
 				Old.push(temp_folder);
 			}
-			if (Old <= this.Index) return;
+			if (Old.length <= this.Index) return;
 			for (var j = this.Index; j < Old.length; j++) {
 				this.BMSV.removeItem(Old[j]);
 			}
