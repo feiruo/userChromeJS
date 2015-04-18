@@ -13,6 +13,7 @@
 // @homepageURL		https://github.com/feiruo/userChromeJS/tree/master/FeiRuoTabplus
 // @downloadURL		https://github.com/feiruo/userChromeJS/raw/master/FeiRuoTabplus/FeiRuoTabplus.uc.js
 // @note            Begin 	2015-04-01
+// @version      	0.2 	2015.04.18	20:00 	增加侧栏和“我的足迹”窗口新标签打开，修复某个选项不生效的问题。
 // @version      	0.1 	2015.04.05	11:41 	Build。
 // @note			标签
 // @note			新标签、关闭、打开、鼠标悬停激活标签等。
@@ -134,6 +135,8 @@
 					case 'TabFocus_Time':
 					case 'CloseDownloadBankTab':
 					case 'KeepBookmarksOnMiddleClick':
+					case 'SideBarNewTab':
+					case 'whereToOpen':
 						FeiRuoTabplus.loadSetting(data);
 						break;
 				}
@@ -693,8 +696,8 @@
 									<groupbox>\
 										<caption label="新建和关闭"/>\
 											<checkbox id="NewTabUrlbar" label="新标签打开地址栏" preference="NewTabUrlbar"/>\
-											<checkbox id="NewTabHistor" label="新标签打开书签、历史和搜索栏" preference="NewTabHistory" oncommand="Change();"/>\
-											<checkbox id="SideBarNewTab" label="新标签打开侧栏、历史记录管理" preference="SideBarNewTab"/>\
+											<checkbox id="NewTabHistory" label="新标签打开书签、历史和搜索栏" preference="NewTabHistory"/>\
+											<checkbox id="SideBarNewTab" label="新标签打开侧栏、【我的足迹】窗口" preference="SideBarNewTab"/>\
 											<checkbox id="loadBookmarksInBackground" label="后台打开书签" preference="loadBookmarksInBackground"/>\
 											<checkbox id="tabsloadInBackground" label="后台打开标签" preference="tabsloadInBackground"/>\
 												<checkbox id="searchloadInBackground" label="后台打开搜索" preference="searchloadInBackground"/>\
@@ -1310,7 +1313,6 @@
 			changeStatus: function() {
 				_$("ShowBorder").disabled = !(_$("ShowBorderChanges").checked);
 				_$("TabFocus_Time").disabled = !(_$("TabFocusr").checked);
-				_$("loadBookmarksInBackground").disabled = !(_$("NewTabHistor").checked);
 				var status = !(_$("customList").hasChildNodes());
 				_$("editButton").disabled = status;
 				_$("deleteButton").disabled = status;
