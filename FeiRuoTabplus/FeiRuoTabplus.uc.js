@@ -1,8 +1,9 @@
 // ==UserScript==
 // @name			FeiRuoTabplus.uc.js
 // @description		标签管理
-// @modby	        feiruo
+// @author	        feiruo
 // @charset       	UTF-8
+// @include			main
 // @id              [ACCDD25E]
 // @inspect         window.FeiRuoTabplus
 // @startup         window.FeiRuoTabplus.init();
@@ -13,6 +14,7 @@
 // @homepageURL		https://github.com/feiruo/userChromeJS/tree/master/FeiRuoTabplus
 // @downloadURL		https://github.com/feiruo/userChromeJS/raw/master/FeiRuoTabplus/FeiRuoTabplus.uc.js
 // @note            Begin 	2015-04-01
+// @version      	0.3 	2015.04.20	20:00 	更加自由的定制。
 // @version      	0.2 	2015.04.18	20:00 	增加侧栏和“我的足迹”窗口新标签打开，修复某个选项不生效的问题。
 // @version      	0.1 	2015.04.05	11:41 	Build。
 // @note			标签
@@ -27,13 +29,14 @@
 	}
 
 	var FeiRuoTabplus = {
-		DefaultgURLBar: gURLBar.handleCommand.toString(),
-		DefaultopenLinkIn: openLinkIn.toString(),
-		DefaultwhereToOpenLink: whereToOpenLink.toString(),
-		DefaultBookmarksEventHandler: BookmarksEventHandler.onClick.toString(),
-		DefaultcheckForMiddleClick: checkForMiddleClick.toString(),
-		DefaultgBrowser: gBrowser.mTabProgressListener.toString(),
-		DefaultopenNodeWithEvent: PlacesUIUtils.openNodeWithEvent.toString(),
+		Default_gURLBar: gURLBar.handleCommand.toString(),
+		Default_openLinkIn: openLinkIn.toString(),
+		Default_whereToOpenLink: whereToOpenLink.toString(),
+		Default_BookmarksEventHandler: BookmarksEventHandler.onClick.toString(),
+		Default_checkForMiddleClick: checkForMiddleClick.toString(),
+		Default_gBrowser: gBrowser.mTabProgressListener.toString(),
+		Default_openNodeWithEvent: PlacesUIUtils.openNodeWithEvent.toString(),
+		Default_BrowserGoHome: BrowserGoHome.toString(),
 
 		get prefs() {
 			delete this.prefs;
@@ -47,6 +50,14 @@
 			this._modifiedTime = aFile.lastModifiedTime;
 			delete this.file;
 			return this.file = aFile;
+		},
+		get currentURI() {
+			var windowMediator = Cc["@mozilla.org/appshell/window-mediator;1"]
+				.getService(Ci.nsIWindowMediator);
+			var topWindowOfType = windowMediator.getMostRecentWindow("navigator:browser");
+			if (topWindowOfType)
+				return topWindowOfType.document.getElementById("content").currentURI;
+			return null;
 		},
 
 		init: function() {
@@ -62,6 +73,7 @@
 			this.loadCustomCommand();
 			this.loadSetting();
 			this.prefs.addObserver('', this.PrefKey, false);
+			location == "chrome://browser/content/browser.xul" && eval("gURLBar.handleCommand=" + this.handleCommand.toString());
 			window.addEventListener("unload", function() {
 				FeiRuoTabplus.onDestroy();
 			}, false);
@@ -73,7 +85,8 @@
 			if (this.getWindow(0)) this.getWindow(0).close();
 			if (this.getWindow(1)) this.getWindow(1).close();
 			if (this.UCustom) this.CustomListen(false, this.UCustom);
-			this.Cutover("NewTabUrlbar");
+			//this.Cutover("NewTabUrlbar");
+			location == "chrome://browser/content/browser.xul" && eval("gURLBar.handleCommand=" + this.Default_gURLBar);
 			this.Cutover("NewTabHistory");
 			this.AddListener(false, "NewTabNear", null, 'TabOpen', "tabContainer");
 			this.AddListener(false, "ColseToNearTab", null, 'TabClose', "tabContainer");
@@ -137,6 +150,14 @@
 					case 'KeepBookmarksOnMiddleClick':
 					case 'SideBarNewTab':
 					case 'whereToOpen':
+					case 'HomeNewTab':
+					case 'NewTabExcludePage':
+					case 'NewTabExcludeUrl':
+					case 'SideBarNewTab_SH':
+					case 'NewTabUrlbar_SH':
+					case 'NewTabHistory_SH':
+					case 'SameHostEX':
+					case 'NewTabExKey':
 						FeiRuoTabplus.loadSetting(data);
 						break;
 				}
@@ -154,17 +175,28 @@
 				this.Custom = this.UCustom = Custom;
 			}
 
-			if (!type || type === "NewTabUrlbar")
-				this.Cutover("NewTabUrlbar", this.getPrefs(0, "NewTabUrlbar", false));
+			if (!type || type === "NewTabUrlbar") {
+				this.NewTabUrlbar = this.getPrefs(0, "NewTabUrlbar", false);
+				//this.Cutover("NewTabUrlbar", this.getPrefs(0, "NewTabUrlbar", false));
+			}
+
+			if (!type || type === "NewTabUrlbar_SH")
+				this.NewTabUrlbar_SH = this.getPrefs(0, "NewTabUrlbar_SH", false);
 
 			if (!type || type === "NewTabHistory")
 				this.Cutover("NewTabHistory", this.getPrefs(0, "NewTabHistory", false));
+
+			if (!type || type === "NewTabHistory_SH")
+				this.NewTabHistory_SH = this.getPrefs(0, "NewTabHistory_SH", false);
 
 			if (!type || type === "ShowBorderChange")
 				this.Cutover("ShowBorderChange", this.getPrefs(0, "ShowBorderChange", false));
 
 			if (!type || type === "ShowBorder")
 				this.ShowBorder = this.getPrefs(2, "ShowBorder", "0,7,7,7");
+
+			if (!type || type === "NewTabExKey")
+				this.NewTabExKey = this.getPrefs(2, "NewTabExKey", "");
 
 			if (!type || type === "NewTabNear") {
 				var NewTabNear = this.getPrefs(1, "NewTabNear", 0);
@@ -185,6 +217,18 @@
 			if (!type || type === "TabFocus")
 				this.Cutover("TabFocus", this.getPrefs(0, "TabFocus", false));
 
+			if (!type || type === "NewTabExcludePage")
+				this.PrefStrTrim("NewTabExcludePage", ", about:blank, about:home, about:newtab, http://start.firefoxchina.cn/");
+
+			if (!type || type === "NewTabExcludeUrl")
+				this.PrefStrTrim("NewTabExcludeUrl", "^(javascript:)");
+
+			if (!type || type === "SameHostEX")
+				this.PrefStrTrim("SameHostEX", "www.nicovideo.jp,www.bilibili.com,www.acfun.tv,www.tucao.cc");
+
+			if (!type || type === "HomeNewTab")
+				this.Cutover("HomeNewTab", this.getPrefs(0, "HomeNewTab", false));
+
 			if (!type || type === "TabFocus_Time")
 				this.TabFocus_Time = this.getPrefs(1, "TabFocus_Time", 250);
 
@@ -193,6 +237,9 @@
 
 			if (!type || type === "SideBarNewTab")
 				this.Cutover("SideBarNewTab", this.getPrefs(0, "SideBarNewTab", false));
+
+			if (!type || type === "SideBarNewTab_SH")
+				this.SideBarNewTab_SH = this.getPrefs(0, "SideBarNewTab_SH", false);
 
 			if (!type || type === "CloseDownloadBankTab")
 				this.Cutover("CloseDownloadBankTab", this.getPrefs(0, "CloseDownloadBankTab", false));
@@ -250,14 +297,15 @@
 		Cutover: function(name, val) {
 			switch (name) {
 				case "NewTabUrlbar":
-					location == "chrome://browser/content/browser.xul" && eval("gURLBar.handleCommand=" + this.DefaultgURLBar);
+					location == "chrome://browser/content/browser.xul" && eval("gURLBar.handleCommand=" + this.Default_gURLBar);
 					if (!val) return;
-					location == "chrome://browser/content/browser.xul" && eval("gURLBar.handleCommand=" + this.DefaultgURLBar.replace(/^\s*(load.+);/gm, "if(/^javascript:/.test(url)||isTabEmpty(gBrowser.selectedTab)){loadCurrent();}else{this.handleRevert();gBrowser.loadOneTab(url, {postData: postData, inBackground: false, allowThirdPartyFixup: true});}"));
+					location == "chrome://browser/content/browser.xul" && eval("gURLBar.handleCommand=" + this.handleCommand.toString());
 					break;
 				case "NewTabHistory":
-					eval('openLinkIn=' + this.DefaultopenLinkIn);
+					eval('openLinkIn = ' + this.Default_openLinkIn);
 					if (!val) return;
-					eval('openLinkIn=' + this.DefaultopenLinkIn.replace('w.gBrowser.selectedTab.pinned', '(!w.isTabEmpty(w.gBrowser.selectedTab) || $&)').replace(/&&\s+w\.gBrowser\.currentURI\.host != uriObj\.host/, ''));
+					eval('openLinkIn = ' + this.Default_openLinkIn.replace('w.gBrowser.selectedTab.pinned', '(!w.isTabEmpty(w.gBrowser.selectedTab) || $&)')
+						.replace(/&&\s+w\.gBrowser\.currentURI\.host != uriObj\.host/, '&& !FeiRuoTabplus.IsExclude("Url", w.gBrowser.currentURI.spec) && !FeiRuoTabplus.IsSameHost("NewTabHistory_SH", w.gBrowser.currentURI.spec)'));
 					break;
 				case "TabFocus":
 					gBrowser.tabContainer.removeEventListener("mouseover", FeiRuoTabplus.TabFocus_onMouseOver, false);
@@ -268,9 +316,9 @@
 					}
 					break;
 				case "CloseDownloadBankTab":
-					location == eval("gBrowser.mTabProgressListener=" + this.DefaultgBrowser);
+					location == eval("gBrowser.mTabProgressListener=" + this.Default_gBrowser);
 					if (!val) return;
-					eval("gBrowser.mTabProgressListener = " + this.DefaultgBrowser.replace(/(?=var location)/, '\
+					eval("gBrowser.mTabProgressListener = " + this.Default_gBrowser.replace(/(?=var location)/, '\
 							if (aWebProgress.DOMWindow.document.documentURI == "about:blank"\
 							&& aRequest.QueryInterface(nsIChannel).URI.spec != "about:blank") {\
 							aWebProgress.DOMWindow.setTimeout(function() {\
@@ -280,11 +328,11 @@
 						'));
 					break;
 				case "KeepBookmarksOnMiddleClick":
-					eval('BookmarksEventHandler.onClick =' + this.DefaultBookmarksEventHandler);
-					eval('checkForMiddleClick =' + this.DefaultcheckForMiddleClick);
+					eval('BookmarksEventHandler.onClick =' + this.Default_BookmarksEventHandler);
+					eval('checkForMiddleClick =' + this.Default_checkForMiddleClick);
 					if (!val) return;
-					eval('BookmarksEventHandler.onClick =' + this.DefaultBookmarksEventHandler.replace('node.hidePopup()', ''));
-					eval('checkForMiddleClick =' + this.DefaultcheckForMiddleClick.replace('closeMenus(event.target);', ''));
+					eval('BookmarksEventHandler.onClick =' + this.Default_BookmarksEventHandler.replace('node.hidePopup()', ''));
+					eval('checkForMiddleClick =' + this.Default_checkForMiddleClick.replace('closeMenus(event.target);', ''));
 					break;
 				case "ShowBorderChange":
 					window.removeEventListener("resize", FeiRuoTabplus.NoShowBorder, false);
@@ -292,20 +340,25 @@
 					window.removeEventListener("customizationchange", FeiRuoTabplus.NoShowBorder, false);
 					document.documentElement.setAttribute("chromemargin", "0,2,2,2");
 					if (!val) return;
-					window.addEventListener("resize", FeiRuoTabplus.NoShowBorder, true);
+					window.addEventListener("resize", FeiRuoTabplus.NoShowBorder, false);
 					window.addEventListener("aftercustomization", FeiRuoTabplus.NoShowBorder, false);
 					window.addEventListener("customizationchange", FeiRuoTabplus.NoShowBorder, false);
 					this.NoShowBorder();
 					break;
 				case "SideBarNewTab":
-					eval("PlacesUIUtils.openNodeWithEvent = " + this.DefaultopenNodeWithEvent);
+					eval("PlacesUIUtils.openNodeWithEvent = " + this.Default_openNodeWithEvent);
 					if (!val) return;
-					eval("PlacesUIUtils.openNodeWithEvent = " + this.DefaultopenNodeWithEvent.replace("window.whereToOpenLink", "FeiRuoTabplus.whereToOpenLink"));
+					eval("PlacesUIUtils.openNodeWithEvent = " + this.Default_openNodeWithEvent.replace("window.whereToOpenLink", "FeiRuoTabplus.whereToOpenLink"));
+					break;
+				case "HomeNewTab":
+					eval("BrowserGoHome = " + this.Default_BrowserGoHome);
+					if (!val) return;
+					eval("BrowserGoHome = " + this.Default_BrowserGoHome.replace(/switch \(where\) {/, "where = (!FeiRuoTabplus.IsBlankPage(gBrowser.currentURI.spec) || gBrowser.webProgress.isLoadingDocument" + ") ? 'tab' : 'current'; $&"));
 					break;
 				case "whereToOpen":
-					eval('whereToOpenLink=' + this.DefaultwhereToOpenLink);
+					eval('whereToOpenLink=' + this.Default_whereToOpenLink);
 					if (!val) return;
-					eval('whereToOpenLink=' + this.DefaultwhereToOpenLink.replace(' || middle && middleUsesTabs', '').replace('if (alt', 'if (middle && middleUsesTabs) return shift ? "tab" : "tabshifted"; $&'));
+					eval('whereToOpenLink=' + this.Default_whereToOpenLink.replace(' || middle && middleUsesTabs', '').replace('if (alt', 'if (middle && middleUsesTabs) return shift ? "tab" : "tabshifted"; $&'));
 					break;
 			}
 		},
@@ -501,24 +554,276 @@
 		},
 
 		/*****************************************************************************************/
+		whereToOpenLink: function(e, ignoreButton, ignoreAlt) {
+			if (!e)
+				return "current";
+
+			var shift = e.shiftKey;
+			var ctrl = e.ctrlKey;
+			var meta = e.metaKey;
+			var alt = e.altKey && !ignoreAlt;
+			var middle = !ignoreButton && e.button == 1;
+			var middleUsesTabs = getBoolPref("browser.tabs.opentabfor.middleclick", true);
+			if (ctrl || (middle && middleUsesTabs))
+				return shift ? "tabshifted" : "tab";
+
+			if (alt && getBoolPref("browser.altClickSave", false))
+				return "save";
+
+			if (shift || (middle && !middleUsesTabs))
+				return "window";
+
+			var Class = e.target ? e.target.getAttribute('class') : null;
+			try {
+				if (Class == '')
+					Class = e.target.parentNode.getAttribute('class');
+			} catch (e) {}
+
+			if ((!this.IsExclude('Page') || gBrowser.webProgress.isLoadingDocument) && Class && (Class.indexOf('bookmark-item') >= 0 || Class.indexOf('placesTree') >= 0 || Class == 'subviewbutton' || Class == 'sidebar-placesTreechildren') && !this.IsExclude('Url', e.target, true) && !this.IsSameHost('SideBarNewTab_SH', e.target, true))
+				return 'tab';
+
+			return "current";
+		},
+
+		IsSameHost: function(name, url, isTag) {
+			if (!this[name]) return false;
+
+			var host0, host1, IS;
+
+			if (isTag)
+				host0 = this.getNode(url).host;
+			else
+				host0 = this.getDomain(url);
+
+			if (this.currentURI.asciiHost)
+				host1 = this.currentURI.host;
+
+			if (host0 != host1)
+				IS = false;
+			else
+				IS = true;
+
+			if (!this.IsSameHostEX)
+				return IS;
+			IS = this.IsExclude("IsSameHostEX", url);
+			return IS;
+		},
+
+		IsExclude: function(type, url, isTag) {
+			var IsExclude = false,
+				Exclude;
+			if (type == "Url")
+				Exclude = this.NewTabExcludeUrl;
+			else if (type == "IsSameHostEX")
+				Exclude = this.SameHostEX;
+			else
+				Exclude = this.NewTabExcludePage;
+			if (!url)
+				url = this.currentURI.spec;
+
+			if (isTag)
+				url = this.getNode(url).uri;
+
+			if (!Exclude)
+				return false;
+
+			for (var i in Exclude) {
+				var rex = new RegExp(Exclude[i]);
+				if (!rex.test(url)) continue;
+				IsExclude = true;
+				break;
+			}
+
+			return IsExclude;
+		},
+
+		IsNewTabUrlbar: function(url, aTriggeringEvent) {
+			var IS = false;
+			if (!this.NewTabUrlbar) return IS;
+			if (this.IsExclude('Page') || this.IsExclude('Url', url) || this.IsSameHost('NewTabUrlbar_SH', url))
+				IS = true;
+			if (this.IsExcludeKey(aTriggeringEvent, 0))
+				IS = false;
+			return IS;
+		},
+
+		IsExcludeKey: function(e, nu) {
+			let Is = false;
+			let keys = this.NewTabExKey;
+			if (!keys) return Is;
+
+			function KSwitch(key, func) {
+				if (key == "Alt" && e.altKey)
+					func();
+				if (key == "Ctrl" && e.ctrlKey)
+					func();
+				if (key == "Shift" && e.shiftKey)
+					func();
+			}
+
+			function doact() {
+				Is = true;
+			}
+
+			keys = keys.split("|")[nu].split("+");
+			if (keys.length == 1)
+				KSwitch(keys, doact);
+			if (keys.length == 2)
+				KSwitch(keys[0], KSwitch(keys[1], doact));
+			if (keys.length == 3)
+				KSwitch(keys[0], KSwitch(keys[1], KSwitch(keys[2], doact)));
+			return Is;
+		},
+
+		handleCommand: function(aTriggeringEvent) {
+			if (aTriggeringEvent instanceof MouseEvent && aTriggeringEvent.button == 2)
+				return;
+
+			var url = this.value;
+			if ((url.indexOf('chromejs:') == 0) && FeiRuoTabplus.UrlbarChromeJs)
+				return eval(url.slice(9));
+			var mayInheritPrincipal = false;
+			var postData = null;
+
+			let action = this._parseActionUrl(this._value);
+			let lastLocationChange = gBrowser.selectedBrowser.lastLocationChange;
+
+			let matchLastLocationChange = true;
+			if (action) {
+				if (action.type == "switchtab") {
+					url = action.params.url;
+					if (this.hasAttribute("actiontype")) {
+						this.handleRevert();
+						let prevTab = gBrowser.selectedTab;
+						if (switchToTabHavingURI(url) &&
+							isTabEmpty(prevTab))
+							gBrowser.removeTab(prevTab);
+						return;
+					}
+				} else if (action.type == "keyword") {
+					url = action.params.url;
+				} else if (action.type == "searchengine") {
+					let engine = Services.search.getEngineByName(action.params.engineName);
+					let submission = engine.getSubmission(action.params.searchQuery);
+
+					url = submission.uri.spec;
+					postData = submission.postData;
+				} else if (action.type == "visiturl") {
+					url = action.params.url;
+				}
+				continueOperation.call(this);
+			} else {
+				this._canonizeURL(aTriggeringEvent, response => {
+					[url, postData, mayInheritPrincipal] = response;
+					if (url) {
+						matchLastLocationChange = (lastLocationChange ==
+							gBrowser.selectedBrowser.lastLocationChange);
+						continueOperation.call(this);
+					}
+				});
+			}
+
+			function continueOperation() {
+				this.value = url;
+				gBrowser.userTypedValue = url;
+				try {
+					addToUrlbarHistory(url);
+				} catch (ex) {
+					Cu.reportError(ex);
+				}
+
+				let loadCurrent = () => {
+					openUILinkIn(url, "current", {
+						allowThirdPartyFixup: true,
+						disallowInheritPrincipal: "0",
+						allowPinnedTabHostChange: true,
+						postData: postData
+					});
+					this.selectionStart = this.selectionEnd = 0;
+				};
+				gBrowser.selectedBrowser.focus();
+
+				let isMouseEvent = aTriggeringEvent instanceof MouseEvent;
+				let altEnter = !isMouseEvent && aTriggeringEvent &&
+					aTriggeringEvent.altKey && !isTabEmpty(gBrowser.selectedTab);
+
+				if (isMouseEvent || altEnter) {
+					let where = "tab";
+					if (isMouseEvent)
+						where = whereToOpenLink(aTriggeringEvent, false, false);
+
+					if (where == "current") {
+						if (matchLastLocationChange) {
+							if (FeiRuoTabplus.IsNewTabUrlbar(url, aTriggeringEvent) || isTabEmpty(gBrowser.selectedTab)) {
+								loadCurrent();
+							} else {
+								this.handleRevert();
+								gBrowser.loadOneTab(url, {
+									postData: postData,
+									inBackground: false,
+									allowThirdPartyFixup: true
+								});
+							}
+						}
+					} else {
+						this.handleRevert();
+						let params = {
+							allowThirdPartyFixup: true,
+							postData: postData,
+							initiatingDoc: document
+						};
+						openUILinkIn(url, where, params);
+					}
+				} else {
+					if (matchLastLocationChange) {
+						if (FeiRuoTabplus.IsNewTabUrlbar(url, aTriggeringEvent) || isTabEmpty(gBrowser.selectedTab)) {
+							loadCurrent();
+						} else {
+							this.handleRevert();
+							gBrowser.loadOneTab(url, {
+								postData: postData,
+								inBackground: false,
+								allowThirdPartyFixup: true
+							});
+						}
+					}
+				}
+			}
+		},
+		/*****************************************************************************************/
 		getPrefs: function(type, name, val) {
 			switch (type) {
 				case 0:
 					if (!this.prefs.prefHasUserValue(name) || this.prefs.getPrefType(name) != Ci.nsIPrefBranch.PREF_BOOL)
-						this.prefs.setBoolPref(name, val);
+						this.prefs.setBoolPref(name, val ? val : false);
 					return this.prefs.getBoolPref(name);
 					break;
 				case 1:
 					if (!this.prefs.prefHasUserValue(name) || this.prefs.getPrefType(name) != Ci.nsIPrefBranch.PREF_INT)
-						this.prefs.setIntPref(name, val);
+						this.prefs.setIntPref(name, val ? val : 0);
 					return this.prefs.getIntPref(name);
 					break;
 				case 2:
 					if (!this.prefs.prefHasUserValue(name) || this.prefs.getPrefType(name) != Ci.nsIPrefBranch.PREF_STRING)
-						this.prefs.setCharPref(name, val);
+						this.prefs.setCharPref(name, val ? val : "");
 					return this.prefs.getCharPref(name);
 					break;
 			}
+		},
+
+		PrefStrTrim: function(name, str, set) {
+			var val;
+			if (!set)
+				val = this.getPrefs(2, name, str);
+			else
+				val = str;
+			val = val.trim();
+			if (val.indexOf(',') != -1)
+				val = val.replace(/,\s*/g, '\n');
+			this.prefs.setCharPref(name, val);
+			if (set) return;
+			val = val.split(/\n+/).map(function(s) s.trim());
+			this[name] = val;
 		},
 
 		getWindow: function(num) {
@@ -528,6 +833,23 @@
 				return windowsMediator.getMostRecentWindow("FeiRuoTabplus:Preferences");
 			if (num === 1)
 				return windowsMediator.getMostRecentWindow("FeiRuoTabplus:DetailWindow");
+		},
+
+		getNode: function(target) {
+			if (!target) return false;
+			var node;
+			if (target._placesNode)
+				node = target._placesNode;
+			if (!node && (target.parentNode.id == 'placeContent' || target.parentNode.id == 'bookmarks-view') && target.parentNode.selectedNode)
+				node = target.parentNode.selectedNode;
+			return node;
+		},
+
+		getDomain: function(url) {
+			var durl = /https?:\/\/([^\/]+)\//i;
+			domain = (url + "/").match(durl);
+			if (domain)
+				return domain[1];
 		},
 
 		updateFile: function(isAlert) {
@@ -598,56 +920,10 @@
 				window.openDialog("data:application/vnd.mozilla.xul+xml;charset=UTF-8," + option, '', 'chrome,titlebar,toolbar,centerscreen,dialog=no');
 			}
 		},
-		whereToOpenLink: function(e, ignoreButton, ignoreAlt) {
-			if (!e)
-				return "current";
+	};
 
-			var shift = e.shiftKey;
-			var ctrl = e.ctrlKey;
-			var meta = e.metaKey;
-			var alt = e.altKey && !ignoreAlt;
-			var middle = !ignoreButton && e.button == 1;
-			var middleUsesTabs = getBoolPref("browser.tabs.opentabfor.middleclick", true);
-			if (ctrl || (middle && middleUsesTabs))
-				return shift ? "tabshifted" : "tab";
-
-			if (alt && getBoolPref("browser.altClickSave", false))
-				return "save";
-
-			if (shift || (middle && !middleUsesTabs))
-				return "window";
-
-			var Class = e.target ? e.target.getAttribute('class') : null;
-			try {
-				if (Class == '')
-					Class = e.target.parentNode.getAttribute('class');
-			} catch (e) {}
-			if ((!isBlankPageURL(gBrowser.currentURI.spec) || gBrowser.webProgress.isLoadingDocument) && Class && (Class.indexOf('bookmark-item') >= 0 || Class.indexOf('placesTree') >= 0 || Class == 'subviewbutton') && !FeiRuoTabplus.IsInSideBar(e.target))
-				return 'tab';
-
-			return "current";
-		},
-
-		IsInSideBar: function(target) {
-			if (!target) return false;
-			try {
-				var node = target._placesNode;
-			} catch (e) {
-				node = null;
-			}
-			try {
-				if (!node && (target.parentNode.id == 'placeContent' || target.parentNode.id == 'bookmarks-view'))
-					node = target.parentNode.selectedNode;
-				return node && PlacesUtils.nodeIsBookmark(node) &&
-					PlacesUtils.annotations.itemHasAnnotation(node
-						.itemId, PlacesUIUtils.LOAD_IN_SIDEBAR_ANNO);
-			} catch (e) {
-				return false;
-			}
-		},
-		/*****************************************************************************************/
-		option: function() {
-			xul = '<?xml version="1.0"?><?xml-stylesheet href="chrome://global/skin/" type="text/css"?>\
+	FeiRuoTabplus.option = function() {
+		var xul = '<?xml version="1.0"?><?xml-stylesheet href="chrome://global/skin/" type="text/css"?>\
 					<prefwindow xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"\
 					id="FeiRuoTabplus_Settings"\
 					ignorekeys="true"\
@@ -661,6 +937,13 @@
 					windowtype="FeiRuoTabplus:Preferences">\
 					<prefpane id="main" flex="1">\
 						<preferences>\
+							<preference id="NewTabHistory_SH" type="bool" name="userChromeJS.FeiRuoTabplus.NewTabHistory_SH"/>\
+							<preference id="NewTabUrlbar_SH" type="bool" name="userChromeJS.FeiRuoTabplus.NewTabUrlbar_SH"/>\
+							<preference id="SideBarNewTab_SH" type="bool" name="userChromeJS.FeiRuoTabplus.SideBarNewTab_SH"/>\
+							<preference id="SameHostEX" type="string" name="userChromeJS.FeiRuoTabplus.SameHostEX"/>\
+							<preference id="NewTabExcludePage" type="string" name="userChromeJS.FeiRuoTabplus.NewTabExcludePage"/>\
+							<preference id="NewTabExcludeUrl" type="string" name="userChromeJS.FeiRuoTabplus.NewTabExcludeUrl"/>\
+							<preference id="HomeNewTab" type="bool" name="userChromeJS.FeiRuoTabplus.HomeNewTab"/>\
 							<preference id="SideBarNewTab" type="bool" name="userChromeJS.FeiRuoTabplus.SideBarNewTab"/>\
 							<preference id="whereToOpen" type="bool" name="userChromeJS.FeiRuoTabplus.whereToOpen"/>\
 							<preference id="NewTabUrlbar" type="bool" name="userChromeJS.FeiRuoTabplus.NewTabUrlbar"/>\
@@ -687,25 +970,82 @@
 						</script>\
 						<tabbox class="text">\
 							<tabs>\
-								<tab label="一般设置"/>\
+								<tab label="新建标签"/>\
+								<tab label="打开和关闭/其他功能"/>\
 								<tab label="标签/标签栏 事件"/>\
 							</tabs>\
 							<tabpanels flex="1">\
 								<tabpanel orient="vertical" flex="1">\
-								<hbox>\
 									<groupbox>\
-										<caption label="新建和关闭"/>\
-											<checkbox id="NewTabUrlbar" label="新标签打开地址栏" preference="NewTabUrlbar"/>\
-											<checkbox id="NewTabHistory" label="新标签打开书签、历史和搜索栏" preference="NewTabHistory"/>\
-											<checkbox id="SideBarNewTab" label="新标签打开侧栏、【我的足迹】窗口" preference="SideBarNewTab"/>\
-											<checkbox id="loadBookmarksInBackground" label="后台打开书签" preference="loadBookmarksInBackground"/>\
-											<checkbox id="tabsloadInBackground" label="后台打开标签" preference="tabsloadInBackground"/>\
-												<checkbox id="searchloadInBackground" label="后台打开搜索" preference="searchloadInBackground"/>\
+										<caption label="在新标签中打开(默认【Alt+回车】为新标签打开)"/>\
 											<grid>\
 												<rows>\
 													<row align="center">\
+														<checkbox id="HomeNewTab" label="主页" preference="HomeNewTab"/>\
+													</row>\
+													<row align="center">\
+														<checkbox id="NewTabUrlbarr" label="地址栏" preference="NewTabUrlbar" oncommand="Change();"/>\
+														<checkbox id="NewTabUrlbar_SH" label="域名相同当前页" preference="NewTabUrlbar_SH"/>\
+														<label class="indent" value="排除键："/>\
+														<checkbox id="CtrlKey0" label="Ctrl"/>\
+														<checkbox id="AltKey0" label="Alt"/>\
+														<checkbox id="ShiftKey0" label="Shift"/>\
+													</row>\
+													<row align="center">\
+														<checkbox id="NewTabHistoryr" label="书签、历史和搜索栏" preference="NewTabHistory" oncommand="Change();"/>\
+														<checkbox id="NewTabHistory_SH" label="域名相同当前页" preference="NewTabHistory_SH"/>\
+														<label class="indent" value="排除键："/>\
+														<checkbox id="CtrlKey1" label="Ctrl"/>\
+														<checkbox id="AltKey1" label="Alt"/>\
+														<checkbox id="ShiftKey1" label="Shift"/>\
+													</row>\
+													<row align="center">\
+														<checkbox id="SideBarNewTabr" label="侧栏、【我的足迹】窗口" preference="SideBarNewTab" oncommand="Change();"/>\
+														<checkbox id="SideBarNewTab_SH" label="域名相同当前页" preference="SideBarNewTab_SH"/>\
+														<label class="indent" value="排除键："/>\
+														<checkbox id="CtrlKey2" label="Ctrl"/>\
+														<checkbox id="AltKey2" label="Alt"/>\
+														<checkbox id="ShiftKey2" label="Shift"/>\
+													</row>\
+												</rows>\
+											</grid>\
+											<label value="[排除键]：对同一行前2个选项都生效。"/>\
+											<label value="[域名相同当前页]：要打开的URL与当前页的域名相同时,则使用当前标签打开,仅对当前页生效!"/>\
+									</groupbox>\
+									<hbox>\
+										<groupbox>\
+											<caption label="以下【页面】重用标签，支持正则"/>\
+												<vbox flex="1" style="height:80px;">\
+													<textbox flex="1" preference="NewTabExcludePage" tooltiptext="一行一个" multiline="true" cols="40"/>\
+												</vbox>\
+										</groupbox>\
+										<groupbox>\
+											<caption label="以下【URL】在当前标签打开，支持正则"/>\
+												<vbox flex="1">\
+													<textbox flex="1" preference="NewTabExcludeUrl" tooltiptext="一行一个" multiline="true" cols="40"/>\
+												</vbox>\
+										</groupbox>\
+									</hbox>\
+									<groupbox>\
+											<caption label="以下【域名相同】在新标签打开，支持正则"/>\
+												<vbox flex="1" style="height:80px;">\
+													<textbox flex="1" id="SameHostEX" preference="SameHostEX" tooltiptext="一行一个" multiline="true" cols="80"/>\
+												</vbox>\
+										</groupbox>\
+								</tabpanel>\
+								<tabpanel orient="vertical" flex="1">\
+									<groupbox>\
+										<caption label="打开和关闭"/>\
+											<grid>\
+												<rows>\
+													<row align="center">\
+														<checkbox id="loadBookmarksInBackground" label="后台打开书签" preference="loadBookmarksInBackground"/>\
+														<checkbox id="tabsloadInBackground" label="后台打开标签" preference="tabsloadInBackground"/>\
+														<checkbox id="searchloadInBackground" label="后台打开搜索" preference="searchloadInBackground"/>\
+													</row>\
+													<row align="center">\
 														<label value="新建标签在："/>\
-														<menulist preference="NewTabNear" id="NewTabNear" style="width:120px">\
+														<menulist preference="NewTabNear" id="NewTabNear" style="width:100px">\
 															<menupopup>\
 																<menuitem label="不做任何修改" value="0"/>\
 																<menuitem label="当前标签左边" value="1"/>\
@@ -715,7 +1055,7 @@
 													</row>\
 													<row align="center">\
 														<label value="关闭标签后转到："/>\
-														<menulist preference="ColseToNearTab" id="ColseToNearTab">\
+														<menulist preference="ColseToNearTab" id="ColseToNearTab" style="width:100px">\
 															<menupopup>\
 																<menuitem label="不做任何修改" value="0"/>\
 																<menuitem label="当前标签左边" value="1"/>\
@@ -724,25 +1064,18 @@
 														</menulist>\
 													</row>\
 													<row align="center">\
-													<label value=""/>\
-													<label value=""/>\
-													</row>\
-													<row align="center">\
 														<label value="新窗口打开到："/>\
-														<menulist preference="open_newwindow" style="width:120px">\
+														<menulist preference="open_newwindow" style="width:100px">\
 															<menupopup>\
 																<menuitem label="当前标签页" value="1"/>\
 																<menuitem label="新窗口" value="2"/>\
 																<menuitem label="新标签页" value="3"/>\
 															</menupopup>\
 														</menulist>\
-													</row>\
-													<row align="center">\
-														<label value=""/>\
-														<menulist preference="open_newwindow.restriction" style="width:150px">\
+														<menulist preference="open_newwindow.restriction" style="width:120px">\
 															<menupopup>\
 																<menuitem label="没有例外" value="0"/>\
-																<menuitem label="全部在新窗口中打开" value="1"/>\
+																<menuitem label="全部在新窗口" value="1"/>\
 																<menuitem label="弹出窗口除外" value="2"/>\
 															</menupopup>\
 														</menulist>\
@@ -752,33 +1085,24 @@
 									</groupbox>\
 									<groupbox>\
 										<caption label="其他功能" />\
-											<row align="center">\
-												<checkbox id="TabFocusr" label="自动聚焦" preference="TabFocus" oncommand="Change();"/>\
-											</row>\
-											<row align="center" class="indent">\
+											<checkbox id="TabFocusr" label="自动聚焦" preference="TabFocus" oncommand="Change();"/>\
+											<row class="indent">\
 												<label value="聚焦延时："/>\
 												<textbox id="TabFocus_Time" type="number" preference="TabFocus_Time" style="width:125px" tooltiptext="单位：毫秒！"/>\
 											</row>\
-											<row align="center">\
-												<checkbox id="CloseDownloadBankTab" label="关闭下载空白页" preference="CloseDownloadBankTab" />\
-											</row>\
-											<row align="center">\
-												<checkbox id="KeepBookmarksOnMiddleClick" label="鼠标中键点击时bookmark菜单不关闭" preference="KeepBookmarksOnMiddleClick" />\
-											</row>\
-											<row align="center">\
-												<checkbox id="ShowBorderChanges" label="窗口边框调整(去边框)" preference="ShowBorderChange" oncommand="Change();"/>\
-											</row>\
-											<row align="center" class="indent">\
+											<checkbox id="CloseDownloadBankTab" label="关闭下载空白页" preference="CloseDownloadBankTab" />\
+											<checkbox id="KeepBookmarksOnMiddleClick" label="鼠标中键点击时bookmark菜单不关闭" preference="KeepBookmarksOnMiddleClick" />\
+											<checkbox id="ShowBorderChanges" label="窗口边框调整(去边框)" preference="ShowBorderChange" oncommand="Change();"/>\
+											<row class="indent">\
 												<label value="边框像素："/>\
 												<textbox id="ShowBorder" preference="ShowBorder" style="width:125px" tooltiptext="顺序依次为【上，左，下，右】"/>\
 											</row>\
 									</groupbox>\
-								</hbox>\
 								</tabpanel>\
 								<tabpanel orient="vertical" flex="1" style="width:500px">\
 									<vbox>\
 										<hbox id="listarea" flex="1">\
-											<tree id="ruleTree" seltype="single" flex="1" enableColumnDrag="true" class="tree" rows="15"\
+											<tree id="ruleTree" seltype="single" flex="1" enableColumnDrag="true" class="tree" rows="20"\
 												onclick="opener.FeiRuoTabplus.OptionScript.onTreeclick(event);"\
 												ondblclick="opener.FeiRuoTabplus.OptionScript.onTreedblclick(event);">\
 												<treecols>\
@@ -816,76 +1140,79 @@
 							</tabpanels>\
 						</tabbox>\
 						<hbox flex="1">\
-							<button dlgtype="extra1" label="还原默认值" />\
-							<button dlgtype="extra2" label="自定义命令" />\
+							<button dlgtype="extra1" label="还原默认值"/>\
+							<button dlgtype="extra2" label="自定义命令"/>\
 							<spacer flex="1" />\
+							<button label="应用" oncommand="opener.FeiRuoTabplus.OptionScript.Save();"/>\
 							<button dlgtype="accept"/>\
 							<button dlgtype="cancel"/>\
 						</hbox>\
 					</prefpane>\
 					</prefwindow>\
           			';
-			return encodeURIComponent(xul);
+		return encodeURIComponent(xul);
+	};
+
+	FeiRuoTabplus.OptionScript = {
+		Rules: [],
+		ruleOption: [{
+			name: 'enabled',
+			default: '1'
+		}, {
+			name: 'gBrowser',
+			default: ''
+		}, {
+			name: 'action',
+			default: ''
+		}, {
+			name: 'tag',
+			default: ''
+		}, {
+			name: 'btn',
+			default: ''
+		}, {
+			name: 'command',
+			default: ''
+		}, {
+			name: 'tkey',
+			default: ''
+		}, {
+			name: 'keys',
+			default: ''
+		}, ],
+		ActionToString: {
+			"click": "单击",
+			"dblclick": "双击",
+			"MouseScrollUp": "上滚轮",
+			"MouseScrollDown": "下滚轮"
+		},
+		Commands: {
+			"CloseTargetTab": "关闭当前标签",
+			"AddTab": "新建标签",
+			"UndoCloseTab": "撤销关闭",
+			"ReloadTarget": "刷新当前标签",
+			"ReloadSkipCache": "强制刷新当前标签",
+			"PinTargetTab": "锁定标签",
+			"UnloadedToReload": "刷新未载入的标签",
+			"LoadWithIE": "用IE打开当前页",
+			"MouseScrollTabL": "滚动切换标签(向左)",
+			"MouseScrollTabR": "滚动切换标签(向右)"
 		},
 
-		/*****************************************************************************************/
-		OptionScript: {
-			Rules: [],
-			ruleOption: [{
-				name: 'enabled',
-				default: '1'
-			}, {
-				name: 'gBrowser',
-				default: ''
-			}, {
-				name: 'action',
-				default: ''
-			}, {
-				name: 'tag',
-				default: ''
-			}, {
-				name: 'btn',
-				default: ''
-			}, {
-				name: 'command',
-				default: ''
-			}, {
-				name: 'tkey',
-				default: ''
-			}, {
-				name: 'keys',
-				default: ''
-			}, ],
-			ActionToString: {
-				"click": "单击",
-				"dblclick": "双击",
-				"MouseScrollUp": "上滚轮",
-				"MouseScrollDown": "下滚轮"
-			},
-			Commands: {
-				"CloseTargetTab": "关闭当前标签",
-				"AddTab": "新建标签",
-				"UndoCloseTab": "撤销关闭",
-				"ReloadTarget": "刷新当前标签",
-				"ReloadSkipCache": "强制刷新当前标签",
-				"PinTargetTab": "锁定标签",
-				"UnloadedToReload": "刷新未载入的标签",
-				"LoadWithIE": "用IE打开当前页",
-				"MouseScrollTabL": "滚动切换标签(向左)",
-				"MouseScrollTabR": "滚动切换标签(向右)"
-			},
+		init: function(isAlert) {
+			if (!window.Services) Components.utils.import("resource://gre/modules/XPCOMUtils.jsm");
+			this.KeyClicked();
 
-			init: function(isAlert) {
-				with(_$("customList")) {
-					while (hasChildNodes()) {
-						removeChild(lastChild);
-					}
+			with(_$("customList")) {
+				while (hasChildNodes()) {
+					removeChild(lastChild);
 				}
+			}
 
 
-				var checkboximg = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA0AAAAaCAYAAABsONZfAAABD0lEQVQ4je2TMa5FQBSGrUIURiURhVJH3BXYgg1IprYGHa1FCGtheslf0UgkFMZ51ZUn3rvkJvdVr/iLKb4z55z5Ronj+ME5p7uJ4/ihcM5pmiYQ0a9ZlgVEhGmawDknhXNOr4BxHBFFEYQQIKJraBgG+L4PxhjSNIWU8git6woiwrZteJ7DMISqqsiybC90gNq2RV3XO1gUBRhjSJJkL3SCgiCAYRioqgp938OyLLiui3meDy0foKZp4DgOGGPwPA+6rqMsy9Ocp0U0TQPbtqFpGhhj+5wvISKCEAKmaSLPc0gp70FSSggh0HXdj8+wQ1dGPLMb8ZZ7HxP21N6VsLe29w+9C33/bJ+56U+E/QKpA0b/pEOBQAAAAABJRU5ErkJggg==";
+			var checkboximg = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA0AAAAaCAYAAABsONZfAAABD0lEQVQ4je2TMa5FQBSGrUIURiURhVJH3BXYgg1IprYGHa1FCGtheslf0UgkFMZ51ZUn3rvkJvdVr/iLKb4z55z5Ronj+ME5p7uJ4/ihcM5pmiYQ0a9ZlgVEhGmawDknhXNOr4BxHBFFEYQQIKJraBgG+L4PxhjSNIWU8git6woiwrZteJ7DMISqqsiybC90gNq2RV3XO1gUBRhjSJJkL3SCgiCAYRioqgp938OyLLiui3meDy0foKZp4DgOGGPwPA+6rqMsy9Ocp0U0TQPbtqFpGhhj+5wvISKCEAKmaSLPc0gp70FSSggh0HXdj8+wQ1dGPLMb8ZZ7HxP21N6VsLe29w+9C33/bJ+56U+E/QKpA0b/pEOBQAAAAABJRU5ErkJggg==";
 
-				var cssStr = ('\
+			var cssStr = ('\
 					treechildren::-moz-tree-checkbox(unchecked){\
 						list-style-image: url(' + checkboximg + ');\
 						-moz-image-region: rect(13px 13px 26px 0px);\
@@ -896,175 +1223,175 @@
 					}\
 					');
 
-				var doc = FeiRuoTabplus.getWindow(0).document;
+			var doc = FeiRuoTabplus.getWindow(0).document;
 
-				var style = doc.createProcessingInstruction('xml-stylesheet', 'type="text/css" href="data:text/css;utf-8,' + encodeURIComponent(cssStr) + '"');
-				doc.insertBefore(style, doc.documentElement);
+			var style = doc.createProcessingInstruction('xml-stylesheet', 'type="text/css" href="data:text/css;utf-8,' + encodeURIComponent(cssStr) + '"');
+			doc.insertBefore(style, doc.documentElement);
 
-				this.changeStatus();
-				if (!FeiRuoTabplus.Custom) return;
-				var Custom = FeiRuoTabplus.Custom.split(",");
-				if (Custom && !isAlert) {
-					for (var i in Custom) {
-						this.createTreeitem("customList", this.str2Obj(Custom[i]));
-					}
+			this.changeStatus();
+			if (!FeiRuoTabplus.Custom) return;
+			var Custom = FeiRuoTabplus.Custom.split(",");
+			if (Custom && !isAlert) {
+				for (var i in Custom) {
+					this.createTreeitem("customList", this.str2Obj(Custom[i]));
 				}
-				this.changeStatus();
-			},
+			}
+			this.changeStatus();
+		},
 
-			str2Obj: function(str) {
-				var tempArr = str.split("|");
-				var ret = {};
-				var i = 0;
-				var tempStr = '';
-				for (var k = 0; k < this.ruleOption.length; k++) {
-					var o = this.ruleOption[k];
-					if (i < tempArr.length) {
-						tempStr = tempArr[i];
-						i = i + 1;
-					} else {
-						tempStr = o.default;
-					}
-					ret[o.name] = tempStr;
-				}
-				return ret;
-			},
-
-			createTreeitem: function(listName, params) {
-				var treecell1 = _$C("treecell");
-				var treecell2 = _$C("treecell");
-				var treecell3 = _$C("treecell");
-				var treecell4 = _$C("treecell");
-				var treecell5 = _$C("treecell");
-				var treecell6 = _$C("treecell");
-				var treecell7 = _$C("treecell");
-				var treecell8 = _$C("treecell");
-				var treerow = _$C("treerow");
-				treerow.appendChild(treecell1);
-				treerow.appendChild(treecell2);
-				treerow.appendChild(treecell3);
-				treerow.appendChild(treecell4);
-				treerow.appendChild(treecell5);
-				treerow.appendChild(treecell6);
-				treerow.appendChild(treecell7);
-				treerow.appendChild(treecell8);
-				var treeitem = _$C("treeitem");
-				treeitem.setAttribute("container", "false");
-				treeitem.appendChild(treerow);
-				this.setTreeitem(treeitem, params);
-				_$(listName).appendChild(treeitem);
-			},
-
-			setTreeitem: function(treeitem, params) {
-				var that = FeiRuoTabplus;
-				with(treeitem.firstChild) {
-					var name = this.Commands[params["command"]];
-					if (!name) {
-						var word = params["command"];
-						word = word.substring(word.indexOf("_"));
-						word = word.substring(1, word.length);
-						var CCommand = that.CustomCommand[word];
-						if (CCommand)
-							name = that.CustomCommand[word].label;
-					}
-					childNodes[0].setAttribute("label", name);
-					childNodes[0].setAttribute("command", params["command"]);
-					childNodes[1].setAttribute("label", params["gBrowser"]);
-					childNodes[1].setAttribute("gBrowser", params["gBrowser"]);
-					childNodes[2].setAttribute("label", this.ActionToString[params["action"]]);
-					childNodes[2].setAttribute("action", params["action"]);
-					childNodes[3].setAttribute("label", params["tag"] == "Tab" ? "标签" : "标签栏");
-					childNodes[3].setAttribute("tag", params["tag"]);
-					childNodes[4].setAttribute("label", params["btn"] == "0" ? "左键" : (params["btn"] == "1" ? "中键" : "右键"));
-					childNodes[4].setAttribute("btn", params["btn"]);
-					childNodes[5].setAttribute("label", params["keys"]);
-					childNodes[5].setAttribute("keys", params["keys"]);
-					childNodes[6].setAttribute("label", params["tkey"] == "1" ? "排除" : !params["keys"] ? "" : "辅助");
-					childNodes[6].setAttribute("tkey", params["tkey"]);
-					this.setCheckbox(treeitem, params["enabled"]);
-				}
-			},
-
-			setCheckbox: function(treeitem, checked) {
-				var checkboxCell = treeitem.firstChild.childNodes[7];
-				var currentValue = checkboxCell.getAttribute("value");
-				var newValue = "";
-				if (checked == "reverse") {
-					if (currentValue == null || currentValue == "0") {
-						newValue = "1";
-					} else if (currentValue == "1") {
-						newValue = "0";
-					} else {
-						return;
-					}
+		str2Obj: function(str) {
+			var tempArr = str.split("|");
+			var ret = {};
+			var i = 0;
+			var tempStr = '';
+			for (var k = 0; k < this.ruleOption.length; k++) {
+				var o = this.ruleOption[k];
+				if (i < tempArr.length) {
+					tempStr = tempArr[i];
+					i = i + 1;
 				} else {
-					newValue = checked;
+					tempStr = o.default;
 				}
+				ret[o.name] = tempStr;
+			}
+			return ret;
+		},
 
-				checkboxCell.setAttribute("value", newValue);
-				if (newValue == "1") {
-					checkboxCell.setAttribute("properties", "checked");
-				} else if (newValue == "0") {
-					checkboxCell.setAttribute("properties", "unchecked");
+		createTreeitem: function(listName, params) {
+			var treecell1 = _$C("treecell");
+			var treecell2 = _$C("treecell");
+			var treecell3 = _$C("treecell");
+			var treecell4 = _$C("treecell");
+			var treecell5 = _$C("treecell");
+			var treecell6 = _$C("treecell");
+			var treecell7 = _$C("treecell");
+			var treecell8 = _$C("treecell");
+			var treerow = _$C("treerow");
+			treerow.appendChild(treecell1);
+			treerow.appendChild(treecell2);
+			treerow.appendChild(treecell3);
+			treerow.appendChild(treecell4);
+			treerow.appendChild(treecell5);
+			treerow.appendChild(treecell6);
+			treerow.appendChild(treecell7);
+			treerow.appendChild(treecell8);
+			var treeitem = _$C("treeitem");
+			treeitem.setAttribute("container", "false");
+			treeitem.appendChild(treerow);
+			this.setTreeitem(treeitem, params);
+			_$(listName).appendChild(treeitem);
+		},
+
+		setTreeitem: function(treeitem, params) {
+			var that = FeiRuoTabplus;
+			with(treeitem.firstChild) {
+				var name = this.Commands[params["command"]];
+				if (!name) {
+					var word = params["command"];
+					word = word.substring(word.indexOf("_"));
+					word = word.substring(1, word.length);
+					var CCommand = that.CustomCommand[word];
+					if (CCommand)
+						name = that.CustomCommand[word].label;
 				}
-			},
+				childNodes[0].setAttribute("label", name);
+				childNodes[0].setAttribute("command", params["command"]);
+				childNodes[1].setAttribute("label", params["gBrowser"]);
+				childNodes[1].setAttribute("gBrowser", params["gBrowser"]);
+				childNodes[2].setAttribute("label", this.ActionToString[params["action"]]);
+				childNodes[2].setAttribute("action", params["action"]);
+				childNodes[3].setAttribute("label", params["tag"] == "Tab" ? "标签" : "标签栏");
+				childNodes[3].setAttribute("tag", params["tag"]);
+				childNodes[4].setAttribute("label", params["btn"] == "0" ? "左键" : (params["btn"] == "1" ? "中键" : "右键"));
+				childNodes[4].setAttribute("btn", params["btn"]);
+				childNodes[5].setAttribute("label", params["keys"]);
+				childNodes[5].setAttribute("keys", params["keys"]);
+				childNodes[6].setAttribute("label", params["tkey"] == "1" ? "排除" : !params["keys"] ? "" : "辅助");
+				childNodes[6].setAttribute("tkey", params["tkey"]);
+				this.setCheckbox(treeitem, params["enabled"]);
+			}
+		},
 
-			/******************************************************************/
-			onTreeclick: function(event) {
-				with(_$("ruleTree")) {
-					if (event.button != 0) return;
-
-					var row = {};
-					var col = {};
-					var obj = {};
-					treeBoxObject.getCellAt(event.clientX, event.clientY, row, col, obj);
-
-					if (col.value == null || row.value == null || obj.value == null) return;
-					if (col.value.type == Components.interfaces.nsITreeColumn.TYPE_CHECKBOX) {
-						var treeitem = view.getItemAtIndex(row.value);
-						if (treeitem != null) {
-							this.setCheckbox(treeitem, "reverse");
-						}
-					}
+		setCheckbox: function(treeitem, checked) {
+			var checkboxCell = treeitem.firstChild.childNodes[7];
+			var currentValue = checkboxCell.getAttribute("value");
+			var newValue = "";
+			if (checked == "reverse") {
+				if (currentValue == null || currentValue == "0") {
+					newValue = "1";
+				} else if (currentValue == "1") {
+					newValue = "0";
+				} else {
+					return;
 				}
-			},
+			} else {
+				newValue = checked;
+			}
 
-			onTreedblclick: function(event) {
+			checkboxCell.setAttribute("value", newValue);
+			if (newValue == "1") {
+				checkboxCell.setAttribute("properties", "checked");
+			} else if (newValue == "0") {
+				checkboxCell.setAttribute("properties", "unchecked");
+			}
+		},
+
+		/******************************************************************/
+		onTreeclick: function(event) {
+			with(_$("ruleTree")) {
 				if (event.button != 0) return;
-				if (this.getEventRow(event) == null) return;
-				var treeitem = _$("ruleTree").view.getItemAtIndex(_$("ruleTree").currentIndex);
-				this.jumptoDetailWindow(treeitem);
-			},
 
-			getTreeitem: function(treeitem) {
-				with(treeitem.firstChild) {
-					return {
-						command: childNodes[0].getAttribute("command"),
-						gBrowser: childNodes[1].getAttribute("gBrowser"),
-						action: childNodes[2].getAttribute("action"),
-						tag: childNodes[3].getAttribute("tag"),
-						btn: childNodes[4].getAttribute("btn"),
-						keys: childNodes[5].getAttribute("keys"),
-						tkey: childNodes[6].getAttribute("tkey"),
-						enabled: childNodes[7].getAttribute("value")
+				var row = {};
+				var col = {};
+				var obj = {};
+				treeBoxObject.getCellAt(event.clientX, event.clientY, row, col, obj);
+
+				if (col.value == null || row.value == null || obj.value == null) return;
+				if (col.value.type == Components.interfaces.nsITreeColumn.TYPE_CHECKBOX) {
+					var treeitem = view.getItemAtIndex(row.value);
+					if (treeitem != null) {
+						this.setCheckbox(treeitem, "reverse");
 					}
 				}
-			},
+			}
+		},
 
-			openWindow: function(params, retParams) {
-				var win = "FeiRuoTabplus:DetailWindow";
-				var thisWindow = FeiRuoTabplus.getWindow(1);
-				if (thisWindow) {
-					thisWindow.focus();
-				} else {
-					var detaill = this.detaill();
-					thisWindow = window.openDialog("data:application/vnd.mozilla.xul+xml;charset=UTF-8," + detaill, win, "modal, chrome=yes,centerscreen", params, retParams);
+		onTreedblclick: function(event) {
+			if (event.button != 0) return;
+			if (this.getEventRow(event) == null) return;
+			var treeitem = _$("ruleTree").view.getItemAtIndex(_$("ruleTree").currentIndex);
+			this.jumptoDetailWindow(treeitem);
+		},
+
+		getTreeitem: function(treeitem) {
+			with(treeitem.firstChild) {
+				return {
+					command: childNodes[0].getAttribute("command"),
+					gBrowser: childNodes[1].getAttribute("gBrowser"),
+					action: childNodes[2].getAttribute("action"),
+					tag: childNodes[3].getAttribute("tag"),
+					btn: childNodes[4].getAttribute("btn"),
+					keys: childNodes[5].getAttribute("keys"),
+					tkey: childNodes[6].getAttribute("tkey"),
+					enabled: childNodes[7].getAttribute("value")
 				}
-				return thisWindow;
-			},
+			}
+		},
 
-			detaill: function() {
-				var xu = '<?xml version="1.0"?><?xml-stylesheet href="chrome://global/skin/" type="text/css"?>\
+		openWindow: function(params, retParams) {
+			var win = "FeiRuoTabplus:DetailWindow";
+			var thisWindow = FeiRuoTabplus.getWindow(1);
+			if (thisWindow) {
+				thisWindow.focus();
+			} else {
+				var detaill = this.detaill();
+				thisWindow = window.openDialog("data:application/vnd.mozilla.xul+xml;charset=UTF-8," + detaill, win, "modal, chrome=yes,centerscreen", params, retParams);
+			}
+			return thisWindow;
+		},
+
+		detaill: function() {
+			var xu = '<?xml version="1.0"?><?xml-stylesheet href="chrome://global/skin/" type="text/css"?>\
 					<prefwindow xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"\
 					id="FeiRuoTabplus_Detail"\
 					ignorekeys="true"\
@@ -1162,395 +1489,470 @@
 						</prefpane>\
 					</prefwindow>\
 					';
-				return encodeURIComponent(xu);
-			},
+			return encodeURIComponent(xu);
+		},
 
-			jumptoDetailWindow: function(treeitem) {
-				var params = {};
-				if (treeitem == null) {
-					params = {
-						command: "",
-						gBrowser: "",
-						action: "",
-						tag: "",
-						btn: "",
-						keys: "",
-						tkey: "",
-						enabled: "1"
-					};
-				} else {
-					params = this.getTreeitem(treeitem);
-				}
-				var retParams = {
+		jumptoDetailWindow: function(treeitem) {
+			var params = {};
+			if (treeitem == null) {
+				params = {
 					command: "",
 					gBrowser: "",
 					action: "",
 					tag: "",
 					btn: "",
 					keys: "",
-					changed: "",
 					tkey: "",
-					enabled: params["enabled"]
+					enabled: "1"
 				};
-				this.openWindow(params, retParams);
-				if (retParams["changed"] != "") {
-					if (treeitem == null) {
-						this.createTreeitem("customList", retParams);
-					} else {
-						this.setTreeitem(treeitem, retParams);
-					}
+			} else {
+				params = this.getTreeitem(treeitem);
+			}
+			var retParams = {
+				command: "",
+				gBrowser: "",
+				action: "",
+				tag: "",
+				btn: "",
+				keys: "",
+				changed: "",
+				tkey: "",
+				enabled: params["enabled"]
+			};
+			this.openWindow(params, retParams);
+			if (retParams["changed"] != "") {
+				if (treeitem == null) {
+					this.createTreeitem("customList", retParams);
+				} else {
+					this.setTreeitem(treeitem, retParams);
 				}
-			},
-
-			/******************************************************************/
-			getEventRow: function(event) {
-				var row = {};
-				var col = {};
-				var obj = {};
-				_$("ruleTree")
-					.treeBoxObject.getCellAt(event.clientX, event.clientY, row, col, obj);
-
-				if (col.value == null || row.value == null || obj.value == null) return null;
-				else return row.value;
-			},
-
-			onDragstart: function(event) {
-				var row = this.getEventRow(event);
-				if (row == null) return false;
-				var treeitem = _$("ruleTree").view.getItemAtIndex(row);
-				var dt = event.dataTransfer;
-				dt.setData('FeiRuoTabplus/row', row);
-			},
-
-			onDragover: function(event) {
-				var row = this.getEventRow(event);
-				if (row == null) return;
-				var treeitem = _$("ruleTree").view.getItemAtIndex(row);
-				event.preventDefault();
-			},
-
-			moveItemBeforeItem: function(treeitem, pTreeitem) {
-				var item = this.getTreeitem(pTreeitem);
-				treeitem.parentNode.removeChild(treeitem);
-				pTreeitem.parentNode.insertBefore(treeitem, pTreeitem);
-			},
-
-			onDrop: function(event) {
-				var dtRow = event.dataTransfer.getData('FeiRuoTabplus/row');
-				var row = this.getEventRow(event);
-				if (row == null) return;
-				if (row == dtRow) return;
-				var pTreeitem = _$("ruleTree").view.getItemAtIndex(row);
-				var treeitem = _$("ruleTree").view.getItemAtIndex(dtRow);
-				this.moveItemBeforeItem(treeitem, pTreeitem);
-			},
-
-			/******************************************************************/
-			onNewButtonClick: function() {
-				with(_$("ruleTree")) {
-					var parentId = "customList";
-					this.jumptoDetailWindow(null, parentId);
-				}
-			},
-
-			onEditButtonClick: function() {
-				this.editRuleList("edit");
-			},
-
-			onDeleteButtonClick: function() {
-				this.editRuleList("delete");
-			},
-
-			editRuleList: function(mode) {
-				with(_$("ruleTree")) {
-					var idx = currentIndex;
-					if (idx < 0) {
-						return;
-					}
-					var treeitem = view.getItemAtIndex(idx);
-					if (mode == "edit") {
-						this.jumptoDetailWindow(treeitem);
-					} else if (mode == "delete") {
-						treeitem.parentNode.removeChild(treeitem);
-						view.selection.select(idx);
-					}
-					treeBoxObject.ensureRowIsVisible(currentIndex);
-				}
-				this.changeStatus();
-			},
-
-			/******************************************************************/
-			obj2Str: function(myArr) {
-				var tempArr = [];
-				for (var k = 0; k < this.ruleOption.length; k++) {
-					var o = this.ruleOption[k];
-					var tempStr = (myArr[o.name] == undefined) ? o.default : myArr[o.name];
-					if (o.needEncode) tempStr = fctConfig.encode(tempStr);
-					tempArr.push(tempStr);
-				}
-				return tempArr.join("|");
-			},
-
-			Save: function() {
-				var Rules = [];
-				var list = _$("customList");
-				if (!list.hasChildNodes()) return;
-				for (var i = 0; i < list.childNodes.length; i++) {
-					var rule = this.getTreeitem(list.childNodes[i]);
-					Rules.push(rule);
-				}
-				var objArr = [];
-				for (var i in Rules) {
-					var currentObj = this.obj2Str(Rules[i]);
-					objArr.push(currentObj);
-				}
-				var Custom = objArr.join(",");
-				if (!FeiRuoTabplus.prefs.prefHasUserValue("Custom") || FeiRuoTabplus.prefs.getPrefType("Custom") != Ci.nsIPrefBranch.PREF_STRING)
-					FeiRuoTabplus.prefs.setCharPref("Custom", "");
-				FeiRuoTabplus.prefs.setCharPref("Custom", Custom);
-			},
-
-			changeStatus: function() {
-				_$("ShowBorder").disabled = !(_$("ShowBorderChanges").checked);
-				_$("TabFocus_Time").disabled = !(_$("TabFocusr").checked);
-				var status = !(_$("customList").hasChildNodes());
-				_$("editButton").disabled = status;
-				_$("deleteButton").disabled = status;
-				_$("deleteButton").disabled = status;
-			},
-
-			Resets: function() {
-				this.init(true);
-				_$("NewTabUrlbar").value = false;
-				_$("NewTabHistory").value = false;
-				_$("NewTabNear").value = 0;
-				_$("ColseToNearTab").value = 0;
-				_$("TabFocus").value = false;
-				_$("TabFocus_Time").value = 250;
-				_$("CloseDownloadBankTab").value = false;
-				_$("KeepBookmarksOnMiddleClick").value = false;
-				_$("ShowBorderChange").value = false;
-				_$("searchloadInBackground").value = false;
-				_$("tabsloadInBackground").value = false;
-				_$("SideBarNewTab").value = false;
-				_$("ShowBorder").value = "0,7,7,7";
-				this.changeStatus();
 			}
 		},
 
-		Detaill_OptionScript: {
-			RemoveChild: function(menu) {
-				with(_$D(menu)) {
-					while (hasChildNodes()) {
-						removeChild(lastChild);
-					}
-				}
-			},
+		/******************************************************************/
+		getEventRow: function(event) {
+			var row = {};
+			var col = {};
+			var obj = {};
+			_$("ruleTree")
+				.treeBoxObject.getCellAt(event.clientX, event.clientY, row, col, obj);
 
-			init: function(param) {
-				FeiRuoTabplus.updateFile(true);
-				var keys = param["keys"];
-				if (keys) {
-					keys = keys.split("+");
-					for (var i in keys) {
-						if (keys[i] == "Alt")
-							_$D("CAlt").checked = true;
-
-						if (keys[i] == "Ctrl") {
-							_$D("CCtrl").checked = true;
-						}
-
-						if (keys[i] == "Shift")
-							_$D("CShift").checked = true;
-					}
-				}
-				_$D("Ctkey").checked = param["tkey"] ? true : false;
-
-				_$D("MouseBtn").selectedIndex = param["btn"] || 0;
-
-				_$D("MouseDblClick").checked = (param["action"] == "dblclick" ? true : false);
-
-				if (param["action"] == "dblclick" || param["action"] == "click" || !param["action"])
-					_$D("MouseAction").value = "MouseClick";
-				else
-					_$D("MouseAction").value = "MouseMidScroll";
-
-				this.MouseChanged();
-
-				_$D("EventTag").value = param["tag"] || "Tab";
-
-				if (param["tag"] == "Tab")
-					_$D("TabEventCommand").value = param["command"];
-				else if (param["tag"] == "TabBar")
-					_$D("TabBarEventCommand").value = param["command"];
-				else {
-					_$D("TabEventCommand").selectedIndex = 0;
-					_$D("TabBarEventCommand").selectedIndex = 0;
-				}
-
-				this.KeyChanged();
-				this.TagChanged();
-			},
-
-			Resets: function() {
-				_$D("CAlt").checked = _$D("CCtrl").checked = _$D("CShift").checked = false;
-				_$D("MouseAction").value = "MouseClick";
-				_$D("MouseBtn").disabled = _$D("MouseDblClick").disabled = false;
-				_$D("MouseScroll").disabled = true;
-				_$D("EventTag").value = "Tab";
-				_$D("TabEventCommand").disabled = false;
-				_$D("TabBarEventCommand").disabled = true;
-				this.CreateEventMenu("Click");
-				this.KeyChanged();
-				this.TagChanged();
-				this.MouseChanged();
-			},
-
-			Save: function(retParam) {
-				var command, gBrowser, action, tag, btn, tkey, keys;
-				if (_$D("CAlt").checked)
-					keys = "Alt";
-				if (_$D("CCtrl").checked)
-					keys = (keys ? (keys + "+") : "") + "Ctrl";
-				if (_$D("CShift").checked)
-					keys = (keys ? (keys + "+") : "") + "Shift";
-				if (keys && _$D("Ctkey").checked)
-					tkey = "1";
-
-				if (_$D("MouseAction").value == "MouseClick") {
-					btn = _$D("MouseBtn").value;
-					action = _$D("MouseDblClick").checked ? "dblclick" : "click";
-				} else if (_$D("MouseAction").value == "MouseMidScroll") {
-					btn = "1";
-					action = _$D("MouseScroll").value;
-				}
-
-				tag = _$D("EventTag").value;
-
-				var menu;
-
-				if (tag == "Tab") {
-					menu = _$D("TabEventCommand");
-					command = _$D("TabEventCommand").value;
-				} else if (tag == "TabBar") {
-					menu = _$D("TabBarEventCommand");
-					command = _$D("TabBarEventCommand").value;
-				}
-
-				for (var i = 0; i < menu.itemCount; i++) {
-					if (menu.getItemAtIndex(i).getAttribute("value") == command) {
-						gBrowser = menu.getItemAtIndex(i).getAttribute("description")
-						break;
-					}
-				}
-
-				if (command == "" && gBrowser == "" && action == "" && tag == "" && btn == "" && tkey == "" && keys == "") return;
-
-				retParam["command"] = command || "";
-				retParam["gBrowser"] = gBrowser || "";
-				retParam["action"] = action || "";
-				retParam["tag"] = tag || "";
-				retParam["btn"] = btn || "";
-				retParam["tkey"] = tkey || "";
-				retParam["keys"] = keys || "";
-				retParam["changed"] = "1";
-				setTimeout(function() {
-					FeiRuoTabplus.OptionScript.changeStatus();
-				}, 10);
-				return true;
-			},
-
-			TagChanged: function() {
-				if (_$D("EventTag").value != _$D("TabEvent").value) {
-					_$D("TabEventCommand").disabled = true;
-					_$D("TabBarEventCommand").disabled = false;
-				} else {
-					_$D("TabEventCommand").disabled = false;
-					_$D("TabBarEventCommand").disabled = true;
-				}
-			},
-
-			KeyChanged: function() {
-				if (!_$D("CAlt").checked && !_$D("CCtrl").checked && !_$D("CShift").checked)
-					_$D("Ctkey").disabled = true;
-				else
-					_$D("Ctkey").disabled = false;
-			},
-
-			MouseChanged: function(type) {
-				var status;
-
-				if (!type || type != 1)
-					status = true;
-				else
-					status = false;
-
-				_$D("MouseScroll").disabled = status;
-				_$D("MouseBtn").disabled = _$D("MouseDblClick").disabled = !status;
-
-				if (status)
-					this.CreateEventMenu("Click");
-				else
-					this.CreateEventMenu("Scroll");
-			},
-
-			CreateEventMenu: function(Mouse) {
-				var that = FeiRuoTabplus;
-				this.RemoveChild("TabEventCommand");
-				this.RemoveChild("TabBarEventCommand");
-				var TabEventMenu = _$D("TabEventCommand");
-				var TabBarEventMenu = _$D("TabBarEventCommand");
-				if (Mouse == "Scroll") {
-					TabEventMenu.appendItem("滚动切换标签(向左)", "MouseScrollTabL", "mTabContainer");
-					TabEventMenu.appendItem("滚动切换标签(向右)", "MouseScrollTabR", "mTabContainer");
-					TabBarEventMenu.appendItem("滚动切换标签(向左)", "MouseScrollTabL", "mTabContainer");
-					TabBarEventMenu.appendItem("滚动切换标签(向右)", "MouseScrollTabR", "mTabContainer");
-
-				}
-
-				TabEventMenu.appendItem("关闭当前标签", "CloseTargetTab", "mTabContainer");
-				TabEventMenu.appendItem("新建标签", "AddTab", "mTabContainer");
-				TabEventMenu.appendItem("撤销关闭", "UndoCloseTab", "mTabContainer");
-				TabEventMenu.appendItem("刷新标签", "ReloadTarget", "mTabContainer");
-				TabEventMenu.appendItem("强制刷新标签", "ReloadSkipCache", "mTabContainer");
-				TabEventMenu.appendItem("锁定标签", "PinTargetTab", "mTabContainer");
-				TabEventMenu.appendItem("刷新未载入的标签", "UnloadedToReload", "mTabContainer");
-				TabEventMenu.appendItem("用IE打开当前页", "LoadWithIE", "mTabContainer");
-				/************************/
-				TabBarEventMenu.appendItem("关闭当前标签", "CloseTargetTab", "mTabContainer");
-				TabBarEventMenu.appendItem("新建标签", "AddTab", "mTabContainer");
-				TabBarEventMenu.appendItem("撤销关闭", "UndoCloseTab", "mTabContainer");
-				TabBarEventMenu.appendItem("刷新标签", "ReloadTarget", "mTabContainer");
-				TabBarEventMenu.appendItem("强制刷新标签", "ReloadSkipCache", "mTabContainer");
-				TabBarEventMenu.appendItem("刷新未载入的标签", "UnloadedToReload", "mTabContainer");
-				TabBarEventMenu.appendItem("用IE打开当前页", "LoadWithIE", "mTabContainer");
-
-
-
-				var CCommand = that.CustomCommand;
-				if (CCommand) {
-					for (var i in CCommand) {
-						if (Mouse == "Scroll" && CCommand[i].Mouse.match("Scroll"))
-							this.CreateCustomCommandMenu(CCommand[i], i);
-						if (Mouse == "Click" && CCommand[i].Mouse.match("Click"))
-							this.CreateCustomCommandMenu(CCommand[i], i);
-					}
-				}
-				_$D("TabEventCommand").selectedIndex = 0;
-				_$D("TabBarEventCommand").selectedIndex = 0;
-			},
-
-			CreateCustomCommandMenu: function(val, c) {
-				var TabEventMenu = _$D("TabEventCommand");
-				var TabBarEventMenu = _$D("TabBarEventCommand");
-				if (val.Tag.match("Tab"))
-					TabEventMenu.appendItem(val.label, ("CCommand_" + c), val.gBrowser);
-				if (val.Tag.match("TabBar"))
-					TabBarEventMenu.appendItem(val.label, ("CCommand_" + c), val.gBrowser);
-			},
+			if (col.value == null || row.value == null || obj.value == null) return null;
+			else return row.value;
 		},
+
+		onDragstart: function(event) {
+			var row = this.getEventRow(event);
+			if (row == null) return false;
+			var treeitem = _$("ruleTree").view.getItemAtIndex(row);
+			var dt = event.dataTransfer;
+			dt.setData('FeiRuoTabplus/row', row);
+		},
+
+		onDragover: function(event) {
+			var row = this.getEventRow(event);
+			if (row == null) return;
+			var treeitem = _$("ruleTree").view.getItemAtIndex(row);
+			event.preventDefault();
+		},
+
+		moveItemBeforeItem: function(treeitem, pTreeitem) {
+			var item = this.getTreeitem(pTreeitem);
+			treeitem.parentNode.removeChild(treeitem);
+			pTreeitem.parentNode.insertBefore(treeitem, pTreeitem);
+		},
+
+		onDrop: function(event) {
+			var dtRow = event.dataTransfer.getData('FeiRuoTabplus/row');
+			var row = this.getEventRow(event);
+			if (row == null) return;
+			if (row == dtRow) return;
+			var pTreeitem = _$("ruleTree").view.getItemAtIndex(row);
+			var treeitem = _$("ruleTree").view.getItemAtIndex(dtRow);
+			this.moveItemBeforeItem(treeitem, pTreeitem);
+		},
+
+		/******************************************************************/
+		onNewButtonClick: function() {
+			with(_$("ruleTree")) {
+				var parentId = "customList";
+				this.jumptoDetailWindow(null, parentId);
+			}
+		},
+
+		onEditButtonClick: function() {
+			this.editRuleList("edit");
+		},
+
+		onDeleteButtonClick: function() {
+			this.editRuleList("delete");
+		},
+
+		editRuleList: function(mode) {
+			with(_$("ruleTree")) {
+				var idx = currentIndex;
+				if (idx < 0) {
+					return;
+				}
+				var treeitem = view.getItemAtIndex(idx);
+				if (mode == "edit") {
+					this.jumptoDetailWindow(treeitem);
+				} else if (mode == "delete") {
+					treeitem.parentNode.removeChild(treeitem);
+					view.selection.select(idx);
+				}
+				treeBoxObject.ensureRowIsVisible(currentIndex);
+			}
+			this.changeStatus();
+		},
+
+		/******************************************************************/
+		obj2Str: function(myArr) {
+			var tempArr = [];
+			for (var k = 0; k < this.ruleOption.length; k++) {
+				var o = this.ruleOption[k];
+				var tempStr = (myArr[o.name] == undefined) ? o.default : myArr[o.name];
+				if (o.needEncode) tempStr = fctConfig.encode(tempStr);
+				tempArr.push(tempStr);
+			}
+			return tempArr.join("|");
+		},
+
+		KeyRead: function() {
+			var keys = [];
+			for (var i = 0; i <= 2; i++) {
+				var akey = "AltKey" + i,
+					ckey = "CtrlKey" + i,
+					skey = "ShiftKey" + i;
+				var key = "";
+				if (_$(akey).checked)
+					key = "Alt";
+				if (_$(ckey).checked)
+					key = (key ? (key + "+") : "") + "Ctrl";
+				if (_$(skey).checked)
+					key = (key ? (key + "+") : "") + "Shift";
+				keys.push(key)
+			};
+			return keys.join("|");
+		},
+
+		KeyClicked: function() {
+			let keys = FeiRuoTabplus.NewTabExKey.split("|");
+			if (!keys[0]) return;
+			for (var i in keys) {
+				var akey = "AltKey" + i,
+					ckey = "CtrlKey" + i,
+					skey = "ShiftKey" + i;
+				_$(akey).checked = keys[i].match("Alt") ? true : false;
+				_$(ckey).checked = keys[i].match("Ctrl") ? true : false;
+				_$(skey).checked = keys[i].match("Shift") ? true : false;
+			}
+		},
+
+		Save: function() {
+			FeiRuoTabplus.prefs.setBoolPref("NewTabUrlbar", _$("NewTabUrlbar").value);
+			FeiRuoTabplus.prefs.setBoolPref("NewTabHistory", _$("NewTabHistory").value);
+			FeiRuoTabplus.prefs.setIntPref("NewTabNear", _$("NewTabNear").value);
+			FeiRuoTabplus.prefs.setIntPref("ColseToNearTab", _$("ColseToNearTab").value);
+			FeiRuoTabplus.prefs.setBoolPref("TabFocus", _$("TabFocus").value);
+			FeiRuoTabplus.prefs.setIntPref("TabFocus_Time", _$("TabFocus_Time").value);
+			FeiRuoTabplus.prefs.setBoolPref("CloseDownloadBankTab", _$("CloseDownloadBankTab").value);
+			FeiRuoTabplus.prefs.setBoolPref("KeepBookmarksOnMiddleClick", _$("KeepBookmarksOnMiddleClick").value);
+			FeiRuoTabplus.prefs.setBoolPref("SideBarNewTab", _$("SideBarNewTab").value);
+			FeiRuoTabplus.prefs.setCharPref("ShowBorder", _$("ShowBorder").value);
+			FeiRuoTabplus.prefs.setBoolPref("HomeNewTab", _$("HomeNewTab").value);
+			FeiRuoTabplus.prefs.setBoolPref("SideBarNewTab_SH", _$("SideBarNewTab_SH").value);
+			FeiRuoTabplus.prefs.setBoolPref("NewTabUrlbar_SH", _$("NewTabUrlbar_SH").value);
+			FeiRuoTabplus.prefs.setBoolPref("NewTabHistory_SH", _$("NewTabHistory_SH").value);
+			//FeiRuoTabplus.prefs.setBoolPref("whereToOpen", _$("whereToOpen"));
+
+			Services.prefs.setBoolPref("browser.tabs.loadBookmarksInBackground", _$("loadBookmarksInBackground").value);
+			Services.prefs.setIntPref("browser.link.open_newwindow", _$("open_newwindow").value);
+			Services.prefs.setIntPref("browser.link.open_newwindow.restriction", _$("open_newwindow.restriction").value);
+			Services.prefs.setBoolPref("browser.search.context.loadInBackgroundn", _$("searchloadInBackground").value);
+			Services.prefs.setBoolPref("browser.tabs.loadInBackground", _$("tabsloadInBackground").value);
+
+			var ShowBorderChange = FeiRuoTabplus.getPrefs(0, "ShowBorderChange", false)
+			if (_$("ShowBorderChange").value != ShowBorderChange)
+				FeiRuoTabplus.prefs.setBoolPref("ShowBorderChange", _$("ShowBorderChange").value);
+
+			FeiRuoTabplus.PrefStrTrim("SameHostEX", _$("SameHostEX").value, true);
+			FeiRuoTabplus.PrefStrTrim("NewTabExcludePage", _$("NewTabExcludePage").value, true);
+			FeiRuoTabplus.PrefStrTrim("NewTabExcludeUrl", _$("NewTabExcludeUrl").value, true);
+			var keyssss = this.KeyRead();
+			FeiRuoTabplus.prefs.setCharPref("NewTabExKey", keyssss);
+
+			var Rules = [];
+			var list = _$("customList");
+			if (!list.hasChildNodes()) return;
+			for (var i = 0; i < list.childNodes.length; i++) {
+				var rule = this.getTreeitem(list.childNodes[i]);
+				Rules.push(rule);
+			}
+			var objArr = [];
+			for (var i in Rules) {
+				var currentObj = this.obj2Str(Rules[i]);
+				objArr.push(currentObj);
+			}
+			var Custom = objArr.join(",");
+			if (!FeiRuoTabplus.prefs.prefHasUserValue("Custom") || FeiRuoTabplus.prefs.getPrefType("Custom") != Ci.nsIPrefBranch.PREF_STRING)
+				FeiRuoTabplus.prefs.setCharPref("Custom", "");
+			FeiRuoTabplus.prefs.setCharPref("Custom", Custom);
+		},
+
+		changeStatus: function() {
+			if ((_$("NewTabUrlbarr").checked) || (_$("NewTabHistoryr").checked) || (_$("SideBarNewTabr").checked))
+				_$("SameHostEX").disabled = false;
+			else
+				_$("SameHostEX").disabled = true;
+			_$("NewTabUrlbar_SH").disabled = _$("CtrlKey0").disabled = _$("AltKey0").disabled = _$("ShiftKey0").disabled = !(_$("NewTabUrlbarr").checked);
+			_$("NewTabHistory_SH").disabled = _$("CtrlKey1").disabled = _$("AltKey1").disabled = _$("ShiftKey1").disabled = !(_$("NewTabHistoryr").checked);
+			_$("SideBarNewTab_SH").disabled = _$("CtrlKey2").disabled = _$("AltKey2").disabled = _$("ShiftKey2").disabled = !(_$("SideBarNewTabr").checked);
+			_$("ShowBorder").disabled = !(_$("ShowBorderChanges").checked);
+			_$("TabFocus_Time").disabled = !(_$("TabFocusr").checked);
+			var status = !(_$("customList").hasChildNodes());
+			_$("editButton").disabled = status;
+			_$("deleteButton").disabled = status;
+			_$("deleteButton").disabled = status;
+		},
+
+		Resets: function() {
+			this.init(true);
+			_$("tabsloadInBackground").value = false;
+			_$("loadBookmarksInBackground").value = false;
+			_$("open_newwindow").value = 3;
+			_$("open_newwindow.restriction").value = 2;
+			_$("NewTabUrlbar").value = false;
+			_$("NewTabHistory").value = false;
+			_$("NewTabUrlbar_SH").value = false;
+			_$("NewTabNear").value = 0;
+			_$("ColseToNearTab").value = 0;
+			_$("TabFocus").value = false;
+			_$("TabFocus_Time").value = 250;
+			_$("CloseDownloadBankTab").value = false;
+			_$("KeepBookmarksOnMiddleClick").value = false;
+			_$("ShowBorderChange").value = false;
+			_$("searchloadInBackground").value = false;
+			_$("SideBarNewTab").value = false;
+			_$("SideBarNewTab_SH").value = false;
+			_$("ShowBorder").value = "0,7,7,7";
+			_$("NewTabExcludePage").value = "about:blank\nabout:home\nabout:newtab\nhttp://start.firefoxchina.cn/";
+			_$("HomeNewTab").value = false;
+			this.changeStatus();
+		}
 	};
 
+	FeiRuoTabplus.Detaill_OptionScript = {
+		RemoveChild: function(menu) {
+			with(_$D(menu)) {
+				while (hasChildNodes()) {
+					removeChild(lastChild);
+				}
+			}
+		},
+
+		init: function(param) {
+			FeiRuoTabplus.updateFile(true);
+			var keys = param["keys"];
+			if (keys) {
+				keys = keys.split("+");
+				for (var i in keys) {
+					if (keys[i] == "Alt")
+						_$D("CAlt").checked = true;
+
+					if (keys[i] == "Ctrl") {
+						_$D("CCtrl").checked = true;
+					}
+
+					if (keys[i] == "Shift")
+						_$D("CShift").checked = true;
+				}
+			}
+			_$D("Ctkey").checked = param["tkey"] ? true : false;
+
+			_$D("MouseBtn").selectedIndex = param["btn"] || 0;
+
+			_$D("MouseDblClick").checked = (param["action"] == "dblclick" ? true : false);
+
+			if (param["action"] == "dblclick" || param["action"] == "click" || !param["action"])
+				_$D("MouseAction").value = "MouseClick";
+			else
+				_$D("MouseAction").value = "MouseMidScroll";
+
+			this.MouseChanged();
+
+			_$D("EventTag").value = param["tag"] || "Tab";
+
+			if (param["tag"] == "Tab")
+				_$D("TabEventCommand").value = param["command"];
+			else if (param["tag"] == "TabBar")
+				_$D("TabBarEventCommand").value = param["command"];
+			else {
+				_$D("TabEventCommand").selectedIndex = 0;
+				_$D("TabBarEventCommand").selectedIndex = 0;
+			}
+
+			this.KeyChanged();
+			this.TagChanged();
+		},
+
+		Resets: function() {
+			_$D("CAlt").checked = _$D("CCtrl").checked = _$D("CShift").checked = false;
+			_$D("MouseAction").value = "MouseClick";
+			_$D("MouseBtn").disabled = _$D("MouseDblClick").disabled = false;
+			_$D("MouseScroll").disabled = true;
+			_$D("EventTag").value = "Tab";
+			_$D("TabEventCommand").disabled = false;
+			_$D("TabBarEventCommand").disabled = true;
+			this.CreateEventMenu("Click");
+			this.KeyChanged();
+			this.TagChanged();
+			this.MouseChanged();
+		},
+
+		Save: function(retParam) {
+			var command, gBrowser, action, tag, btn, tkey, keys;
+			if (_$D("CAlt").checked)
+				keys = "Alt";
+			if (_$D("CCtrl").checked)
+				keys = (keys ? (keys + "+") : "") + "Ctrl";
+			if (_$D("CShift").checked)
+				keys = (keys ? (keys + "+") : "") + "Shift";
+			if (keys && _$D("Ctkey").checked)
+				tkey = "1";
+
+			if (_$D("MouseAction").value == "MouseClick") {
+				btn = _$D("MouseBtn").value;
+				action = _$D("MouseDblClick").checked ? "dblclick" : "click";
+			} else if (_$D("MouseAction").value == "MouseMidScroll") {
+				btn = "1";
+				action = _$D("MouseScroll").value;
+			}
+
+			tag = _$D("EventTag").value;
+
+			var menu;
+
+			if (tag == "Tab") {
+				menu = _$D("TabEventCommand");
+				command = _$D("TabEventCommand").value;
+			} else if (tag == "TabBar") {
+				menu = _$D("TabBarEventCommand");
+				command = _$D("TabBarEventCommand").value;
+			}
+
+			for (var i = 0; i < menu.itemCount; i++) {
+				if (menu.getItemAtIndex(i).getAttribute("value") == command) {
+					gBrowser = menu.getItemAtIndex(i).getAttribute("description")
+					break;
+				}
+			}
+
+			if (command == "" && gBrowser == "" && action == "" && tag == "" && btn == "" && tkey == "" && keys == "") return;
+
+			retParam["command"] = command || "";
+			retParam["gBrowser"] = gBrowser || "";
+			retParam["action"] = action || "";
+			retParam["tag"] = tag || "";
+			retParam["btn"] = btn || "";
+			retParam["tkey"] = tkey || "";
+			retParam["keys"] = keys || "";
+			retParam["changed"] = "1";
+			setTimeout(function() {
+				FeiRuoTabplus.OptionScript.changeStatus();
+			}, 10);
+			return true;
+		},
+
+		TagChanged: function() {
+			if (_$D("EventTag").value != _$D("TabEvent").value) {
+				_$D("TabEventCommand").disabled = true;
+				_$D("TabBarEventCommand").disabled = false;
+			} else {
+				_$D("TabEventCommand").disabled = false;
+				_$D("TabBarEventCommand").disabled = true;
+			}
+		},
+
+		KeyChanged: function() {
+			if (!_$D("CAlt").checked && !_$D("CCtrl").checked && !_$D("CShift").checked)
+				_$D("Ctkey").disabled = true;
+			else
+				_$D("Ctkey").disabled = false;
+		},
+
+		MouseChanged: function(type) {
+			var status;
+
+			if (!type || type != 1)
+				status = true;
+			else
+				status = false;
+
+			_$D("MouseScroll").disabled = status;
+			_$D("MouseBtn").disabled = _$D("MouseDblClick").disabled = !status;
+
+			if (status)
+				this.CreateEventMenu("Click");
+			else
+				this.CreateEventMenu("Scroll");
+		},
+
+		CreateEventMenu: function(Mouse) {
+			var that = FeiRuoTabplus;
+			this.RemoveChild("TabEventCommand");
+			this.RemoveChild("TabBarEventCommand");
+			var TabEventMenu = _$D("TabEventCommand");
+			var TabBarEventMenu = _$D("TabBarEventCommand");
+			if (Mouse == "Scroll") {
+				TabEventMenu.appendItem("滚动切换标签(向左)", "MouseScrollTabL", "mTabContainer");
+				TabEventMenu.appendItem("滚动切换标签(向右)", "MouseScrollTabR", "mTabContainer");
+				TabBarEventMenu.appendItem("滚动切换标签(向左)", "MouseScrollTabL", "mTabContainer");
+				TabBarEventMenu.appendItem("滚动切换标签(向右)", "MouseScrollTabR", "mTabContainer");
+
+			}
+
+			TabEventMenu.appendItem("关闭当前标签", "CloseTargetTab", "mTabContainer");
+			TabEventMenu.appendItem("新建标签", "AddTab", "mTabContainer");
+			TabEventMenu.appendItem("撤销关闭", "UndoCloseTab", "mTabContainer");
+			TabEventMenu.appendItem("刷新标签", "ReloadTarget", "mTabContainer");
+			TabEventMenu.appendItem("强制刷新标签", "ReloadSkipCache", "mTabContainer");
+			TabEventMenu.appendItem("锁定标签", "PinTargetTab", "mTabContainer");
+			TabEventMenu.appendItem("刷新未载入的标签", "UnloadedToReload", "mTabContainer");
+			TabEventMenu.appendItem("用IE打开当前页", "LoadWithIE", "mTabContainer");
+			/************************/
+			TabBarEventMenu.appendItem("关闭当前标签", "CloseTargetTab", "mTabContainer");
+			TabBarEventMenu.appendItem("新建标签", "AddTab", "mTabContainer");
+			TabBarEventMenu.appendItem("撤销关闭", "UndoCloseTab", "mTabContainer");
+			TabBarEventMenu.appendItem("刷新标签", "ReloadTarget", "mTabContainer");
+			TabBarEventMenu.appendItem("强制刷新标签", "ReloadSkipCache", "mTabContainer");
+			TabBarEventMenu.appendItem("刷新未载入的标签", "UnloadedToReload", "mTabContainer");
+			TabBarEventMenu.appendItem("用IE打开当前页", "LoadWithIE", "mTabContainer");
+
+
+
+			var CCommand = that.CustomCommand;
+			if (CCommand) {
+				for (var i in CCommand) {
+					if (Mouse == "Scroll" && CCommand[i].Mouse.match("Scroll"))
+						this.CreateCustomCommandMenu(CCommand[i], i);
+					if (Mouse == "Click" && CCommand[i].Mouse.match("Click"))
+						this.CreateCustomCommandMenu(CCommand[i], i);
+				}
+			}
+			_$D("TabEventCommand").selectedIndex = 0;
+			_$D("TabBarEventCommand").selectedIndex = 0;
+		},
+
+		CreateCustomCommandMenu: function(val, c) {
+			var TabEventMenu = _$D("TabEventCommand");
+			var TabBarEventMenu = _$D("TabBarEventCommand");
+			if (val.Tag.match("Tab"))
+				TabEventMenu.appendItem(val.label, ("CCommand_" + c), val.gBrowser);
+			if (val.Tag.match("TabBar"))
+				TabBarEventMenu.appendItem(val.label, ("CCommand_" + c), val.gBrowser);
+		},
+	};
 	/*****************************************************************************************/
 	function _$D(id) {
 		return FeiRuoTabplus.getWindow(1).document.getElementById(id);
