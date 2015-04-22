@@ -14,6 +14,7 @@
 // @homepageURL		https://github.com/feiruo/userChromeJS/tree/master/FeiRuoTabplus
 // @downloadURL		https://github.com/feiruo/userChromeJS/raw/master/FeiRuoTabplus/FeiRuoTabplus.uc.js
 // @note            Begin 	2015-04-01
+// @version      	0.4.1 	2015.04.23	00:00 	修复“域名相同”排除列表不生效问题。
 // @version      	0.4 	2015.04.22	20:00 	去除一个无用项目。
 // @version      	0.3 	2015.04.20	20:00 	更加自由的定制。
 // @version      	0.2 	2015.04.18	20:00 	增加侧栏和“我的足迹”窗口新标签打开，修复某个选项不生效的问题。
@@ -579,9 +580,11 @@
 			if (host0 == host1)
 				IS = true;
 
-			if (!this.IsSameHostEX)
+			if (!this.SameHostEX)
 				return IS;
-			IS = this.IsExclude("IsSameHostEX", url);
+
+			IS = !this.IsExclude("SameHostEX", url);
+
 			return IS;
 		},
 
@@ -590,7 +593,7 @@
 				Exclude;
 			if (type == "Url")
 				Exclude = this.NewTabExcludeUrl;
-			else if (type == "IsSameHostEX")
+			else if (type == "SameHostEX")
 				Exclude = this.SameHostEX;
 			else
 				Exclude = this.NewTabExcludePage;
@@ -640,12 +643,7 @@
 				KSwitch(keys[0], KSwitch(keys[1], KSwitch(keys[2], doact)));
 			return Is;
 		},
-		paramsss: function(url, where, params) {
-			console.log(url)
-			console.log(where)
-			console.log(params)
-			return true;
-		},
+
 		IsNewTabUrlbar: function(url, aTriggeringEvent) {
 			var IS = false;
 			if (!this.NewTabUrlbar) return IS;
@@ -746,7 +744,7 @@
 
 					if (where == "current") {
 						if (matchLastLocationChange) {
-							if (FeiRuoTabplus.IsNewTabUrlbar(url, aTriggeringEvent) || isTabEmpty(gBrowser.selectedTab)) {
+							if (isTabEmpty(gBrowser.selectedTab) || FeiRuoTabplus.IsNewTabUrlbar(url, aTriggeringEvent)) {
 								loadCurrent();
 							} else {
 								this.handleRevert();
@@ -768,7 +766,7 @@
 					}
 				} else {
 					if (matchLastLocationChange) {
-						if (FeiRuoTabplus.IsNewTabUrlbar(url, aTriggeringEvent) || isTabEmpty(gBrowser.selectedTab)) {
+						if (isTabEmpty(gBrowser.selectedTab) || FeiRuoTabplus.IsNewTabUrlbar(url, aTriggeringEvent)) {
 							loadCurrent();
 						} else {
 							this.handleRevert();
