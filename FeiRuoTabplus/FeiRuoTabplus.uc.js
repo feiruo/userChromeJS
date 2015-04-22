@@ -14,6 +14,7 @@
 // @homepageURL		https://github.com/feiruo/userChromeJS/tree/master/FeiRuoTabplus
 // @downloadURL		https://github.com/feiruo/userChromeJS/raw/master/FeiRuoTabplus/FeiRuoTabplus.uc.js
 // @note            Begin 	2015-04-01
+// @version      	0.4 	2015.04.22	20:00 	去除一个无用项目。
 // @version      	0.3 	2015.04.20	20:00 	更加自由的定制。
 // @version      	0.2 	2015.04.18	20:00 	增加侧栏和“我的足迹”窗口新标签打开，修复某个选项不生效的问题。
 // @version      	0.1 	2015.04.05	11:41 	Build。
@@ -30,7 +31,6 @@
 
 	var FeiRuoTabplus = {
 		Default_gURLBar: gURLBar.handleCommand.toString(),
-		Default_openLinkIn: openLinkIn.toString(),
 		Default_whereToOpenLink: whereToOpenLink.toString(),
 		Default_BookmarksEventHandler: BookmarksEventHandler.onClick.toString(),
 		Default_checkForMiddleClick: checkForMiddleClick.toString(),
@@ -87,7 +87,6 @@
 			if (this.UCustom) this.CustomListen(false, this.UCustom);
 			//this.Cutover("NewTabUrlbar");
 			location == "chrome://browser/content/browser.xul" && eval("gURLBar.handleCommand=" + this.Default_gURLBar);
-			this.Cutover("NewTabHistory");
 			this.AddListener(false, "NewTabNear", null, 'TabOpen', "tabContainer");
 			this.AddListener(false, "ColseToNearTab", null, 'TabClose', "tabContainer");
 			this.Cutover("TabFocus");
@@ -139,7 +138,6 @@
 				switch (data) {
 					case 'Custom':
 					case 'NewTabUrlbar':
-					case 'NewTabHistory':
 					case 'NewTabNear':
 					case 'ColseToNearTab':
 					case 'TabFocus':
@@ -149,13 +147,11 @@
 					case 'CloseDownloadBankTab':
 					case 'KeepBookmarksOnMiddleClick':
 					case 'SideBarNewTab':
-					case 'whereToOpen':
 					case 'HomeNewTab':
 					case 'NewTabExcludePage':
 					case 'NewTabExcludeUrl':
 					case 'SideBarNewTab_SH':
 					case 'NewTabUrlbar_SH':
-					case 'NewTabHistory_SH':
 					case 'SameHostEX':
 					case 'NewTabExKey':
 						FeiRuoTabplus.loadSetting(data);
@@ -175,19 +171,11 @@
 				this.Custom = this.UCustom = Custom;
 			}
 
-			if (!type || type === "NewTabUrlbar") {
+			if (!type || type === "NewTabUrlbar")
 				this.NewTabUrlbar = this.getPrefs(0, "NewTabUrlbar", false);
-				//this.Cutover("NewTabUrlbar", this.getPrefs(0, "NewTabUrlbar", false));
-			}
 
 			if (!type || type === "NewTabUrlbar_SH")
 				this.NewTabUrlbar_SH = this.getPrefs(0, "NewTabUrlbar_SH", false);
-
-			if (!type || type === "NewTabHistory")
-				this.Cutover("NewTabHistory", this.getPrefs(0, "NewTabHistory", false));
-
-			if (!type || type === "NewTabHistory_SH")
-				this.NewTabHistory_SH = this.getPrefs(0, "NewTabHistory_SH", false);
 
 			if (!type || type === "ShowBorderChange")
 				this.Cutover("ShowBorderChange", this.getPrefs(0, "ShowBorderChange", false));
@@ -231,9 +219,6 @@
 
 			if (!type || type === "TabFocus_Time")
 				this.TabFocus_Time = this.getPrefs(1, "TabFocus_Time", 250);
-
-			if (!type || type === "whereToOpen")
-				this.Cutover("whereToOpen", this.getPrefs(0, "whereToOpen", false));
 
 			if (!type || type === "SideBarNewTab")
 				this.Cutover("SideBarNewTab", this.getPrefs(0, "SideBarNewTab", false));
@@ -301,12 +286,6 @@
 					if (!val) return;
 					location == "chrome://browser/content/browser.xul" && eval("gURLBar.handleCommand=" + this.handleCommand.toString());
 					break;
-				case "NewTabHistory":
-					eval('openLinkIn = ' + this.Default_openLinkIn);
-					if (!val) return;
-					eval('openLinkIn = ' + this.Default_openLinkIn.replace('w.gBrowser.selectedTab.pinned', '(!w.isTabEmpty(w.gBrowser.selectedTab) || $&)')
-						.replace(/&&\s+w\.gBrowser\.currentURI\.host != uriObj\.host/, '&& !FeiRuoTabplus.IsExclude("Url", w.gBrowser.currentURI.spec) && !FeiRuoTabplus.IsSameHost("NewTabHistory_SH", w.gBrowser.currentURI.spec)'));
-					break;
 				case "TabFocus":
 					gBrowser.tabContainer.removeEventListener("mouseover", FeiRuoTabplus.TabFocus_onMouseOver, false);
 					gBrowser.tabContainer.removeEventListener("mouseout", FeiRuoTabplus.TabFocus_onMouseOut, false);
@@ -354,11 +333,6 @@
 					eval("BrowserGoHome = " + this.Default_BrowserGoHome);
 					if (!val) return;
 					eval("BrowserGoHome = " + this.Default_BrowserGoHome.replace(/switch \(where\) {/, "where = (!FeiRuoTabplus.IsBlankPage(gBrowser.currentURI.spec) || gBrowser.webProgress.isLoadingDocument" + ") ? 'tab' : 'current'; $&"));
-					break;
-				case "whereToOpen":
-					eval('whereToOpenLink=' + this.Default_whereToOpenLink);
-					if (!val) return;
-					eval('whereToOpenLink=' + this.Default_whereToOpenLink.replace(' || middle && middleUsesTabs', '').replace('if (alt', 'if (middle && middleUsesTabs) return shift ? "tab" : "tabshifted"; $&'));
 					break;
 			}
 		},
@@ -579,16 +553,20 @@
 					Class = e.target.parentNode.getAttribute('class');
 			} catch (e) {}
 
-			if ((!this.IsExclude('Page') || gBrowser.webProgress.isLoadingDocument) && Class && (Class.indexOf('bookmark-item') >= 0 || Class.indexOf('placesTree') >= 0 || Class == 'subviewbutton' || Class == 'sidebar-placesTreechildren') && !this.IsExclude('Url', e.target, true) && !this.IsSameHost('SideBarNewTab_SH', e.target, true))
+			if ((!this.IsExclude('Page') || gBrowser.webProgress.isLoadingDocument) && Class && (Class.indexOf('bookmark-item') >= 0 || Class.indexOf('placesTree') >= 0 || Class == 'subviewbutton' || Class == 'sidebar-placesTreechildren') && !this.IsExclude('Url', e.target, true) && !this.IsSameHost('SideBarNewTab_SH', e.target, true, e, 2) && !this.IsExcludeKey(e, 2))
 				return 'tab';
 
 			return "current";
 		},
 
-		IsSameHost: function(name, url, isTag) {
+		IsSameHost: function(name, url, isTag, e, nu) {
 			if (!this[name]) return false;
 
-			var host0, host1, IS;
+			var host0, host1;
+			let IS = false;
+
+			if (e && nu && this.IsExcludeKey(e, nu))
+				return IS;
 
 			if (isTag)
 				host0 = this.getNode(url).host;
@@ -598,9 +576,7 @@
 			if (this.currentURI.asciiHost)
 				host1 = this.currentURI.host;
 
-			if (host0 != host1)
-				IS = false;
-			else
+			if (host0 == host1)
 				IS = true;
 
 			if (!this.IsSameHostEX)
@@ -637,16 +613,6 @@
 			return IsExclude;
 		},
 
-		IsNewTabUrlbar: function(url, aTriggeringEvent) {
-			var IS = false;
-			if (!this.NewTabUrlbar) return IS;
-			if (this.IsExclude('Page') || this.IsExclude('Url', url) || this.IsSameHost('NewTabUrlbar_SH', url))
-				IS = true;
-			if (this.IsExcludeKey(aTriggeringEvent, 0))
-				IS = false;
-			return IS;
-		},
-
 		IsExcludeKey: function(e, nu) {
 			let Is = false;
 			let keys = this.NewTabExKey;
@@ -673,6 +639,32 @@
 			if (keys.length == 3)
 				KSwitch(keys[0], KSwitch(keys[1], KSwitch(keys[2], doact)));
 			return Is;
+		},
+		paramsss: function(url, where, params) {
+			console.log(url)
+			console.log(where)
+			console.log(params)
+			return true;
+		},
+		IsNewTabUrlbar: function(url, aTriggeringEvent) {
+			var IS = false;
+			if (!this.NewTabUrlbar) return IS;
+
+			let Page = this.IsExclude('Page');
+			let Url = this.IsExclude('Url', url);
+			let SameHost = this.IsSameHost('NewTabUrlbar_SH', url, false, aTriggeringEvent, 0);
+			let key = this.IsExcludeKey(aTriggeringEvent, 0);
+
+			if (Page || Url)
+				IS = true;
+
+			if (key)
+				Is = false;
+
+			if (SameHost)
+				IS = true;
+
+			return IS;
 		},
 
 		handleCommand: function(aTriggeringEvent) {
@@ -790,6 +782,7 @@
 				}
 			}
 		},
+
 		/*****************************************************************************************/
 		getPrefs: function(type, name, val) {
 			switch (type) {
@@ -937,7 +930,6 @@
 					windowtype="FeiRuoTabplus:Preferences">\
 					<prefpane id="main" flex="1">\
 						<preferences>\
-							<preference id="NewTabHistory_SH" type="bool" name="userChromeJS.FeiRuoTabplus.NewTabHistory_SH"/>\
 							<preference id="NewTabUrlbar_SH" type="bool" name="userChromeJS.FeiRuoTabplus.NewTabUrlbar_SH"/>\
 							<preference id="SideBarNewTab_SH" type="bool" name="userChromeJS.FeiRuoTabplus.SideBarNewTab_SH"/>\
 							<preference id="SameHostEX" type="string" name="userChromeJS.FeiRuoTabplus.SameHostEX"/>\
@@ -945,9 +937,7 @@
 							<preference id="NewTabExcludeUrl" type="string" name="userChromeJS.FeiRuoTabplus.NewTabExcludeUrl"/>\
 							<preference id="HomeNewTab" type="bool" name="userChromeJS.FeiRuoTabplus.HomeNewTab"/>\
 							<preference id="SideBarNewTab" type="bool" name="userChromeJS.FeiRuoTabplus.SideBarNewTab"/>\
-							<preference id="whereToOpen" type="bool" name="userChromeJS.FeiRuoTabplus.whereToOpen"/>\
 							<preference id="NewTabUrlbar" type="bool" name="userChromeJS.FeiRuoTabplus.NewTabUrlbar"/>\
-							<preference id="NewTabHistory" type="bool" name="userChromeJS.FeiRuoTabplus.NewTabHistory"/>\
 							<preference id="NewTabNear" type="int" name="userChromeJS.FeiRuoTabplus.NewTabNear"/>\
 							<preference id="ColseToNearTab" type="int" name="userChromeJS.FeiRuoTabplus.ColseToNearTab"/>\
 							<preference id="Custom" type="string" name="userChromeJS.FeiRuoTabplus.Custom"/>\
@@ -978,58 +968,48 @@
 								<tabpanel orient="vertical" flex="1">\
 									<groupbox>\
 										<caption label="在新标签中打开(默认【Alt+回车】为新标签打开)"/>\
-											<grid>\
-												<rows>\
-													<row align="center">\
-														<checkbox id="HomeNewTab" label="主页" preference="HomeNewTab"/>\
-													</row>\
-													<row align="center">\
-														<checkbox id="NewTabUrlbarr" label="地址栏" preference="NewTabUrlbar" oncommand="Change();"/>\
-														<checkbox id="NewTabUrlbar_SH" label="域名相同当前页" preference="NewTabUrlbar_SH"/>\
-														<label class="indent" value="排除键："/>\
-														<checkbox id="CtrlKey0" label="Ctrl"/>\
-														<checkbox id="AltKey0" label="Alt"/>\
-														<checkbox id="ShiftKey0" label="Shift"/>\
-													</row>\
-													<row align="center">\
-														<checkbox id="NewTabHistoryr" label="书签、历史和搜索栏" preference="NewTabHistory" oncommand="Change();"/>\
-														<checkbox id="NewTabHistory_SH" label="域名相同当前页" preference="NewTabHistory_SH"/>\
-														<label class="indent" value="排除键："/>\
-														<checkbox id="CtrlKey1" label="Ctrl"/>\
-														<checkbox id="AltKey1" label="Alt"/>\
-														<checkbox id="ShiftKey1" label="Shift"/>\
-													</row>\
-													<row align="center">\
-														<checkbox id="SideBarNewTabr" label="侧栏、【我的足迹】窗口" preference="SideBarNewTab" oncommand="Change();"/>\
-														<checkbox id="SideBarNewTab_SH" label="域名相同当前页" preference="SideBarNewTab_SH"/>\
-														<label class="indent" value="排除键："/>\
-														<checkbox id="CtrlKey2" label="Ctrl"/>\
-														<checkbox id="AltKey2" label="Alt"/>\
-														<checkbox id="ShiftKey2" label="Shift"/>\
-													</row>\
-												</rows>\
-											</grid>\
-											<label value="[排除键]：对同一行前2个选项都生效。"/>\
-											<label value="[域名相同当前页]：要打开的URL与当前页的域名相同时,则使用当前标签打开,仅对当前页生效!"/>\
+											<row align="center">\
+												<checkbox id="HomeNewTab" label="主页" preference="HomeNewTab"/>\
+											</row>\
+											<row align="center">\
+												<checkbox id="NewTabUrlbarr" label="地址栏" preference="NewTabUrlbar" oncommand="Change();"/>\
+											</row>\
+											<row align="center" class="indent">\
+												<checkbox id="NewTabUrlbar_SH" label="域名相同当前页" preference="NewTabUrlbar_SH" tooltiptext="URL与当前页的域名相同时,则使用当前标签打开!"/>\
+												<label class="indent" value="排除键：" tooltiptext="对同一行前2个选项都生效。"/>\
+												<checkbox id="CtrlKey0" label="Ctrl" tooltiptext="对同一行前2个选项都生效。"/>\
+												<checkbox id="AltKey0" label="Alt" tooltiptext="对同一行前2个选项都生效。"/>\
+												<checkbox id="ShiftKey0" label="Shift" tooltiptext="对同一行前2个选项都生效。"/>\
+											</row>\
+											<row align="center">\
+												<checkbox id="SideBarNewTabr" label="侧栏、书签、书签工具栏、【我的足迹】窗口" preference="SideBarNewTab" oncommand="Change();"/>\
+											</row>\
+											<row align="center" class="indent">\
+												<checkbox id="SideBarNewTab_SH" label="域名相同当前页" preference="SideBarNewTab_SH" tooltiptext="URL与当前页的域名相同时,则使用当前标签打开!"/>\
+												<label class="indent" value="排除键：" tooltiptext="对同一行前2个选项都生效。"/>\
+												<checkbox id="CtrlKey1" label="Ctrl" tooltiptext="对同一行前2个选项都生效。"/>\
+												<checkbox id="AltKey1" label="Alt" tooltiptext="对同一行前2个选项都生效。"/>\
+												<checkbox id="ShiftKey1" label="Shift" tooltiptext="对同一行前2个选项都生效。"/>\
+											</row>\
 									</groupbox>\
 									<hbox>\
 										<groupbox>\
 											<caption label="以下【页面】重用标签，支持正则"/>\
 												<vbox flex="1" style="height:80px;">\
-													<textbox flex="1" preference="NewTabExcludePage" tooltiptext="一行一个" multiline="true" cols="40"/>\
+													<textbox flex="1" preference="NewTabExcludePage" tooltiptext="一行一个" multiline="true" cols="35"/>\
 												</vbox>\
 										</groupbox>\
 										<groupbox>\
 											<caption label="以下【URL】在当前标签打开，支持正则"/>\
 												<vbox flex="1">\
-													<textbox flex="1" preference="NewTabExcludeUrl" tooltiptext="一行一个" multiline="true" cols="40"/>\
+													<textbox flex="1" preference="NewTabExcludeUrl" tooltiptext="一行一个" multiline="true" cols="35"/>\
 												</vbox>\
 										</groupbox>\
 									</hbox>\
 									<groupbox>\
 											<caption label="以下【域名相同】在新标签打开，支持正则"/>\
 												<vbox flex="1" style="height:80px;">\
-													<textbox flex="1" id="SameHostEX" preference="SameHostEX" tooltiptext="一行一个" multiline="true" cols="80"/>\
+													<textbox flex="1" id="SameHostEX" preference="SameHostEX" tooltiptext="一行一个" multiline="true" cols="70"/>\
 												</vbox>\
 										</groupbox>\
 								</tabpanel>\
@@ -1102,7 +1082,7 @@
 								<tabpanel orient="vertical" flex="1" style="width:500px">\
 									<vbox>\
 										<hbox id="listarea" flex="1">\
-											<tree id="ruleTree" seltype="single" flex="1" enableColumnDrag="true" class="tree" rows="20"\
+											<tree id="ruleTree" seltype="single" flex="1" enableColumnDrag="true" class="tree" rows="18"\
 												onclick="opener.FeiRuoTabplus.OptionScript.onTreeclick(event);"\
 												ondblclick="opener.FeiRuoTabplus.OptionScript.onTreedblclick(event);">\
 												<treecols>\
@@ -1620,7 +1600,7 @@
 
 		KeyRead: function() {
 			var keys = [];
-			for (var i = 0; i <= 2; i++) {
+			for (var i = 0; i <= 1; i++) {
 				var akey = "AltKey" + i,
 					ckey = "CtrlKey" + i,
 					skey = "ShiftKey" + i;
@@ -1651,7 +1631,6 @@
 
 		Save: function() {
 			FeiRuoTabplus.prefs.setBoolPref("NewTabUrlbar", _$("NewTabUrlbar").value);
-			FeiRuoTabplus.prefs.setBoolPref("NewTabHistory", _$("NewTabHistory").value);
 			FeiRuoTabplus.prefs.setIntPref("NewTabNear", _$("NewTabNear").value);
 			FeiRuoTabplus.prefs.setIntPref("ColseToNearTab", _$("ColseToNearTab").value);
 			FeiRuoTabplus.prefs.setBoolPref("TabFocus", _$("TabFocus").value);
@@ -1663,8 +1642,6 @@
 			FeiRuoTabplus.prefs.setBoolPref("HomeNewTab", _$("HomeNewTab").value);
 			FeiRuoTabplus.prefs.setBoolPref("SideBarNewTab_SH", _$("SideBarNewTab_SH").value);
 			FeiRuoTabplus.prefs.setBoolPref("NewTabUrlbar_SH", _$("NewTabUrlbar_SH").value);
-			FeiRuoTabplus.prefs.setBoolPref("NewTabHistory_SH", _$("NewTabHistory_SH").value);
-			//FeiRuoTabplus.prefs.setBoolPref("whereToOpen", _$("whereToOpen"));
 
 			Services.prefs.setBoolPref("browser.tabs.loadBookmarksInBackground", _$("loadBookmarksInBackground").value);
 			Services.prefs.setIntPref("browser.link.open_newwindow", _$("open_newwindow").value);
@@ -1701,13 +1678,12 @@
 		},
 
 		changeStatus: function() {
-			if ((_$("NewTabUrlbarr").checked) || (_$("NewTabHistoryr").checked) || (_$("SideBarNewTabr").checked))
+			if ((_$("NewTabUrlbarr").checked) || (_$("SideBarNewTabr").checked))
 				_$("SameHostEX").disabled = false;
 			else
 				_$("SameHostEX").disabled = true;
 			_$("NewTabUrlbar_SH").disabled = _$("CtrlKey0").disabled = _$("AltKey0").disabled = _$("ShiftKey0").disabled = !(_$("NewTabUrlbarr").checked);
-			_$("NewTabHistory_SH").disabled = _$("CtrlKey1").disabled = _$("AltKey1").disabled = _$("ShiftKey1").disabled = !(_$("NewTabHistoryr").checked);
-			_$("SideBarNewTab_SH").disabled = _$("CtrlKey2").disabled = _$("AltKey2").disabled = _$("ShiftKey2").disabled = !(_$("SideBarNewTabr").checked);
+			_$("SideBarNewTab_SH").disabled = _$("CtrlKey1").disabled = _$("AltKey1").disabled = _$("ShiftKey1").disabled = !(_$("SideBarNewTabr").checked);
 			_$("ShowBorder").disabled = !(_$("ShowBorderChanges").checked);
 			_$("TabFocus_Time").disabled = !(_$("TabFocusr").checked);
 			var status = !(_$("customList").hasChildNodes());
@@ -1723,7 +1699,6 @@
 			_$("open_newwindow").value = 3;
 			_$("open_newwindow.restriction").value = 2;
 			_$("NewTabUrlbar").value = false;
-			_$("NewTabHistory").value = false;
 			_$("NewTabUrlbar_SH").value = false;
 			_$("NewTabNear").value = 0;
 			_$("ColseToNearTab").value = 0;
