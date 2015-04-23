@@ -14,6 +14,7 @@
 // @homepageURL		https://github.com/feiruo/userChromeJS/tree/master/FeiRuoTabplus
 // @downloadURL		https://github.com/feiruo/userChromeJS/raw/master/FeiRuoTabplus/FeiRuoTabplus.uc.js
 // @note            Begin 	2015-04-01
+// @version      	0.4.2 	2015.04.23	11:00 	修复判断逻辑。
 // @version      	0.4.1 	2015.04.23	00:00 	修复“域名相同”排除列表不生效问题。
 // @version      	0.4 	2015.04.22	20:00 	去除一个无用项目。
 // @version      	0.3 	2015.04.20	20:00 	更加自由的定制。
@@ -52,13 +53,20 @@
 			delete this.file;
 			return this.file = aFile;
 		},
-		get currentURI() {
+		get Content() {
+			var Content, Contents;
 			var windowMediator = Cc["@mozilla.org/appshell/window-mediator;1"]
 				.getService(Ci.nsIWindowMediator);
 			var topWindowOfType = windowMediator.getMostRecentWindow("navigator:browser");
 			if (topWindowOfType)
-				return topWindowOfType.document.getElementById("content").currentURI;
-			return null;
+				Contents = topWindowOfType.document.getElementById("content").currentURI;
+			if (Contents) {
+				Content = {
+					url: Contents.asciiSpec,
+					host: Contents.asciiHost
+				}
+			}
+			return Content;
 		},
 
 		init: function() {
@@ -554,54 +562,50 @@
 					Class = e.target.parentNode.getAttribute('class');
 			} catch (e) {}
 
-			if ((!this.IsExclude('Page') || gBrowser.webProgress.isLoadingDocument) && Class && (Class.indexOf('bookmark-item') >= 0 || Class.indexOf('placesTree') >= 0 || Class == 'subviewbutton' || Class == 'sidebar-placesTreechildren') && !this.IsExclude('Url', e.target, true) && !this.IsSameHost('SideBarNewTab_SH', e.target, true, e, 2) && !this.IsExcludeKey(e, 2))
+			if ((!this.IsExclude(0) || gBrowser.webProgress.isLoadingDocument) && Class && (Class.indexOf('bookmark-item') >= 0 || Class.indexOf('placesTree') >= 0 || Class == 'subviewbutton' || Class == 'sidebar-placesTreechildren') && this.IsInNewTab(1, null, e))
 				return 'tab';
 
 			return "current";
 		},
 
-		IsSameHost: function(name, url, isTag, e, nu) {
-			if (!this[name]) return false;
-
-			var host0, host1;
+		IsSameHost: function(name, url, key, Exclude) {
 			let IS = false;
 
-			if (e && nu && this.IsExcludeKey(e, nu))
-				return IS;
+			if (!this[name]) return IS;
 
-			if (isTag)
-				host0 = this.getNode(url).host;
-			else
-				host0 = this.getDomain(url);
-
-			if (this.currentURI.asciiHost)
-				host1 = this.currentURI.host;
-
+			var host0, host1;
+			host0 = this.getDomain(url);
+			if (this.Content.host)
+				host1 = this.Content.host;
 			if (host0 == host1)
 				IS = true;
-
-			if (!this.SameHostEX)
+			if (!IS)
 				return IS;
 
-			IS = !this.IsExclude("SameHostEX", url);
 
+			if (key) {
+				if (!Exclude) IS = false;
+				else IS = true;
+			} else {
+				if (!Exclude) IS = true;
+				else IS = false;
+			}
 			return IS;
 		},
 
-		IsExclude: function(type, url, isTag) {
+		IsExclude: function(type, url) {
 			var IsExclude = false,
 				Exclude;
-			if (type == "Url")
-				Exclude = this.NewTabExcludeUrl;
-			else if (type == "SameHostEX")
-				Exclude = this.SameHostEX;
-			else
-				Exclude = this.NewTabExcludePage;
-			if (!url)
-				url = this.currentURI.spec;
 
-			if (isTag)
-				url = this.getNode(url).uri;
+			if (type === 0)
+				Exclude = this.NewTabExcludePage;
+			else if (type === 1)
+				Exclude = this.NewTabExcludeUrl;
+			else if (type === 2)
+				Exclude = this.SameHostEX;
+
+			if (!url)
+				url = this.Content.url;
 
 			if (!Exclude)
 				return false;
@@ -616,10 +620,43 @@
 			return IsExclude;
 		},
 
+		IsInNewTab: function(type, Uri, e) {
+			var IS = false;
+			var Enable = this.NewTabUrlbar,
+				name = "NewTabUrlbar_SH";
+
+			if (type === 1) {
+				Enable = this.SideBarNewTab;
+				name = "SideBarNewTab_SH";
+				Uri = this.getNode(e.target);
+			}
+
+			if (!Enable) return IS;
+
+			let Page = this.IsExclude(0);
+			let Url = this.IsExclude(1, Uri);
+			let Exclude = this.IsExclude(2, Uri);
+			let key = this.IsExcludeKey(e, type);
+			let SameHost = this.IsSameHost(name, Uri, key, Exclude);
+			if (type === 0) {
+				if (Url || Page)
+					IS = true;
+
+				if (key)
+					IS = false;
+
+				if (SameHost)
+					IS = true;
+			}
+			if ((type === 1) && !Url && !key && !SameHost)
+				IS = true;
+			return IS;
+		},
+
 		IsExcludeKey: function(e, nu) {
 			let Is = false;
-			let keys = this.NewTabExKey;
-			if (!keys) return Is;
+			let keys = this.NewTabExKey.split("|");
+			if (!keys[0]) return Is;
 
 			function KSwitch(key, func) {
 				if (key == "Alt" && e.altKey)
@@ -634,7 +671,7 @@
 				Is = true;
 			}
 
-			keys = keys.split("|")[nu].split("+");
+			keys = keys[nu].split("+");
 			if (keys.length == 1)
 				KSwitch(keys, doact);
 			if (keys.length == 2)
@@ -642,27 +679,6 @@
 			if (keys.length == 3)
 				KSwitch(keys[0], KSwitch(keys[1], KSwitch(keys[2], doact)));
 			return Is;
-		},
-
-		IsNewTabUrlbar: function(url, aTriggeringEvent) {
-			var IS = false;
-			if (!this.NewTabUrlbar) return IS;
-
-			let Page = this.IsExclude('Page');
-			let Url = this.IsExclude('Url', url);
-			let SameHost = this.IsSameHost('NewTabUrlbar_SH', url, false, aTriggeringEvent, 0);
-			let key = this.IsExcludeKey(aTriggeringEvent, 0);
-
-			if (Page || Url)
-				IS = true;
-
-			if (key)
-				Is = false;
-
-			if (SameHost)
-				IS = true;
-
-			return IS;
 		},
 
 		handleCommand: function(aTriggeringEvent) {
@@ -744,7 +760,7 @@
 
 					if (where == "current") {
 						if (matchLastLocationChange) {
-							if (isTabEmpty(gBrowser.selectedTab) || FeiRuoTabplus.IsNewTabUrlbar(url, aTriggeringEvent)) {
+							if (isTabEmpty(gBrowser.selectedTab) || FeiRuoTabplus.IsInNewTab(0, url, aTriggeringEvent)) {
 								loadCurrent();
 							} else {
 								this.handleRevert();
@@ -766,7 +782,7 @@
 					}
 				} else {
 					if (matchLastLocationChange) {
-						if (isTabEmpty(gBrowser.selectedTab) || FeiRuoTabplus.IsNewTabUrlbar(url, aTriggeringEvent)) {
+						if (isTabEmpty(gBrowser.selectedTab) || FeiRuoTabplus.IsInNewTab(0, url, aTriggeringEvent)) {
 							loadCurrent();
 						} else {
 							this.handleRevert();
@@ -833,12 +849,14 @@
 				node = target._placesNode;
 			if (!node && (target.parentNode.id == 'placeContent' || target.parentNode.id == 'bookmarks-view') && target.parentNode.selectedNode)
 				node = target.parentNode.selectedNode;
-			return node;
+			return node.uri;
 		},
 
 		getDomain: function(url) {
-			var durl = /https?:\/\/([^\/]+)\//i;
-			domain = (url + "/").match(durl);
+			if (/^(https?|ftps?:\/\/)/.test(url))
+				url = url.replace(/^(https?|ftps?):\/\//, '')
+			var durl = /([^\/]+)\//i;
+			domain = (url + '/').match(durl);
 			if (domain)
 				return domain[1];
 		},
@@ -1068,7 +1086,7 @@
 												<label value="聚焦延时："/>\
 												<textbox id="TabFocus_Time" type="number" preference="TabFocus_Time" style="width:125px" tooltiptext="单位：毫秒！"/>\
 											</row>\
-											<checkbox id="CloseDownloadBankTab" label="关闭下载空白页" preference="CloseDownloadBankTab" />\
+											<checkbox id="CloseDownloadBankTab" label="关闭下载空白页(E10S可能不支持)" preference="CloseDownloadBankTab" />\
 											<checkbox id="KeepBookmarksOnMiddleClick" label="鼠标中键点击时bookmark菜单不关闭" preference="KeepBookmarksOnMiddleClick" />\
 											<checkbox id="ShowBorderChanges" label="窗口边框调整(去边框)" preference="ShowBorderChange" oncommand="Change();"/>\
 											<row class="indent">\
