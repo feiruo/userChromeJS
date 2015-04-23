@@ -14,6 +14,7 @@
 // @homepageURL		https://github.com/feiruo/userChromeJS/tree/master/FeiRuoTabplus
 // @downloadURL		https://github.com/feiruo/userChromeJS/raw/master/FeiRuoTabplus/FeiRuoTabplus.uc.js
 // @note            Begin 	2015-04-01
+// @version      	0.4.3 	2015.04.23	15:00 	修复判断逻辑。
 // @version      	0.4.2 	2015.04.23	11:00 	修复判断逻辑。
 // @version      	0.4.1 	2015.04.23	00:00 	修复“域名相同”排除列表不生效问题。
 // @version      	0.4 	2015.04.22	20:00 	去除一个无用项目。
@@ -49,7 +50,9 @@
 			aFile = Services.dirsvc.get("UChrm", Ci.nsILocalFile);
 			aFile.appendRelativePath("lib");
 			aFile.appendRelativePath("_FeiRuoTabplus.js");
-			this._modifiedTime = aFile.lastModifiedTime;
+			try {
+				this._modifiedTime = aFile.lastModifiedTime;
+			} catch (e) {}
 			delete this.file;
 			return this.file = aFile;
 		},
@@ -83,6 +86,7 @@
 			this.loadSetting();
 			this.prefs.addObserver('', this.PrefKey, false);
 			location == "chrome://browser/content/browser.xul" && eval("gURLBar.handleCommand=" + this.handleCommand.toString());
+			eval("PlacesUIUtils.openNodeWithEvent = " + this.Default_openNodeWithEvent.replace("window.whereToOpenLink", "FeiRuoTabplus.whereToOpenLink"));
 			window.addEventListener("unload", function() {
 				FeiRuoTabplus.onDestroy();
 			}, false);
@@ -96,6 +100,7 @@
 			if (this.UCustom) this.CustomListen(false, this.UCustom);
 			//this.Cutover("NewTabUrlbar");
 			location == "chrome://browser/content/browser.xul" && eval("gURLBar.handleCommand=" + this.Default_gURLBar);
+			eval("PlacesUIUtils.openNodeWithEvent = " + this.Default_openNodeWithEvent);
 			this.AddListener(false, "NewTabNear", null, 'TabOpen', "tabContainer");
 			this.AddListener(false, "ColseToNearTab", null, 'TabClose', "tabContainer");
 			this.Cutover("TabFocus");
@@ -230,7 +235,7 @@
 				this.TabFocus_Time = this.getPrefs(1, "TabFocus_Time", 250);
 
 			if (!type || type === "SideBarNewTab")
-				this.Cutover("SideBarNewTab", this.getPrefs(0, "SideBarNewTab", false));
+				this.SideBarNewTab = this.getPrefs(0, "SideBarNewTab", false);
 
 			if (!type || type === "SideBarNewTab_SH")
 				this.SideBarNewTab_SH = this.getPrefs(0, "SideBarNewTab_SH", false);
@@ -290,11 +295,6 @@
 
 		Cutover: function(name, val) {
 			switch (name) {
-				case "NewTabUrlbar":
-					location == "chrome://browser/content/browser.xul" && eval("gURLBar.handleCommand=" + this.Default_gURLBar);
-					if (!val) return;
-					location == "chrome://browser/content/browser.xul" && eval("gURLBar.handleCommand=" + this.handleCommand.toString());
-					break;
 				case "TabFocus":
 					gBrowser.tabContainer.removeEventListener("mouseover", FeiRuoTabplus.TabFocus_onMouseOver, false);
 					gBrowser.tabContainer.removeEventListener("mouseout", FeiRuoTabplus.TabFocus_onMouseOut, false);
@@ -333,11 +333,6 @@
 					window.addEventListener("customizationchange", FeiRuoTabplus.NoShowBorder, false);
 					this.NoShowBorder();
 					break;
-				case "SideBarNewTab":
-					eval("PlacesUIUtils.openNodeWithEvent = " + this.Default_openNodeWithEvent);
-					if (!val) return;
-					eval("PlacesUIUtils.openNodeWithEvent = " + this.Default_openNodeWithEvent.replace("window.whereToOpenLink", "FeiRuoTabplus.whereToOpenLink"));
-					break;
 				case "HomeNewTab":
 					eval("BrowserGoHome = " + this.Default_BrowserGoHome);
 					if (!val) return;
@@ -366,7 +361,7 @@
 				}
 
 				try {
-					gBrowser[gbs].removeEventListener(action, FeiRuoTabplus["Listener_" + i], true);
+					gBrowser[gbs].removeEventListener(action, FeiRuoTabplus["Listener_" + i], false);
 				} catch (e) {
 					log(e)
 				}
@@ -388,7 +383,7 @@
 				})(i, tag, btn, command, tkey, keys, CN);
 
 				try {
-					gBrowser[gbs].addEventListener(action, FeiRuoTabplus["Listener_" + i], true);
+					gBrowser[gbs].addEventListener(action, FeiRuoTabplus["Listener_" + i], false);
 				} catch (e) {
 					log(e)
 				}
@@ -557,12 +552,13 @@
 				return "window";
 
 			var Class = e.target ? e.target.getAttribute('class') : null;
+
 			try {
 				if (Class == '')
 					Class = e.target.parentNode.getAttribute('class');
 			} catch (e) {}
 
-			if ((!this.IsExclude(0) || gBrowser.webProgress.isLoadingDocument) && Class && (Class.indexOf('bookmark-item') >= 0 || Class.indexOf('placesTree') >= 0 || Class == 'subviewbutton' || Class == 'sidebar-placesTreechildren') && this.IsInNewTab(1, null, e))
+			if ((!this.IsExclude(0) || gBrowser.webProgress.isLoadingDocument ? true : false) && Class && (Class.indexOf('bookmark-item') >= 0 || Class.indexOf('placesTree') >= 0 || Class == 'subviewbutton' || Class == 'sidebar-placesTreechildren') && this.IsInNewTab(1, null, e))
 				return 'tab';
 
 			return "current";
@@ -648,8 +644,10 @@
 				if (SameHost)
 					IS = true;
 			}
+
 			if ((type === 1) && !Url && !key && !SameHost)
 				IS = true;
+
 			return IS;
 		},
 
