@@ -58,7 +58,7 @@
 /**
  * 参考 Show Location 扩展、Flagfox 扩展、http://files.cnblogs.com/ziyunfei/showFlag.uc.js
  */
-location == "chrome://browser/content/browser.xul" && (function() {
+location == "chrome://browser/content/browser.xul" && (function(CSS) {
 
 	if (window.showFlagS) {
 		window.showFlagS.onDestroy();
@@ -175,14 +175,14 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		makePanel: function() {
 			let xml = '\
 				<menupopup id="showFlagS-popup">\
-				<menuitem label="复制信息" id="showFlagS-copy" oncommand="showFlagS.command(\'Copy\');" />\
-				<menuitem label="刷新信息" id="showFlagS-rebuild" oncommand="showFlagS.onLocationChange(\'Flags\');"/>\
-				<menu label="UserAgent" id="showFlagS-UserAgent-config" class="showFlagS menu-iconic" hidden="true">\
-				<menupopup  id="showFlagS-UserAgent-popup">\
-				</menupopup>\
-				</menu>\
-				<menuitem label="脚本设置" id="showFlagS-set-Pref" onclick="showFlagS.openPref(\'Set\');" class="showFlagS menuitem-iconic" image="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABYElEQVQ4jY3TO0/VQRAF8F9yTUB6QMCCZ6KJBq4JNIQKCkoopAWMsabhC1ho5SOYaO2j0AQ+gYKPS/BeaDD0kPhJLP7nbzZA0ElOsjvnzOzOziyX2yjO8Ds4i++/bRgdzAUdjFwVMIkNDASP8QuDwXF8Nb+RGHAdb3GC72jhIxZxLViMbx/fon2XWKv4inHcx6OaQH8A3eFWot3DmmT8jImipF48y21aeI6+gp9IzA+Ywmu0k7mBF9jBDKaxjZfhxqN9k1hULepgLI90gHvFic34BqJtR6tM0D6XYKrgJ/FT1ZFa+3cu7mALR6mtkf2n3KKZ9auihMPs79aPuIvbxYn9SbIfbOFGwd/CF1XbPVC1ZARL2XdFOIihrLuwjuVod/EQevBeNXmt1P8BC6ohamA+moNojqPpqa/UxCZuBk8iKkf5abihaMsuXbBh1UvPBm3/+EznbRSnqm9c49Lv/AcsoU6W+qo3pgAAAABJRU5ErkJggg=="/>\
-				<menuseparator hidden="true" id="showFlagS-sepalator2"/>\
+					<menuitem label="复制信息" id="showFlagS-copy" oncommand="showFlagS.command(\'Copy\');" />\
+					<menuitem label="刷新信息" id="showFlagS-rebuild" oncommand="showFlagS.onLocationChange(\'Flags\');"/>\
+					<menu label="UserAgent" id="showFlagS-UserAgent-config" class="showFlagS menu-iconic" hidden="true">\
+					<menupopup  id="showFlagS-UserAgent-popup">\
+					</menupopup>\
+					</menu>\
+					<menuitem label="脚本设置" id="showFlagS-set-Pref" onclick="showFlagS.openPref(\'Set\');" class="showFlagS menuitem-iconic" image="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABYElEQVQ4jY3TO0/VQRAF8F9yTUB6QMCCZ6KJBq4JNIQKCkoopAWMsabhC1ho5SOYaO2j0AQ+gYKPS/BeaDD0kPhJLP7nbzZA0ElOsjvnzOzOziyX2yjO8Ds4i++/bRgdzAUdjFwVMIkNDASP8QuDwXF8Nb+RGHAdb3GC72jhIxZxLViMbx/fon2XWKv4inHcx6OaQH8A3eFWot3DmmT8jImipF48y21aeI6+gp9IzA+Ywmu0k7mBF9jBDKaxjZfhxqN9k1hULepgLI90gHvFic34BqJtR6tM0D6XYKrgJ/FT1ZFa+3cu7mALR6mtkf2n3KKZ9auihMPs79aPuIvbxYn9SbIfbOFGwd/CF1XbPVC1ZARL2XdFOIihrLuwjuVod/EQevBeNXmt1P8BC6ohamA+moNojqPpqa/UxCZuBk8iKkf5abihaMsuXbBh1UvPBm3/+EznbRSnqm9c49Lv/AcsoU6W+qo3pgAAAABJRU5ErkJggg=="/>\
+					<menuseparator hidden="true" id="showFlagS-sepalator2"/>\
 				</menupopup>\
 				';
 			let range = document.createRange();
@@ -291,6 +291,8 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				this.UAState = this.getPrefs(0, "UAChanger", false);
 				$("showFlagS-UserAgent-config").hidden = !this.UAState;
 			}
+
+			this.onLocationChange();
 		},
 
 		getPrefs: function(type, name, val) {
@@ -953,6 +955,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 
 			try {
 				//url = gBrowser.contentDocument.URL;
+				//url = gBrowser.selectedBrowser.contentWindow.document.URL;
 				url = gBrowser.selectedBrowser._contentWindow.document.URL;
 			} catch (e) {}
 
@@ -1517,36 +1520,57 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			return str;
 		},
 
-		editFile: function(file) {
-			var aFile;
-			if (file) {
-				aFile = Cc["@mozilla.org/file/directory_service;1"].getService(Ci.nsIDirectoryService).QueryInterface(Ci.nsIProperties).get('UChrm', Ci.nsILocalFile);
-				aFile.appendRelativePath(file);
-			} else aFile = this.file;
-			if (!aFile) return this.alert("配置文件不存在！");
-			if (!aFile.exists() || !aFile.isFile()) return;
+		editFile: function(aFile, aLineNumber) {
+			if (!aFile)
+				aFile = this.file;
+
+			if (typeof(aFile) == "string") {
+				var file = Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsILocalFile);
+				var process = Cc['@mozilla.org/process/util;1'].createInstance(Ci.nsIProcess);
+				aFile = file.initWithPath(aFile);
+			}
+
+			if (!aFile || !aFile.exists() || !aFile.isFile())
+				return alert("文件不存在:\n" + aFile.path);
+
 			var editor;
 			try {
 				editor = Services.prefs.getComplexValue("view_source.editor.path", Ci.nsILocalFile);
 			} catch (e) {
-				this.alert("请设置编辑器的路径。\nview_source.editor.path");
-				toOpenWindowByType('pref:pref', 'about:config?filter=view_source.editor.path');
+				alert("请先设置编辑器的路径!!!\nview_source.editor.path");
+			}
+
+			if (!editor || !editor.exists()) {
+				this.openScriptInScratchpad(window, aFile);
 				return;
 			}
-			var UI = Cc["@mozilla.org/intl/scriptableunicodeconverter"].createInstance(Ci.nsIScriptableUnicodeConverter);
-			UI.charset = window.navigator.platform.toLowerCase().indexOf("win") >= 0 ? "gbk" : "UTF-8";
-			var process = Cc['@mozilla.org/process/util;1'].createInstance(Ci.nsIProcess);
-
-			try {
-				var path = UI.ConvertFromUnicode(aFile.path);
-				var args = [path];
-				process.init(editor);
-				process.run(false, args, args.length);
-			} catch (e) {
-				this.alert("编辑器不正确！")
-			}
+			var aURL = userChrome.getURLSpecFromFile(aFile);
+			var aDocument = null;
+			var aCallBack = null;
+			var aPageDescriptor = null;
+			if (/aLineNumber/.test(gViewSourceUtils.openInExternalEditor.toSource()))
+				gViewSourceUtils.openInExternalEditor(aURL, aPageDescriptor, aDocument, aLineNumber, aCallBack);
+			else
+				gViewSourceUtils.openInExternalEditor(aURL, aPageDescriptor, aDocument, aCallBack);
 		},
 
+		openScriptInScratchpad: function(parentWindow, file) {
+			let spWin = (parentWindow.Scratchpad || Services.wm.getMostRecentWindow("navigator:browser").Scratchpad)
+				.openScratchpad();
+
+			spWin.addEventListener("load", function spWinLoaded() {
+				spWin.removeEventListener("load", spWinLoaded, false);
+
+				let Scratchpad = spWin.Scratchpad;
+				Scratchpad.setFilename(file.path);
+				Scratchpad.addObserver({
+					onReady: function() {
+						Scratchpad.removeObserver(this);
+						Scratchpad.importFromFile.call(Scratchpad, file);
+					}
+				});
+			}, false);
+		},
 		/*****************************************************************************************/
 		SetIcon: function(isAlert) {
 			var icon = $("showFlagS-icon");
@@ -1566,6 +1590,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			this.icon = $C(IconType, {
 				id: "showFlagS-icon",
 				class: IconClass,
+				type: "menu",
 				context: "showFlagS-popup",
 				onclick: "if (event.button == 0) {showFlagS.command('Copy');} else if (event.button == 1) {showFlagS.onLocationChange('Flags');}",
 			});
@@ -1577,33 +1602,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			else if (this.Icon_Pos === 2)
 				ToolbarManager.addWidget(window, this.icon, true);
 
-			let css = '\
-                    #showFlagS-icon {\
-                        -moz-appearance: none !important;\
-                        border-style: none !important;\
-                        border-radius: 0 !important;\
-                        padding: 0 0 !important;\
-                        margin: 0 3px !important;\
-                        background: transparent !important;\
-                        box-shadow: none !important;\
-                        -moz-box-align: center !important;\
-                        -moz-box-pack: center !important;\
-                        min-width: 18px !important;\
-                        min-height: 18px !important;\
-                        width: 24px;\
-                    }\
-                    #showFlagS-icon > .toolbarbutton-icon {\
-                        padding: 0 !important;\
-                        margin: 0 !important;\
-                        border: 0 !important;\
-                        background-image: none !important;\
-                        background-color: transparent !important;\
-                        box-shadow: none !important;\
-                        -moz-transition: none !important;\
-                    }\
-                    #showFlagS-icon dropmarker { display:none; }\
-                ';
-			this.style = addStyle(css);
+			this.style = addStyle(CSS);
 		},
 
 		buildUserAgentMenu: function(UAList) {
@@ -1996,4 +1995,8 @@ location == "chrome://browser/content/browser.xul" && (function() {
 
 	showFlagS.init();
 	window.showFlagS = showFlagS;
-})()
+})('\
+#showFlagS-icon dropmarker {\
+    display: none;\
+}\
+'.replace(/\n|\t/g, ''));
