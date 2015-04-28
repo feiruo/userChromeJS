@@ -49,15 +49,24 @@
 			return this.file = aFile;
 		},
 
+		IconClick: function(e) {
+			if (e.target != e.currentTarget) return;
+			e.stopPropagation();
+			e.preventDefault();
+			if (e.button == 0)
+				this.rebuild(true);
+			else if (e.button == 2)
+				this.Edit(this.file);
+		},
+
 		init: function() {
 			var ins = $("menu_ToolsPopup").firstChild;
 			ins.parentNode.insertBefore($C("menuitem", {
 				id: "anoBtn_set",
 				label: "AnotherButton",
 				tooltiptext: "左键：重载配置\n右键：编辑配置",
-				oncommand: "anoBtn.rebuild(true);",
 				class: "menuitem-iconic",
-				onclick: "if (event.button == 2) { event.preventDefault(); closeMenus(event.currentTarget);anoBtn.Edit(anoBtn.file); }",
+				onclick: "anoBtn.IconClick(event);",
 			}), ins);
 
 			this.rebuild();
@@ -117,6 +126,19 @@
 			if (isAlert) this.alert('配置已经重新载入');
 		},
 
+
+		BtnClick: function(e) {
+			if (e.target != e.currentTarget) return;
+			e.stopPropagation();
+			e.preventDefault();
+			if (e.button == 0)
+				$("anoBtn_popup").showPopup();
+			else if (e.button == 1)
+				$("anoBtn_popup").showPopup();
+			if (e.button == 2)
+				$("anoBtn_popup").showPopup();
+		},
+
 		SetBtn: function(isAlert) {
 			var icon = $("anoBtn_Icon");
 			if (icon) icon.parentNode.removeChild(icon);
@@ -138,6 +160,7 @@
 				type: "menu",
 				class: IconClass,
 				removable: "true",
+				onclick: "anoBtn.BtnClick(event);",
 				image: iconImage,
 			});
 			$('anoBtn_set').setAttribute('image', iconImage);

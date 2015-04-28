@@ -14,6 +14,7 @@
 // @homepageURL		https://github.com/feiruo/userChromeJS/tree/master/FeiRuoTabplus
 // @downloadURL		https://github.com/feiruo/userChromeJS/raw/master/FeiRuoTabplus/FeiRuoTabplus.uc.js
 // @note            Begin 	2015-04-01
+// @version      	0.4.5 	2015.04.28	13:00 	Fix。
 // @version      	0.4.4 	2015.04.25	13:00 	Fix。
 // @version      	0.4.3 	2015.04.23	15:00 	修复判断逻辑。
 // @version      	0.4.2 	2015.04.23	11:00 	修复判断逻辑。
@@ -105,50 +106,49 @@
 		},
 
 		UndoPopup: function(e) {
-			var popup = e.target;
+			var meun = e.target.parentNode;
+			var popup = meun.firstChild;
+			var placesView = meun._placesView;
+			popup.setAttribute('oncommand', '');
+			if (placesView)
+				delete meun._placesView;
+
 			let tabsFragment = RecentlyClosedTabsAndWindowsMenuUtils.getTabsFragment(window, "menuitem");
 			if (tabsFragment.hasChildNodes()) {
 				while (popup.hasChildNodes())
 					popup.removeChild(popup.firstChild);
 				popup.appendChild(tabsFragment);
 			} else {
-				var items = popup.querySelectorAll('.bookmark-item');
+				popup.setAttribute('oncommand', 'this.parentNode._placesView._onCommand(event);');
+
+				var items = popup.querySelectorAll('menuitem');
 				[].forEach.call(items, function(item) {
 					item.parentNode.removeChild(item);
 				});
-				var items = popup.querySelectorAll('menuitem[id^="FeiRuoTabplus_"]');
-				[].forEach.call(items, function(item) {
-					item.parentNode.removeChild(item);
-				});
-				var undoItems = JSON.parse(Cc['@mozilla.org/browser/sessionstore;1'].getService(Ci.nsISessionStore).getClosedTabData(window));
-				if (undoItems.length == 0) {
-					popup.setAttribute('oncommand', 'this.parentNode._placesView._onCommand(event);');
-					if (!popup.parentNode._placesView) new HistoryMenu(e);
-				} else {
-					undoItems.map(function(item, id) {
-						var m = document.createElement('menuitem');
-						m.setAttribute('label', item.title);
-						m.setAttribute('image', item.image ? 'moz-anno:favicon:' + item.image : '');
-						m.setAttribute('class', 'menuitem-iconic bookmark-item closedtab');
-						m.setAttribute('id', 'addmenu-UndoCloseTab-' + id);
-						m.setAttribute('oncommand', 'undoCloseTab(' + id + ')');
-						m.setAttribute('type', 'unclose-menuitem');
-						popup.appendChild(m);
-					});
+				var menuseparator = $("FeiRuoTabplus_Undo_menupopup_menuseparator");
+				if (menuseparator)
+					popup.removeChild(menuseparator);
+
+				function HistoryMenus(aPopupShowingEvent) {
+					this.__proto__.__proto__ = PlacesMenu.prototype;
+					PlacesMenu.call(this, aPopupShowingEvent,
+						"place:sort=4&maxResults=15");
 				}
+				new HistoryMenus(e);
+				popup.appendChild($C("menuseparator", {
+					id: "FeiRuoTabplus_Undo_menupopup_menuseparator"
+				}));
 			}
+
 			popup.appendChild($C("menuitem", {
-				id: "FeiRuoTabplus_sanitizeItem",
 				label: "清除最近的历史",
 				command: "Tools:Sanitize",
 			}));
 			popup.appendChild($C("menuitem", {
-				id: "FeiRuoTabplus_historyRestoreLastSession",
 				label: "恢复上一次会话",
 				command: "Browser:RestoreLastSession",
 			}));
 			popup.appendChild($C("menuitem", {
-				id: "FeiRuoTabplus_goPopup",
 				label: "管理所有历史记录",
 				command: "Browser:ShowAllHistory",
 			}));
@@ -161,8 +161,8 @@
 			if (!isAlert) return;
 			var UndoBtn = $C("toolbarbutton", {
 				id: "FeiRuoTabplus_UndoBtn",
-				command: "History:UndoCloseTab",
-				context: "FeiRuoTabplus_Undo_menupopup",
+				type: "menu",
+				onclick: "FeiRuoTabplus.UndoBtnClick(event);",
 				class: 'toolbarbutton-1 chromeclass-toolbar-additional',
 				removable: "true",
 				image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABNUlEQVQ4jZ2RTSvEURjFH68lpbCRhqaMZsZz7/2dhc9goVhb2vgC1hIrKXs2fAcvKyvlC0h2yGSpLJQNGmMz8sffNObUWd3z/DrdY5avbjPr++Ottdy9X9IKsNYEta9KpTIK7AAvwPG/Wrj7DHAC1CU1gKN2Ad0xxnngSlIj4xqwC2wDqymlBUlFM+v5dg2sS3r4cZznV+AO2I0xxizgSNJbG4Csr4E5MzOLMQ5L2pD0lA0Bz5JugHvgUdLrD8hFtVqd/izSm1JaAm4zgVN3n5RUdHdSSovAFnAFvDe9+e0/Qgizks6aDXJnDCFMAHtAHTj/NUm5XB4H9oEDM+vNm61UKg1JOpRUy901pTTo7mO5j1+ZBeCyVaalJBWbLTuTu49IWu4YUCgUBkIIUx0DzKzLzHo+AOwkgbcyhT1yAAAAAElFTkSuQmCC",
@@ -177,7 +177,21 @@
 				tooltip: "bhTooltip",
 				popupsinherittooltip: "true",
 			});
+
 			UndoBtn.appendChild(popup)
+		},
+
+		UndoBtnClick: function(e) {
+			if (e.target != e.currentTarget) return;
+			if (e.button == 0)
+				$('History:UndoCloseTab').doCommand();
+			else if (e.button == 1)
+				return;
+			else if (e.button == 2) {
+				$('FeiRuoTabplus_Undo_menupopup').showPopup();
+				e.stopPropagation();
+				e.preventDefault();
+			}
 		},
 
 		onDestroy: function() {
@@ -393,6 +407,11 @@
 					if (!val) return;
 					location == "chrome://browser/content/browser.xul" && eval("gURLBar.handleCommand=" + this.Default_gURLBar.replace(/^\s*(load.+);/gm, "if(isTabEmpty(gBrowser.selectedTab) || FeiRuoTabplus.IsInNewTab(0, url, aTriggeringEvent)){loadCurrent();}else{this.handleRevert();gBrowser.loadOneTab(url, {postData: postData, inBackground: false, allowThirdPartyFixup: true});}"));
 					break;
+				case "1NewTabUrlbar":
+					location == "chrome://browser/content/browser.xul" && eval("gURLBar.handleCommand=" + this.Default_gURLBar);
+					if (!val) return;
+					location == "chrome://browser/content/browser.xul" && eval("gURLBar.handleCommand=" + this.Default_gURLBar.replace(/^\s*(load.+);/gm, "if(isTabEmpty(gBrowser.selectedTab) || FeiRuoTabplus.IsInNewTab(0, url, aTriggeringEvent)){loadCurrent();}else{this.handleRevert();gBrowser.loadOneTab(url, {postData: postData, inBackground: false, allowThirdPartyFixup: true});}"));
+					break;
 				case "TabFocus":
 					gBrowser.tabContainer.removeEventListener("mouseover", FeiRuoTabplus.TabFocus_onMouseOver, false);
 					gBrowser.tabContainer.removeEventListener("mouseout", FeiRuoTabplus.TabFocus_onMouseOut, false);
@@ -592,9 +611,9 @@
 						file.append("iexplore.exe");
 						var process = Cc["@mozilla.org/process/util;1"].createInstance(Ci.nsIProcess);
 						process.init(file);
-						process.run(false, [content.location.href], 1);
+						process.run(false, [this.Content.url], 1);
 					} catch (ex) {
-						alert("\u6253\u5f00IE\u5931\u8d25!")
+						alert("打开IE失败!\n" + ex);
 					}
 					break;
 				case 'MouseScrollTabL':
