@@ -184,15 +184,14 @@
 
 		UndoBtnClick: function(e) {
 			if (e.target != e.currentTarget) return;
+			e.stopPropagation();
+			e.preventDefault();
 			if (e.button == 0)
 				$('History:UndoCloseTab').doCommand();
 			else if (e.button == 1)
 				return;
-			else if (e.button == 2) {
+			else if (e.button == 2)
 				$('FeiRuoTabplus_Undo_menupopup').showPopup();
-				e.stopPropagation();
-				e.preventDefault();
-			}
 		},
 
 		onDestroy: function() {
