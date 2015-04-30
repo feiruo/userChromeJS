@@ -35,6 +35,7 @@
 	}
 
 	var FeiRuoTabplus = {
+		Default_openLinkIn: openLinkIn.toString(),
 		Default_gURLBar: gURLBar.handleCommand.toString(),
 		Default_whereToOpenLink: whereToOpenLink.toString(),
 		Default_BookmarksEventHandler: BookmarksEventHandler.onClick.toString(),
@@ -271,6 +272,7 @@
 						case 'SameHostEX':
 						case 'NewTabExKey':
 						case 'UndoBtn':
+						case 'NewTabSearchBar':
 							FeiRuoTabplus.loadSetting(data);
 							break;
 					}
@@ -297,6 +299,9 @@
 
 			if (!type || type === "NewTabUrlbar_SH")
 				this.NewTabUrlbar_SH = this.getPrefs(0, "NewTabUrlbar_SH", false);
+
+			if (!type || type === "NewTabSearchBar")
+				this.Cutover("NewTabSearchBar", this.getPrefs(0, "NewTabSearchBar", false));
 
 			if (!type || type === "ShowBorderChange")
 				this.Cutover("ShowBorderChange", this.getPrefs(0, "ShowBorderChange", false));
@@ -407,10 +412,10 @@
 					if (!val) return;
 					location == "chrome://browser/content/browser.xul" && eval("gURLBar.handleCommand=" + this.Default_gURLBar.replace(/^\s*(load.+);/gm, "if(isTabEmpty(gBrowser.selectedTab) || FeiRuoTabplus.IsInNewTab(0, url, aTriggeringEvent)){loadCurrent();}else{this.handleRevert();gBrowser.loadOneTab(url, {postData: postData, inBackground: false, allowThirdPartyFixup: true});}"));
 					break;
-				case "1NewTabUrlbar":
-					location == "chrome://browser/content/browser.xul" && eval("gURLBar.handleCommand=" + this.Default_gURLBar);
+				case "NewTabSearchBar":
+					eval('openLinkIn=' + this.Default_openLinkIn);
 					if (!val) return;
-					location == "chrome://browser/content/browser.xul" && eval("gURLBar.handleCommand=" + this.Default_gURLBar.replace(/^\s*(load.+);/gm, "if(isTabEmpty(gBrowser.selectedTab) || FeiRuoTabplus.IsInNewTab(0, url, aTriggeringEvent)){loadCurrent();}else{this.handleRevert();gBrowser.loadOneTab(url, {postData: postData, inBackground: false, allowThirdPartyFixup: true});}"));
+					eval('openLinkIn=' + this.Default_openLinkIn.replace('w.gBrowser.selectedTab.pinned', '(!w.isTabEmpty(w.gBrowser.selectedTab) || $&)').replace(/&&\s+w\.gBrowser\.currentURI\.host != uriObj\.host/, ''));
 					break;
 				case "TabFocus":
 					gBrowser.tabContainer.removeEventListener("mouseover", FeiRuoTabplus.TabFocus_onMouseOver, false);
@@ -560,20 +565,20 @@
 			}
 
 			keys = keys.split("+");
-			if (tkey) {
-				if (keys.length == 1)
-					TKSwitch(keys, doact);
-				if (keys.length == 2)
-					TKSwitch(keys[0], TKSwitch(keys[1], doact));
-				if (keys.length == 3)
-					TKSwitch(keys[0], TKSwitch(keys[1], TKSwitch(keys[2], doact)));
-			} else {
+			if (tkey != "1") {
 				if (keys.length == 1)
 					KSwitch(keys, doact);
 				if (keys.length == 2)
 					KSwitch(keys[0], KSwitch(keys[1], doact));
 				if (keys.length == 3)
 					KSwitch(keys[0], KSwitch(keys[1], KSwitch(keys[2], doact)));
+			} else {
+				if (keys.length == 1)
+					TKSwitch(keys, doact);
+				if (keys.length == 2)
+					TKSwitch(keys[0], TKSwitch(keys[1], doact));
+				if (keys.length == 3)
+					TKSwitch(keys[0], TKSwitch(keys[1], TKSwitch(keys[2], doact)));
 			}
 		},
 
@@ -973,6 +978,7 @@
 						<preferences>\
 							<preference id="UndoBtnNU" type="int" name="browser.sessionstore.max_tabs_undo"/>\
 							<preference id="UndoBtn" type="bool" name="userChromeJS.FeiRuoTabplus.UndoBtn"/>\
+							<preference id="NewTabSearchBar" type="bool" name="userChromeJS.FeiRuoTabplus.NewTabSearchBar"/>\
 							<preference id="NewTabUrlbar_SH" type="bool" name="userChromeJS.FeiRuoTabplus.NewTabUrlbar_SH"/>\
 							<preference id="SideBarNewTab_SH" type="bool" name="userChromeJS.FeiRuoTabplus.SideBarNewTab_SH"/>\
 							<preference id="SameHostEX" type="string" name="userChromeJS.FeiRuoTabplus.SameHostEX"/>\
@@ -1015,7 +1021,10 @@
 												<checkbox id="HomeNewTab" label="主页" preference="HomeNewTab"/>\
 											</row>\
 											<row align="center">\
-												<checkbox id="NewTabUrlbarr" label="地址栏(默认【Alt+回车】为新标签打开)" preference="NewTabUrlbar" oncommand="Change();"/>\
+												<checkbox id="NewTabSearchBar" label="书签、历史、搜索栏(Firefox默认【Ctrl+点击】为新标签打开)" preference="NewTabSearchBar"/>\
+											</row>\
+											<row align="center">\
+												<checkbox id="NewTabUrlbarr" label="地址栏(Firefox默认【Alt+回车】为新标签打开)" preference="NewTabUrlbar" oncommand="Change();"/>\
 											</row>\
 											<row align="center" class="indent">\
 												<checkbox id="NewTabUrlbar_SH" label="域名相同当前页" preference="NewTabUrlbar_SH" tooltiptext="URL与当前页的域名相同时,则使用当前标签打开!"/>\
@@ -1025,7 +1034,7 @@
 												<checkbox id="ShiftKey0" label="Shift" tooltiptext="对同一行前2个选项都生效。"/>\
 											</row>\
 											<row align="center">\
-												<checkbox id="SideBarNewTabr" label="侧栏、书签、书签工具栏、【我的足迹】窗口(默认【Ctrl+点击】为新标签打开)" preference="SideBarNewTab" oncommand="Change();"/>\
+												<checkbox id="SideBarNewTabr" label="侧栏、书签工具栏、【我的足迹】窗口(Firefox默认【Ctrl+点击】为新标签打开)" preference="SideBarNewTab" oncommand="Change();"/>\
 											</row>\
 											<row align="center" class="indent">\
 												<checkbox id="SideBarNewTab_SH" label="域名相同当前页" preference="SideBarNewTab_SH" tooltiptext="URL与当前页的域名相同时,则使用当前标签打开!"/>\
@@ -1633,7 +1642,6 @@
 			for (var k = 0; k < this.ruleOption.length; k++) {
 				var o = this.ruleOption[k];
 				var tempStr = (myArr[o.name] == undefined) ? o.default : myArr[o.name];
-				if (o.needEncode) tempStr = fctConfig.encode(tempStr);
 				tempArr.push(tempStr);
 			}
 			return tempArr.join("|");
@@ -1677,6 +1685,7 @@
 
 		Save: function() {
 			this.TreeSave();
+			FeiRuoTabplus.prefs.setBoolPref("NewTabSearchBar", _$("NewTabSearchBar").value);
 			FeiRuoTabplus.prefs.setBoolPref("UndoBtn", _$("UndoBtn").value);
 			FeiRuoTabplus.prefs.setBoolPref("NewTabUrlbar", _$("NewTabUrlbar").value);
 			FeiRuoTabplus.prefs.setIntPref("NewTabNear", _$("NewTabNear").value);
@@ -1765,6 +1774,7 @@
 			_$("loadBookmarksInBackground").value = false;
 			_$("open_newwindow").value = 3;
 			_$("open_newwindow.restriction").value = 2;
+			_$("NewTabSearchBar").value = false;
 			_$("NewTabUrlbar").value = false;
 			_$("NewTabUrlbar_SH").value = false;
 			_$("NewTabNear").value = 0;
