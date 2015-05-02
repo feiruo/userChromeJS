@@ -14,6 +14,10 @@
 // @homepageURL		https://github.com/feiruo/userChromeJS/tree/master/FeiRuoTabplus
 // @downloadURL		https://github.com/feiruo/userChromeJS/raw/master/FeiRuoTabplus/FeiRuoTabplus.uc.js
 // @note            Begin 	2015-04-01
+// @version      	0.4.9 	2015.05.02	15:00 	兼容omnibar。
+// @version      	0.4.8 	2015.05.01	13:00 	修改撤销按钮机制。
+// @version      	0.4.7 	2015.04.30	17:00 	新窗口打开搜索栏。
+// @version      	0.4.6 	2015.04.29	12:00 	修复事件启用禁用无效的问题。
 // @version      	0.4.5 	2015.04.28	13:00 	Fix。
 // @version      	0.4.4 	2015.04.25	13:00 	Fix。
 // @version      	0.4.3 	2015.04.23	15:00 	修复判断逻辑。
@@ -33,9 +37,8 @@
 		window.FeiRuoTabplus.onDestroy();
 		delete window.FeiRuoTabplus;
 	}
-
+	if (!window.AddonManager) Cu.import("resource://gre/modules/AddonManager.jsm");
 	var FeiRuoTabplus = {
-		Default_openLinkIn: openLinkIn.toString(),
 		Default_gURLBar: gURLBar.handleCommand.toString(),
 		Default_whereToOpenLink: whereToOpenLink.toString(),
 		Default_BookmarksEventHandler: BookmarksEventHandler.onClick.toString(),
@@ -43,6 +46,8 @@
 		Default_gBrowser: gBrowser.mTabProgressListener.toString(),
 		Default_openNodeWithEvent: PlacesUIUtils.openNodeWithEvent.toString(),
 		Default_BrowserGoHome: BrowserGoHome.toString(),
+
+
 
 		get prefs() {
 			delete this.prefs;
@@ -86,6 +91,7 @@
 				class: "menuitem-iconic",
 			}), ins);
 
+			this.getOmnibarStatus();
 			this.loadCustomCommand();
 			this.loadSetting();
 			this.prefs.addObserver('', this.PrefsObs, false);
@@ -106,36 +112,34 @@
 			}
 		},
 
-		UndoPopup: function(e) {
-			var meun = e.target.parentNode;
-			var popup = meun.firstChild;
-			var placesView = meun._placesView;
-			popup.setAttribute('oncommand', '');
-			if (placesView)
-				delete meun._placesView;
+		UndoPopup: function(event) {
+			var popup = event.target;
+
+			var items = popup.querySelectorAll('menuitem');
+			[].forEach.call(items, function(item) {
+				item.parentNode.removeChild(item);
+			});
+			var menuseparators = popup.querySelectorAll('menuseparator');
+			[].forEach.call(menuseparators, function(menuseparator) {
+				if (!menuseparator.hidden)
+					menuseparator.parentNode.removeChild(menuseparator);
+			});
 
 			let tabsFragment = RecentlyClosedTabsAndWindowsMenuUtils.getTabsFragment(window, "menuitem");
 			if (tabsFragment.hasChildNodes()) {
-				while (popup.hasChildNodes())
-					popup.removeChild(popup.firstChild);
+				popup.setAttribute('oncommand', '');
+				if (popup.parentNode._placesView)
+					delete popup.parentNode._placesView;
 				popup.appendChild(tabsFragment);
 			} else {
-				popup.setAttribute('oncommand', 'this.parentNode._placesView._onCommand(event);');
-
-				var items = popup.querySelectorAll('menuitem');
-				[].forEach.call(items, function(item) {
-					item.parentNode.removeChild(item);
-				});
-				var menuseparator = $("FeiRuoTabplus_Undo_menupopup_menuseparator");
-				if (menuseparator)
-					popup.removeChild(menuseparator);
+				popup.setAttribute('oncommand', 'FeiRuoTabplus.UndoBtnHistoryCommand(event);');
 
 				function HistoryMenus(aPopupShowingEvent) {
 					this.__proto__.__proto__ = PlacesMenu.prototype;
 					PlacesMenu.call(this, aPopupShowingEvent,
 						"place:sort=4&maxResults=15");
 				}
-				new HistoryMenus(e);
+				new HistoryMenus(event);
 				popup.appendChild($C("menuseparator", {
 					id: "FeiRuoTabplus_Undo_menupopup_menuseparator"
 				}));
@@ -155,6 +159,17 @@
 			}));
 		},
 
+		UndoBtnHistoryCommand: function(aEvent) {
+			let placesNode = aEvent.target._placesNode;
+			if (placesNode) {
+				if (!PrivateBrowsingUtils.isWindowPrivate(window))
+					PlacesUIUtils.markPageAsTyped(placesNode.uri);
+				openUILink(placesNode.uri, aEvent, {
+					ignoreAlt: true
+				});
+			}
+		},
+
 		UndoBtn: function(isAlert) {
 			var icon = $("FeiRuoTabplus_UndoBtn");
 			if (icon) icon.parentNode.removeChild(icon);
@@ -162,7 +177,7 @@
 			if (!isAlert) return;
 			var UndoBtn = $C("toolbarbutton", {
 				id: "FeiRuoTabplus_UndoBtn",
-				type: "menu",
+				type: "menu-button",
 				onclick: "FeiRuoTabplus.UndoBtnClick(event);",
 				class: 'toolbarbutton-1 chromeclass-toolbar-additional',
 				removable: "true",
@@ -183,15 +198,25 @@
 		},
 
 		UndoBtnClick: function(e) {
-			if (e.target != e.currentTarget) return;
-			e.stopPropagation();
-			e.preventDefault();
-			if (e.button == 0)
-				$('History:UndoCloseTab').doCommand();
-			else if (e.button == 1)
+			if (e.target != e.currentTarget)
 				return;
-			else if (e.button == 2)
-				$('FeiRuoTabplus_Undo_menupopup').showPopup();
+			if (e.button == 2) {
+				e.stopPropagation();
+				e.preventDefault();
+				if (JSON.parse(Cc['@mozilla.org/browser/sessionstore;1'].getService(Ci.nsISessionStore).getClosedTabData(window)) != 0)
+					$('History:UndoCloseTab').doCommand();
+				else {
+					if (JSON.parse(Cc['@mozilla.org/browser/sessionstore;1'].getService(Ci.nsISessionStore).getClosedWindowData(window)).length != 0) {
+						try {
+							$("historyUndoWindowPopup").childNodes[0].click();
+						} catch (e) {
+							XULBrowserWindow.statusTextField.label = '[FeiRuoTabplus]：无法恢复!' + e;
+						}
+					} else {
+						XULBrowserWindow.statusTextField.label = '[FeiRuoTabplus]：无法恢复!';
+					}
+				}
+			}
 		},
 
 		onDestroy: function() {
@@ -271,7 +296,6 @@
 						case 'SameHostEX':
 						case 'NewTabExKey':
 						case 'UndoBtn':
-						case 'NewTabSearchBar':
 							FeiRuoTabplus.loadSetting(data);
 							break;
 					}
@@ -281,7 +305,7 @@
 
 		loadSetting: function(type) {
 			if (!type || type === "Custom") {
-				var Custom = this.getPrefs(2, "Custom", "");
+				var Custom = this.getPrefs(2, "Custom", "1|mTabContainer|dblclick|Tab|0|CloseTargetTab||,1|mTabContainer|click|Tab|2|CloseTargetTab|1|Ctrl,1|mTabContainer|MouseScrollUp|Tab|1|MouseScrollTabL||,1|mTabContainer|MouseScrollDown|Tab|1|MouseScrollTabR||,1|mTabContainer|MouseScrollUp|TabBar|1|MouseScrollTabL||,1|mTabContainer|MouseScrollUp|TabBar|1|MouseScrollTabR||");
 				if (this.Custom === Custom) return;
 				if (this.UCustom)
 					this.CustomListen(false, this.UCustom);
@@ -298,9 +322,6 @@
 
 			if (!type || type === "NewTabUrlbar_SH")
 				this.NewTabUrlbar_SH = this.getPrefs(0, "NewTabUrlbar_SH", false);
-
-			if (!type || type === "NewTabSearchBar")
-				this.Cutover("NewTabSearchBar", this.getPrefs(0, "NewTabSearchBar", false));
 
 			if (!type || type === "ShowBorderChange")
 				this.Cutover("ShowBorderChange", this.getPrefs(0, "ShowBorderChange", false));
@@ -407,14 +428,22 @@
 		Cutover: function(name, val) {
 			switch (name) {
 				case "NewTabUrlbar":
-					location == "chrome://browser/content/browser.xul" && eval("gURLBar.handleCommand=" + this.Default_gURLBar);
-					if (!val) return;
-					location == "chrome://browser/content/browser.xul" && eval("gURLBar.handleCommand=" + this.Default_gURLBar.replace(/^\s*(load.+);/gm, "if(isTabEmpty(gBrowser.selectedTab) || FeiRuoTabplus.IsInNewTab(0, url, aTriggeringEvent)){loadCurrent();}else{this.handleRevert();gBrowser.loadOneTab(url, {postData: postData, inBackground: false, allowThirdPartyFixup: true});}"));
-					break;
-				case "NewTabSearchBar":
-					eval('openLinkIn=' + this.Default_openLinkIn);
-					if (!val) return;
-					eval('openLinkIn=' + this.Default_openLinkIn.replace('w.gBrowser.selectedTab.pinned', '(!w.isTabEmpty(w.gBrowser.selectedTab) || $&)').replace(/&&\s+w\.gBrowser\.currentURI\.host != uriObj\.host/, ''));
+					setTimeout(function() {
+						var that = FeiRuoTabplus;
+						var OmnibarStatus = that.OmnibarStatus;
+						if (OmnibarStatus) {
+							if (!that.intercepted_handleCommand)
+								that.intercepted_handleCommand = gURLBar.intercepted_handleCommand.toString();
+							location == "chrome://browser/content/browser.xul" && eval("gURLBar.intercepted_handleCommand=" + that.intercepted_handleCommand);
+						} else {
+							location == "chrome://browser/content/browser.xul" && eval("gURLBar.handleCommand=" + that.Default_gURLBar);
+						}
+						if (!val) return;
+						if (OmnibarStatus)
+							location == "chrome://browser/content/browser.xul" && eval("gURLBar.intercepted_handleCommand=" + that.intercepted_handleCommand.replace(/^\s*(load.+);/gm, "if(isTabEmpty(gBrowser.selectedTab) || FeiRuoTabplus.IsInNewTab(0, url, aTriggeringEvent)){loadCurrent();}else{this.handleRevert();gBrowser.loadOneTab(url, {postData: postData, inBackground: false, allowThirdPartyFixup: true});}"));
+						else
+							location == "chrome://browser/content/browser.xul" && eval("gURLBar.handleCommand=" + that.Default_gURLBar.replace(/^\s*(load.+);/gm, "if(isTabEmpty(gBrowser.selectedTab) || FeiRuoTabplus.IsInNewTab(0, url, aTriggeringEvent)){loadCurrent();}else{this.handleRevert();gBrowser.loadOneTab(url, {postData: postData, inBackground: false, allowThirdPartyFixup: true});}"));
+					}, 100);
 					break;
 				case "TabFocus":
 					gBrowser.tabContainer.removeEventListener("mouseover", FeiRuoTabplus.TabFocus_onMouseOver, false);
@@ -492,7 +521,7 @@
 					log(e)
 				}
 
-				if (!enable || !isEnable) continue;
+				if (!enable || isEnable != "1") continue;
 
 				var CN;
 				if (command.match("CCommand_")) {
@@ -806,6 +835,18 @@
 		},
 
 		/*****************************************************************************************/
+		getOmnibarStatus: function() {
+			AddonManager.getAddonByID("omnibar@ajitk.com", function(addon) {
+				var status;
+				if (addon)
+					status = addon.userDisabled ? false : true;
+				else
+					status = false;
+				delete FeiRuoTabplus.OmnibarStatus;
+				FeiRuoTabplus.OmnibarStatus = status ? status : false;
+			});
+		},
+
 		getPrefs: function(type, name, val) {
 			switch (type) {
 				case 0:
@@ -977,7 +1018,8 @@
 						<preferences>\
 							<preference id="UndoBtnNU" type="int" name="browser.sessionstore.max_tabs_undo"/>\
 							<preference id="UndoBtn" type="bool" name="userChromeJS.FeiRuoTabplus.UndoBtn"/>\
-							<preference id="NewTabSearchBar" type="bool" name="userChromeJS.FeiRuoTabplus.NewTabSearchBar"/>\
+							<preference id="NewTabSearchBar" type="bool" name="browser.search.openintab"/>\
+							<preference id="closeWindowWithLastTab" type="bool" name="browser.tabs.closeWindowWithLastTab"/>\
 							<preference id="NewTabUrlbar_SH" type="bool" name="userChromeJS.FeiRuoTabplus.NewTabUrlbar_SH"/>\
 							<preference id="SideBarNewTab_SH" type="bool" name="userChromeJS.FeiRuoTabplus.SideBarNewTab_SH"/>\
 							<preference id="SameHostEX" type="string" name="userChromeJS.FeiRuoTabplus.SameHostEX"/>\
@@ -1020,7 +1062,7 @@
 												<checkbox id="HomeNewTab" label="主页" preference="HomeNewTab"/>\
 											</row>\
 											<row align="center">\
-												<checkbox id="NewTabSearchBar" label="书签、历史、搜索栏(Firefox默认【Ctrl+点击】为新标签打开)" preference="NewTabSearchBar"/>\
+												<checkbox id="NewTabSearchBar" label="搜索栏(browser.search.openintab)" preference="NewTabSearchBar"/>\
 											</row>\
 											<row align="center">\
 												<checkbox id="NewTabUrlbarr" label="地址栏(Firefox默认【Alt+回车】为新标签打开)" preference="NewTabUrlbar" oncommand="Change();"/>\
@@ -1116,6 +1158,7 @@
 									</groupbox>\
 									<groupbox>\
 										<caption label="其他功能" />\
+											<checkbox id="closeWindowWithLastTab" label="关闭最后一个标签同时关闭浏览器" preference="closeWindowWithLastTab"/>\
 											<checkbox id="UndoBtns" label="撤销按钮" preference="UndoBtn" oncommand="Change();"/>\
 											<row class="indent">\
 												<label value="撤销标签数量："/>\
@@ -1684,7 +1727,6 @@
 
 		Save: function() {
 			this.TreeSave();
-			FeiRuoTabplus.prefs.setBoolPref("NewTabSearchBar", _$("NewTabSearchBar").value);
 			FeiRuoTabplus.prefs.setBoolPref("UndoBtn", _$("UndoBtn").value);
 			FeiRuoTabplus.prefs.setBoolPref("NewTabUrlbar", _$("NewTabUrlbar").value);
 			FeiRuoTabplus.prefs.setIntPref("NewTabNear", _$("NewTabNear").value);
@@ -1717,10 +1759,8 @@
 		},
 
 		TreeResets: function() {
-			with(_$("customList")) {
-				while (hasChildNodes()) {
-					removeChild(lastChild);
-				}
+			while (_$("customList").hasChildNodes()) {
+				_$("customList").removeChild(_$("customList").lastChild);
 			}
 		},
 
@@ -1768,6 +1808,7 @@
 			_$("CtrlKey1").checked = false;
 			_$("ShiftKey1").checked = false;
 			_$("UndoBtns").value = false;
+			_$("closeWindowWithLastTab").value = false;
 			_$("UndoBtnNU").value = 10;
 			_$("tabsloadInBackground").value = false;
 			_$("loadBookmarksInBackground").value = false;
@@ -2109,7 +2150,7 @@
 	}
 
 	function log() {
-		Application.console.log("[FeiRuoTabplus] " + Array.slice(arguments));
+		Application.console.log("[FeiRuoTabplus] " + arguments);
 	}
 
 	function alert(aString, aTitle) {
