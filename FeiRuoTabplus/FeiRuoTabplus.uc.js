@@ -323,12 +323,13 @@
 		loadSetting: function(type) {
 			if (!type || type === "Custom") {
 				var Custom = this.getPrefs(2, "Custom", "");
-				if (this.Custom === Custom) return;
-				if (this.UCustom)
-					this.CustomListen(false, this.UCustom);
-				if (Custom !== "")
-					this.CustomListen(true, Custom);
-				this.Custom = this.UCustom = Custom;
+				if (this.Custom === Custom) {
+					if (this.UCustom)
+						this.CustomListen(false, this.UCustom);
+					if (Custom !== "")
+						this.CustomListen(true, Custom);
+					this.Custom = this.UCustom = Custom;
+				}
 			}
 
 			if (!type || type === "UndoBtn")
