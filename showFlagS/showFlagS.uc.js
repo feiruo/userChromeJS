@@ -175,7 +175,7 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 
         makePanel: function() {
             this.Popup = $C("menupopup", {
-                id: "showFlagS-popup"
+                id: "showFlagS-popup",
             });
             this.Popup.appendChild($C("menuitem", {
                 id: "showFlagS-copy",
@@ -246,18 +246,20 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
         loadSetting: function(type) {
             if (!type || type === "Icon_Pos") {
                 var Icon_Pos = this.getPrefs(1, "Icon_Pos", 0);
-                if (this.Icon_Pos === Icon_Pos) return;
-                this.Icon_Pos = Icon_Pos;
-                this.SetIcon(true);
-                this.onLocationChange();
+                if (this.Icon_Pos != Icon_Pos) {
+                    this.Icon_Pos = Icon_Pos;
+                    this.SetIcon(true);
+                    if (type) this.onLocationChange();
+                }
             }
 
             if (!type || type === "IconSstatusBarPanel") {
                 var IconSstatusBarPanel = this.getPrefs(0, "IconSstatusBarPanel", false);
-                if (this.IconSstatusBarPanel === IconSstatusBarPanel) return;
-                this.IconSstatusBarPanel = IconSstatusBarPanel;
-                this.SetIcon(true);
-                this.onLocationChange();
+                if (this.IconSstatusBarPanel != IconSstatusBarPanel) {
+                    this.IconSstatusBarPanel = IconSstatusBarPanel;
+                    this.SetIcon(true);
+                    if (type) this.onLocationChange();
+                }
             }
 
             if (!type || type === "Inquiry_Delay")
@@ -265,53 +267,55 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 
             if (!type || type === "libIconPath") {
                 var libIconPath = this.getPrefs(2, "libIconPath", this.DlibIconPath);
-                if (this.libIconPath === libIconPath) return;
-                this.libIconPath = libIconPath;
-                var FlagLibData = this.getData(this.libIconPath);
-                if (FlagLibData) {
-                    var sandbox = new Cu.Sandbox(new XPCNativeWrapper(window));
-                    sandbox.Components = Components;
-                    sandbox.Cc = Cc;
-                    sandbox.Ci = Ci;
-                    sandbox.Cr = Cr;
-                    sandbox.Cu = Cu;
-                    sandbox.Services = Services;
-                    sandbox.locale = Services.prefs.getCharPref("general.useragent.locale");
+                if (this.libIconPath != libIconPath) {
+                    this.libIconPath = libIconPath;
+                    var FlagLibData = this.getData(this.libIconPath);
+                    if (FlagLibData) {
+                        var sandbox = new Cu.Sandbox(new XPCNativeWrapper(window));
+                        sandbox.Components = Components;
+                        sandbox.Cc = Cc;
+                        sandbox.Ci = Ci;
+                        sandbox.Cr = Cr;
+                        sandbox.Cu = Cu;
+                        sandbox.Services = Services;
+                        sandbox.locale = Services.prefs.getCharPref("general.useragent.locale");
 
-                    try {
-                        var lineFinder = new Error();
-                        Cu.evalInSandbox(FlagLibData, sandbox, "1.8");
-                    } catch (e) {
-                        let line = e.lineNumber - lineFinder.lineNumber - 1;
-                        this.alert('Error: ' + e + "\n请重新检查Lib文件第 " + line + " 行");
+                        try {
+                            var lineFinder = new Error();
+                            Cu.evalInSandbox(FlagLibData, sandbox, "1.8");
+                        } catch (e) {
+                            let line = e.lineNumber - lineFinder.lineNumber - 1;
+                            this.alert('Error: ' + e + "\n请重新检查Lib文件第 " + line + " 行");
+                        }
+                        if (this.CountryNames) delete this.CountryNames;
+                        if (this.CountryFlags) delete this.CountryFlags;
+                        this.CountryNames = sandbox.CountryNames || [];
+                        this.CountryFlags = sandbox.CountryFlags || [];
                     }
-                    if (this.CountryNames) delete this.CountryNames;
-                    if (this.CountryFlags) delete this.CountryFlags;
-                    this.CountryNames = sandbox.CountryNames || [];
-                    this.CountryFlags = sandbox.CountryFlags || [];
                 }
             }
 
             if (!type || type === "SourceSite") {
                 var apiSite = this.getPrefs(2, "SourceSite", (this.SourceAPI ? (this.SourceAPI[0] ? this.SourceAPI[0].id : "") : ""));
-                if (this.apiSite === apiSite) return;
-                this.apiSite = apiSite;
-                this.siteApi = this.siteRex = null;
-                this.FlagApi = this.FlagRex = null;
-                if (this.SourceAPI && this.SourceAPI[0]) {
-                    for (var i = 0; i < this.SourceAPI.length; i++) {
-                        if (this.SourceAPI[i].isJustFlag) return;
-                        if (this.SourceAPI[i].id == this.apiSite) {
-                            this.siteApi = this.SourceAPI[i].inquireAPI;
-                            this.siteRex = this.SourceAPI[i].regulation;
-                        }
-                        if (this.SourceAPI[i].isFlag) {
-                            this.FlagApi = this.SourceAPI[i].inquireAPI;
-                            this.FlagRex = this.SourceAPI[i].regulation;
+                if (this.apiSite != apiSite) {
+                    this.apiSite = apiSite;
+                    this.siteApi = this.siteRex = null;
+                    this.FlagApi = this.FlagRex = null;
+                    if (this.SourceAPI && this.SourceAPI[0]) {
+                        for (var i = 0; i < this.SourceAPI.length; i++) {
+                            if (this.SourceAPI[i].isJustFlag) return;
+                            if (this.SourceAPI[i].id == this.apiSite) {
+                                this.siteApi = this.SourceAPI[i].inquireAPI;
+                                this.siteRex = this.SourceAPI[i].regulation;
+                            }
+                            if (this.SourceAPI[i].isFlag) {
+                                this.FlagApi = this.SourceAPI[i].inquireAPI;
+                                this.FlagRex = this.SourceAPI[i].regulation;
+                            }
                         }
                     }
+                    if (type) this.onLocationChange('Flags');
                 }
-                this.onLocationChange('Flags');
             }
 
             if (!type || type === "LocalFlags")
@@ -322,17 +326,17 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 
             if (!type || type === "MyInfo") {
                 this.isMyInfo = this.getPrefs(0, "MyInfo", false);
-                this.onLocationChange('Flags');
+                if (type) this.onLocationChange('Flags');
             }
 
             if (!type || type === "SeoInfo") {
                 this.isSeoInfo = this.getPrefs(0, "SeoInfo", false);
-                this.onLocationChange('Flags');
+                if (type) this.onLocationChange('Flags');
             }
 
             if (!type || type === "Reacquire") {
                 this.isReacquire = this.getPrefs(0, "Reacquire", false);
-                this.onLocationChange('Flags');
+                if (type) this.onLocationChange('Flags');
             }
 
             if (!type || type === "RefChanger")
@@ -342,8 +346,6 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
                 this.UAState = this.getPrefs(0, "UAChanger", false);
                 $("showFlagS-UserAgent-config").hidden = !this.UAState;
             }
-
-            this.onLocationChange();
         },
 
         getPrefs: function(type, name, val) {
@@ -1007,11 +1009,11 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
                 return;
             }
 
-            try {
-                //url = gBrowser.contentDocument.URL;
-                //url = gBrowser.selectedBrowser.contentWindow.document.URL;
-                url = gBrowser.selectedBrowser._contentWindow.document.URL;
-            } catch (e) {}
+            var url;
+            if (window.content)
+                url = window.content.document.URL;
+            else
+                url = gBrowser.selectedBrowser.contentDocumentAsCPOW.URL;
 
             if (ip == "0" || /^(about:neterror)/.test(url)) {
                 if (ip == "0") {
