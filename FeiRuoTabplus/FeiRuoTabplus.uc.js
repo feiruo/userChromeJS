@@ -322,7 +322,7 @@
 
 		loadSetting: function(type) {
 			if (!type || type === "Custom") {
-				var Custom = this.getPrefs(2, "Custom", "1|mTabContainer|dblclick|Tab|0|CloseTargetTab||,1|mTabContainer|click|Tab|2|CloseTargetTab|1|Ctrl,1|mTabContainer|MouseScrollUp|Tab|1|MouseScrollTabL||,1|mTabContainer|MouseScrollDown|Tab|1|MouseScrollTabR||,1|mTabContainer|MouseScrollUp|TabBar|1|MouseScrollTabL||,1|mTabContainer|MouseScrollUp|TabBar|1|MouseScrollTabR||");
+				var Custom = this.getPrefs(2, "Custom", "");
 				if (this.Custom === Custom) return;
 				if (this.UCustom)
 					this.CustomListen(false, this.UCustom);
