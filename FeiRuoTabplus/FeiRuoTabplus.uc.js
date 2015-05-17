@@ -14,6 +14,7 @@
 // @homepageURL		https://github.com/feiruo/userChromeJS/tree/master/FeiRuoTabplus
 // @downloadURL		https://github.com/feiruo/userChromeJS/raw/master/FeiRuoTabplus/FeiRuoTabplus.uc.js
 // @note            Begin 	2015-04-01
+// @version      	0.5.0 	2015.05.17	14:00 	修复主页，增加查看图片图片，增加多文件连拖拽连续打开。
 // @version      	0.4.9 	2015.05.02	15:00 	兼容omnibar。
 // @version      	0.4.8 	2015.05.01	13:00 	修改撤销按钮机制。
 // @version      	0.4.7 	2015.04.30	17:00 	新窗口打开搜索栏。
@@ -33,21 +34,29 @@
 // @note			自定义标签和标签栏事件。
 // ==/UserScript==
 (function() {
+
+	let {
+		classes: Cc,
+		interfaces: Ci,
+		utils: Cu,
+		results: Cr
+	} = Components;
+	if (!window.Services) Cu.import("resource://gre/modules/Services.jsm");
+	if (!window.AddonManager) Cu.import("resource://gre/modules/AddonManager.jsm");
+
 	if (window.FeiRuoTabplus) {
 		window.FeiRuoTabplus.onDestroy();
 		delete window.FeiRuoTabplus;
 	}
-	if (!window.AddonManager) Cu.import("resource://gre/modules/AddonManager.jsm");
+
 	var FeiRuoTabplus = {
-		Default_gURLBar: gURLBar.handleCommand.toString(),
+		Default_gURLBar: gURLBar.handleCommand.toString().replace("!mayInheritPrincipal", "0").replace("var url = this.value;", "var url = this.value;" + "if(url.indexOf('chromejs:') == 0) return eval(url.slice(9));"),
 		Default_whereToOpenLink: whereToOpenLink.toString(),
 		Default_BookmarksEventHandler: BookmarksEventHandler.onClick.toString(),
 		Default_checkForMiddleClick: checkForMiddleClick.toString(),
 		Default_gBrowser: gBrowser.mTabProgressListener.toString(),
 		Default_openNodeWithEvent: PlacesUIUtils.openNodeWithEvent.toString(),
 		Default_BrowserGoHome: BrowserGoHome.toString(),
-
-
 
 		get prefs() {
 			delete this.prefs;
@@ -65,19 +74,15 @@
 			return this.file = aFile;
 		},
 		get Content() {
-			var Content, Contents;
-			var windowMediator = Cc["@mozilla.org/appshell/window-mediator;1"]
-				.getService(Ci.nsIWindowMediator);
-			var topWindowOfType = windowMediator.getMostRecentWindow("navigator:browser");
-			if (topWindowOfType)
-				Contents = topWindowOfType.document.getElementById("content").currentURI;
-			if (Contents) {
-				Content = {
-					url: Contents.asciiSpec,
-					host: Contents.asciiHost
+			var cont;
+			if (!window.content) {
+				function listener(message) {
+					cont = message.objects.cont
 				}
+				Cc["@mozilla.org/globalmessagemanager;1"].getService(Ci.nsIMessageListenerManager).addMessageListener("FeiRuoTabplus:FeiRuoTabplus-e10s-content-message", listener);
 			}
-			return Content;
+			delete this.Content;
+			return this.Content = window.content || cont || gBrowser.selectedBrowser._contentWindow || gBrowser.selectedBrowser.contentWindowAsCPOW;
 		},
 
 		init: function() {
@@ -90,6 +95,9 @@
 				image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAxUlEQVQ4jaXSsW0CQRCF4U+OyC4hgqvARZAQUgUNEOEaXAIt4EZIXIJD3wEHLWAfgeckZPZgESM9aaSd949mdmCAJWq0Cf3iG29RexUz7HvMlzpgmgKsMsyd3lOArwcAG7xijCFexIy5gFOMW+MTc/HwgyaWdUtVmI/RuO4ADSYYobyjUdQ24dUGvUwtqCfK8PQCikTnIhdQYI1dzFhHvr6A3AV8/ANsHwE8PUJOXAGe+sbK31HkHFKnJjwVLCLJPedOFRZnf9aScov1PDsAAAAASUVORK5CYII=",
 				class: "menuitem-iconic",
 			}), ins);
+
+			if (!window.content)
+				Cc["@mozilla.org/globalmessagemanager;1"].getService(Ci.nsIMessageListenerManager).loadFrameScript("data:application/x-javascript;charset=UTF-8," + escape('sendAsyncMessage("FeiRuoTabplus:FeiRuoTabplus-e10s-content-message", {}, {cont: content,})'), true);
 
 			this.getOmnibarStatus();
 			this.loadCustomCommand();
@@ -200,9 +208,11 @@
 		UndoBtnClick: function(e) {
 			if (e.target != e.currentTarget)
 				return;
-			if (e.button == 2) {
-				e.stopPropagation();
-				e.preventDefault();
+			e.stopPropagation();
+			e.preventDefault();
+			if (e.button == 0) {
+				if (e.originalTarget.className != "box-inherit toolbarbutton-menubutton-button")
+					return;
 				if (JSON.parse(Cc['@mozilla.org/browser/sessionstore;1'].getService(Ci.nsISessionStore).getClosedTabData(window)) != 0)
 					$('History:UndoCloseTab').doCommand();
 				else {
@@ -216,7 +226,10 @@
 						XULBrowserWindow.statusTextField.label = '[FeiRuoTabplus]：无法恢复!';
 					}
 				}
-			}
+			} else if (e.button == 1)
+				return;
+			else if (e.button == 2)
+				$('FeiRuoTabplus_Undo_menupopup').showPopup();
 		},
 
 		onDestroy: function() {
@@ -230,6 +243,8 @@
 			this.AddListener(false, "ColseToNearTab", null, 'TabClose', "tabContainer");
 			this.Cutover("TabFocus");
 			this.Cutover("TabFocus_Time");
+			this.Cutover("ImageNewTab");
+			this.Cutover("OpenFilesWhenDrop");
 			this.Cutover("CloseDownloadBankTab");
 			this.Cutover("KeepBookmarksOnMiddleClick");
 			this.UndoBtn();
@@ -296,6 +311,8 @@
 						case 'SameHostEX':
 						case 'NewTabExKey':
 						case 'UndoBtn':
+						case 'ImageNewTab':
+						case 'OpenFilesWhenDrop':
 							FeiRuoTabplus.loadSetting(data);
 							break;
 					}
@@ -305,7 +322,7 @@
 
 		loadSetting: function(type) {
 			if (!type || type === "Custom") {
-				var Custom = this.getPrefs(2, "Custom", "");
+				var Custom = this.getPrefs(2, "Custom", "1|mTabContainer|dblclick|Tab|0|CloseTargetTab||,1|mTabContainer|click|Tab|2|CloseTargetTab|1|Ctrl,1|mTabContainer|MouseScrollUp|Tab|1|MouseScrollTabL||,1|mTabContainer|MouseScrollDown|Tab|1|MouseScrollTabR||,1|mTabContainer|MouseScrollUp|TabBar|1|MouseScrollTabL||,1|mTabContainer|MouseScrollUp|TabBar|1|MouseScrollTabR||");
 				if (this.Custom === Custom) return;
 				if (this.UCustom)
 					this.CustomListen(false, this.UCustom);
@@ -347,6 +364,12 @@
 					enable = true;
 				this.AddListener(enable, "ColseToNearTab", ColseToNearTab, 'TabClose', "tabContainer");
 			}
+
+			if (!type || type === "ImageNewTab")
+				this.Cutover("ImageNewTab", this.getPrefs(0, "ImageNewTab", false));
+
+			if (!type || type === "OpenFilesWhenDrop")
+				this.Cutover("OpenFilesWhenDrop", this.getPrefs(0, "OpenFilesWhenDrop", false));
 
 			if (!type || type === "TabFocus")
 				this.Cutover("TabFocus", this.getPrefs(0, "TabFocus", false));
@@ -433,7 +456,7 @@
 						var OmnibarStatus = that.OmnibarStatus;
 						if (OmnibarStatus) {
 							if (!that.intercepted_handleCommand)
-								that.intercepted_handleCommand = gURLBar.intercepted_handleCommand.toString();
+								that.intercepted_handleCommand = gURLBar.intercepted_handleCommand.toString().replace("!mayInheritPrincipal", "0").replace("var url = this.value;", "var url = this.value;" + "if(url.indexOf('chromejs:') == 0) return eval(url.slice(9));");
 							location == "chrome://browser/content/browser.xul" && eval("gURLBar.intercepted_handleCommand=" + that.intercepted_handleCommand);
 						} else {
 							location == "chrome://browser/content/browser.xul" && eval("gURLBar.handleCommand=" + that.Default_gURLBar);
@@ -491,7 +514,19 @@
 				case "HomeNewTab":
 					eval("BrowserGoHome = " + this.Default_BrowserGoHome);
 					if (!val) return;
-					eval("BrowserGoHome = " + this.Default_BrowserGoHome.replace(/switch \(where\) {/, "where = (!FeiRuoTabplus.IsBlankPage(gBrowser.currentURI.spec) || gBrowser.webProgress.isLoadingDocument" + ") ? 'tab' : 'current'; $&"));
+					eval("BrowserGoHome = " + this.Default_BrowserGoHome.replace(/switch \(where\) {/, "where = (gBrowser.webProgress.isLoadingDocument" + ") ? 'tab' : 'current'; $&"));
+					break;
+				case "OpenFilesWhenDrop":
+					location == "chrome://browser/content/browser.xul" && gBrowser.mPanelContainer.removeEventListener("drop", FeiRuoTabplus.OpenFilesWhenDrop, false)
+					if (!val) return;
+					location == "chrome://browser/content/browser.xul" && gBrowser.mPanelContainer.addEventListener("drop", FeiRuoTabplus.OpenFilesWhenDrop, false)
+					break;
+				case "ImageNewTab":
+					$("context-viewimage").setAttribute("oncommand", "gContextMenu.viewMedia(event);");
+					$("context-viewbgimage").setAttribute("oncommand", "gContextMenu.viewBGImage(event);");
+					if (!val) return;
+					$("context-viewimage").setAttribute("oncommand", "openUILinkIn(gContextMenu.imageURL,'tab')");
+					$("context-viewbgimage").setAttribute("oncommand", "openUILinkIn(gContextMenu.bgImageURL,'tab')");
 					break;
 			}
 		},
@@ -644,7 +679,7 @@
 						file.append("iexplore.exe");
 						var process = Cc["@mozilla.org/process/util;1"].createInstance(Ci.nsIProcess);
 						process.init(file);
-						process.run(false, [this.Content.url], 1);
+						process.run(false, [this.Content.location.href], 1);
 					} catch (ex) {
 						alert("打开IE失败!\n" + ex);
 					}
@@ -684,6 +719,12 @@
 			setTimeout(function() {
 				document.documentElement.setAttribute("chromemargin", FeiRuoTabplus.ShowBorder);
 			}, 1);
+		},
+
+		OpenFilesWhenDrop: function(event) {
+			event.dataTransfer.files.length > 1 && gBrowser.loadTabs(Array.map(event.dataTransfer.files, function(file) {
+				return file.mozFullPath
+			}), false, true)
 		},
 
 		/*****************************************************************************************/
@@ -728,8 +769,8 @@
 
 			var host0, host1;
 			host0 = this.getDomain(url);
-			if (this.Content.host)
-				host1 = this.Content.host;
+			if (this.Content.location.host)
+				host1 = this.Content.location.host;
 			if (host0 == host1)
 				IS = true;
 			if (!IS)
@@ -758,7 +799,7 @@
 				Exclude = this.SameHostEX;
 
 			if (!url)
-				url = this.Content.url;
+				url = window.content ? content.location.href : gBrowser.selectedBrowser.contentDocumentAsCPOW.location.href;
 
 			if (!Exclude)
 				return false;
@@ -1017,6 +1058,8 @@
 					<prefpane id="main" flex="1">\
 						<preferences>\
 							<preference id="UndoBtnNU" type="int" name="browser.sessionstore.max_tabs_undo"/>\
+							<preference id="OpenFilesWhenDrop" type="bool" name="userChromeJS.FeiRuoTabplus.OpenFilesWhenDrop"/>\
+							<preference id="ImageNewTab" type="bool" name="userChromeJS.FeiRuoTabplus.ImageNewTab"/>\
 							<preference id="UndoBtn" type="bool" name="userChromeJS.FeiRuoTabplus.UndoBtn"/>\
 							<preference id="NewTabSearchBar" type="bool" name="browser.search.openintab"/>\
 							<preference id="closeWindowWithLastTab" type="bool" name="browser.tabs.closeWindowWithLastTab"/>\
@@ -1060,26 +1103,26 @@
 										<caption label="在新标签中打开"/>\
 											<row align="center">\
 												<checkbox id="HomeNewTab" label="主页" preference="HomeNewTab"/>\
-											</row>\
-											<row align="center">\
+												<checkbox id="ImageNewTab" label="查看图片(背景)" preference="ImageNewTab"/>\
 												<checkbox id="NewTabSearchBar" label="搜索栏(browser.search.openintab)" preference="NewTabSearchBar"/>\
 											</row>\
 											<row align="center">\
-												<checkbox id="NewTabUrlbarr" label="地址栏(Firefox默认【Alt+回车】为新标签打开)" preference="NewTabUrlbar" oncommand="Change();"/>\
+												<checkbox id="NewTabUrlbarr" label="地址栏" tooltiptext="Firefox默认【Alt+回车】为新标签打开" preference="NewTabUrlbar" oncommand="Change();"/>\
 											</row>\
 											<row align="center" class="indent">\
 												<checkbox id="NewTabUrlbar_SH" label="域名相同当前页" preference="NewTabUrlbar_SH" tooltiptext="URL与当前页的域名相同时,则使用当前标签打开!"/>\
-												<label class="indent" value="排除键：" tooltiptext="对同一行前2个选项都生效。"/>\
+												<label value="排除：" tooltiptext="对同一行前2个选项都生效。"/>\
 												<checkbox id="CtrlKey0" label="Ctrl" tooltiptext="对同一行前2个选项都生效。"/>\
 												<checkbox id="AltKey0" label="Alt" tooltiptext="对同一行前2个选项都生效。"/>\
 												<checkbox id="ShiftKey0" label="Shift" tooltiptext="对同一行前2个选项都生效。"/>\
 											</row>\
 											<row align="center">\
-												<checkbox id="SideBarNewTabr" label="侧栏、书签工具栏、【我的足迹】窗口(Firefox默认【Ctrl+点击】为新标签打开)" preference="SideBarNewTab" oncommand="Change();"/>\
+												<checkbox id="SideBarNewTabr" label="侧栏、书签、历史、书签工具栏、我的足迹" tooltiptext="Firefox默认【Ctrl+点击】为新标签打开" preference="SideBarNewTab" oncommand="Change();"/>\
+												<label id="SideBarNewTabr"  preference="SideBarNewTab" oncommand="Change();"/>\
 											</row>\
 											<row align="center" class="indent">\
 												<checkbox id="SideBarNewTab_SH" label="域名相同当前页" preference="SideBarNewTab_SH" tooltiptext="URL与当前页的域名相同时,则使用当前标签打开!"/>\
-												<label class="indent" value="排除键：" tooltiptext="对同一行前2个选项都生效。"/>\
+												<label value="排除：" tooltiptext="对同一行前2个选项都生效。"/>\
 												<checkbox id="CtrlKey1" label="Ctrl" tooltiptext="对同一行前2个选项都生效。"/>\
 												<checkbox id="AltKey1" label="Alt" tooltiptext="对同一行前2个选项都生效。"/>\
 												<checkbox id="ShiftKey1" label="Shift" tooltiptext="对同一行前2个选项都生效。"/>\
@@ -1089,22 +1132,22 @@
 										<groupbox>\
 											<caption label="以下【页面】重用标签，支持正则"/>\
 												<vbox flex="1" style="height:80px;">\
-													<textbox flex="1" preference="NewTabExcludePage" tooltiptext="一行一个" multiline="true" cols="35"/>\
+													<textbox flex="1" preference="NewTabExcludePage" tooltiptext="一行一个" multiline="true" cols="30"/>\
 												</vbox>\
 										</groupbox>\
 										<groupbox>\
 											<caption label="以下【URL】在当前标签打开，支持正则"/>\
 												<vbox flex="1">\
-													<textbox flex="1" preference="NewTabExcludeUrl" tooltiptext="一行一个" multiline="true" cols="35"/>\
+													<textbox flex="1" preference="NewTabExcludeUrl" tooltiptext="一行一个" multiline="true" cols="30"/>\
 												</vbox>\
 										</groupbox>\
 									</hbox>\
 									<groupbox>\
-											<caption label="以下【域名相同】在新标签打开，支持正则"/>\
-												<vbox flex="1" style="height:80px;">\
-													<textbox flex="1" id="SameHostEX" preference="SameHostEX" tooltiptext="一行一个" multiline="true" cols="70"/>\
-												</vbox>\
-										</groupbox>\
+										<caption label="【域名相同当前页】排除列表，支持正则"/>\
+											<vbox flex="1" style="height:80px;">\
+												<textbox flex="1" id="SameHostEX" preference="SameHostEX" tooltiptext="一行一个" multiline="true" cols="60"/>\
+											</vbox>\
+									</groupbox>\
 								</tabpanel>\
 								<tabpanel orient="vertical" flex="1">\
 									<groupbox>\
@@ -1158,30 +1201,35 @@
 									</groupbox>\
 									<groupbox>\
 										<caption label="其他功能" />\
+											<grid>\
+												<rows>\
+													<row align="center">\
+														<checkbox id="UndoBtns" label="撤销按钮" preference="UndoBtn" oncommand="Change();"/>\
+														<label value="撤销标签数量："/>\
+														<textbox id="UndoBtnNU" type="number" preference="UndoBtnNU" style="width:125px" tooltiptext="为Firefox自带参数"/>\
+													</row>\
+													<row align="center">\
+														<checkbox id="TabFocusr" label="鼠标悬停激活标签(自动聚焦)" preference="TabFocus" oncommand="Change();"/>\
+														<label value="聚焦延时："/>\
+														<textbox id="TabFocus_Time" type="number" preference="TabFocus_Time" style="width:125px" tooltiptext="单位：毫秒！"/>\
+													</row>\
+													<row align="center">\
+														<checkbox id="ShowBorderChanges" label="窗口边框调整(去边框)" preference="ShowBorderChange" oncommand="Change();"/>\
+														<label value="边框像素："/>\
+														<textbox id="ShowBorder" preference="ShowBorder" style="width:125px" tooltiptext="顺序依次为【上，左，下，右】"/>\
+													</row>\
+												</rows>\
+											</grid>\
+											<checkbox id="OpenFilesWhenDrop" label="多文件拖拽连续打开" preference="OpenFilesWhenDrop"/>\
 											<checkbox id="closeWindowWithLastTab" label="关闭最后一个标签同时关闭浏览器" preference="closeWindowWithLastTab"/>\
-											<checkbox id="UndoBtns" label="撤销按钮" preference="UndoBtn" oncommand="Change();"/>\
-											<row class="indent">\
-												<label value="撤销标签数量："/>\
-												<textbox id="UndoBtnNU" type="number" preference="UndoBtnNU" style="width:125px" tooltiptext="为Firefox自带参数"/>\
-											</row>\
-											<checkbox id="TabFocusr" label="自动聚焦" preference="TabFocus" oncommand="Change();"/>\
-											<row class="indent">\
-												<label value="聚焦延时："/>\
-												<textbox id="TabFocus_Time" type="number" preference="TabFocus_Time" style="width:125px" tooltiptext="单位：毫秒！"/>\
-											</row>\
-											<checkbox id="CloseDownloadBankTab" label="关闭下载空白页(E10S可能不支持)" preference="CloseDownloadBankTab" />\
-											<checkbox id="KeepBookmarksOnMiddleClick" label="鼠标中键点击时bookmark菜单不关闭" preference="KeepBookmarksOnMiddleClick" />\
-											<checkbox id="ShowBorderChanges" label="窗口边框调整(去边框)" preference="ShowBorderChange" oncommand="Change();"/>\
-											<row class="indent">\
-												<label value="边框像素："/>\
-												<textbox id="ShowBorder" preference="ShowBorder" style="width:125px" tooltiptext="顺序依次为【上，左，下，右】"/>\
-											</row>\
+											<checkbox id="CloseDownloadBankTab" label="自动关闭下载空白页(E10S可能不支持)" preference="CloseDownloadBankTab"/>\
+											<checkbox id="KeepBookmarksOnMiddleClick" label="鼠标中键点击时书签菜单不关闭" preference="KeepBookmarksOnMiddleClick"/>\
 									</groupbox>\
 								</tabpanel>\
-								<tabpanel orient="vertical" flex="1" style="width:500px">\
+								<tabpanel orient="vertical" flex="1">\
 									<vbox>\
 										<hbox id="listarea" flex="1">\
-											<tree id="ruleTree" seltype="single" flex="1" enableColumnDrag="true" class="tree" rows="18"\
+											<tree id="ruleTree" seltype="single" flex="1" enableColumnDrag="true" class="tree" rows="17"\
 												onclick="opener.FeiRuoTabplus.OptionScript.onTreeclick(event);"\
 												ondblclick="opener.FeiRuoTabplus.OptionScript.onTreedblclick(event);">\
 												<treecols>\
@@ -1728,6 +1776,7 @@
 		Save: function() {
 			this.TreeSave();
 			FeiRuoTabplus.prefs.setBoolPref("UndoBtn", _$("UndoBtn").value);
+			FeiRuoTabplus.prefs.setBoolPref("OpenFilesWhenDrop", _$("OpenFilesWhenDrop").value);
 			FeiRuoTabplus.prefs.setBoolPref("NewTabUrlbar", _$("NewTabUrlbar").value);
 			FeiRuoTabplus.prefs.setIntPref("NewTabNear", _$("NewTabNear").value);
 			FeiRuoTabplus.prefs.setIntPref("ColseToNearTab", _$("ColseToNearTab").value);
@@ -1738,6 +1787,7 @@
 			FeiRuoTabplus.prefs.setBoolPref("SideBarNewTab", _$("SideBarNewTab").value);
 			FeiRuoTabplus.prefs.setCharPref("ShowBorder", _$("ShowBorder").value);
 			FeiRuoTabplus.prefs.setBoolPref("HomeNewTab", _$("HomeNewTab").value);
+			FeiRuoTabplus.prefs.setBoolPref("ImageNewTab", _$("ImageNewTab").value);
 			FeiRuoTabplus.prefs.setBoolPref("SideBarNewTab_SH", _$("SideBarNewTab_SH").value);
 			FeiRuoTabplus.prefs.setBoolPref("NewTabUrlbar_SH", _$("NewTabUrlbar_SH").value);
 
@@ -1819,6 +1869,7 @@
 			_$("NewTabUrlbar_SH").value = false;
 			_$("NewTabNear").value = 0;
 			_$("ColseToNearTab").value = 0;
+			_$("OpenFilesWhenDrop").value = false;
 			_$("TabFocus").value = false;
 			_$("TabFocus_Time").value = 250;
 			_$("CloseDownloadBankTab").value = false;
@@ -1830,6 +1881,7 @@
 			_$("ShowBorder").value = "0,7,7,7";
 			_$("NewTabExcludePage").value = "about:blank\nabout:home\nabout:newtab\nhttp://start.firefoxchina.cn/";
 			_$("HomeNewTab").value = false;
+			_$("ImageNewTab").value = false;
 			this.changeStatus();
 		}
 	};
@@ -2150,7 +2202,7 @@
 	}
 
 	function log() {
-		Application.console.log("[FeiRuoTabplus] " + arguments);
+		Application.console.log("[FeiRuoTabplus] " + Array.slice(arguments));
 	}
 
 	function alert(aString, aTitle) {
