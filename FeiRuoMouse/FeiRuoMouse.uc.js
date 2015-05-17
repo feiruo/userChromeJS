@@ -2275,7 +2275,6 @@
 							<tabpanels flex="1">\
 								<tabpanel orient="vertical" flex="1">\
 									<groupbox>\
-											<caption label="这里是占位"/>\
 											<checkbox id="TextLink" label="双击打开文链接(TextLink)" preference="TextLink"/>\
 											<checkbox id="QRCreator" label="生成二维码(QRCreator)" preference="QRCreator"/>\
 									</groupbox>\
