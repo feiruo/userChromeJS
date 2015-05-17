@@ -318,7 +318,7 @@
 		loadSetting: function(type) {
 			if (!type || type === "Custom") {
 				var Custom = this.getPrefs(2, "Custom", "");
-				if (this.Custom === Custom) {
+				if (this.Custom != Custom) {
 					if (this.UCustom)
 						this.CustomListen(false, this.UCustom);
 					if (Custom !== "")
