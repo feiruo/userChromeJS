@@ -138,7 +138,7 @@ var Menus = [{
 		//oncommand: "showFlagS.command('Action',this.tooltipText, 'host', 'host', null,'but')",
 		oncommand: function() {
 			var cont = content || window.content ? window._content : gBrowser.selectedBrowser.contentWindowAsCPOW;
-			var aPostData = "host=" + cont.window.document.location.host + "&alllinetype=全选&linetype=电信&linetype=多线&linetype=联通&linetype=移动&linetype=海外";
+			var aPostData = "host=" + cont.document.location.host + "&alllinetype=全选&linetype=电信&linetype=多线&linetype=联通&linetype=移动&linetype=海外";
 			showFlagS.command('Post', this.tooltipText, aPostData);
 		}
 	}, {
@@ -239,7 +239,7 @@ var Menus = [{
 		tooltiptext: 'https://www.virustotal.com/#url',
 		oncommand: function() {
 			var cont = content || window.content ? window._content : gBrowser.selectedBrowser.contentWindowAsCPOW;
-			showFlagS.command('Action', this.tooltipText, 'url', cont.window.document.location.host, 'btn-scan-url')
+			showFlagS.command('Action', this.tooltipText, 'url', cont.document.location.host, 'btn-scan-url')
 		},
 		image: "https://www.virustotal.com/static/img/favicon.ico"
 	}, {
