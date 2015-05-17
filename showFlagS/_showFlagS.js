@@ -68,10 +68,10 @@ var ServerInfo = [{
  *这里是UA自动切换规则列表。
  *支持正则匹配。
  *******************************************************************************************/
-var UASites = [ {
+var UASites = [{
 	url: "http://wap.", //WAP用UC浏览器
 	label: "UCBrowser"
-},];
+}, ];
 /******************************************************************************************
  *RefererChange，破解反外链。
  *@FORGE：发送根站点referer
@@ -137,7 +137,8 @@ var Menus = [{
 		image: "http://seo.chinaz.com/Chinaz.ico",
 		//oncommand: "showFlagS.command('Action',this.tooltipText, 'host', 'host', null,'but')",
 		oncommand: function() {
-			var aPostData = "host=" + content.window.document.location.host + "&alllinetype=全选&linetype=电信&linetype=多线&linetype=联通&linetype=移动&linetype=海外";
+			var cont = content || window.content ? window._content : gBrowser.selectedBrowser.contentWindowAsCPOW;
+			var aPostData = "host=" + cont.window.document.location.host + "&alllinetype=全选&linetype=电信&linetype=多线&linetype=联通&linetype=移动&linetype=海外";
 			showFlagS.command('Post', this.tooltipText, aPostData);
 		}
 	}, {
@@ -236,7 +237,10 @@ var Menus = [{
 	child: [{
 		label: "安全扫描",
 		tooltiptext: 'https://www.virustotal.com/#url',
-		oncommand: "showFlagS.command('Action',this.tooltipText, 'url', content.window.document.location.host, 'btn-scan-url')",
+		oncommand: function() {
+			var cont = content || window.content ? window._content : gBrowser.selectedBrowser.contentWindowAsCPOW;
+			showFlagS.command('Action', this.tooltipText, 'url', cont.window.document.location.host, 'btn-scan-url')
+		},
 		image: "https://www.virustotal.com/static/img/favicon.ico"
 	}, {
 		label: "WOT Scorecard",
@@ -456,12 +460,13 @@ var Menus = [{
 }, {
 	label: "整页截图",
 	oncommand: function() {
-		var canvas = document.createElementNS("http://www.w3.org/1999/xhtml", "canvas");
-		canvas.width = content.document.documentElement.scrollWidth;
-		canvas.height = content.document.documentElement.scrollHeight;
+		var cont = content || window.content ? window._content : gBrowser.selectedBrowser.contentWindowAsCPOW;
+		var canvas = cont.document.createElementNS("http://www.w3.org/1999/xhtml", "canvas");
+		canvas.width = cont.document.documentElement.scrollWidth;
+		canvas.height = cont.document.documentElement.scrollHeight;
 		var ctx = canvas.getContext("2d");
-		ctx.drawWindow(content, 0, 0, canvas.width, canvas.height, "rgb(255,255,255)");
-		saveImageURL(canvas.toDataURL(), content.document.title + ".png", null, null, null, null, document);
+		ctx.drawWindow(cont, 0, 0, canvas.width, canvas.height, "rgb(255,255,255)");
+		saveImageURL(canvas.toDataURL(), cont.document.title + ".png", null, null, null, null, cont.document);
 	},
 	image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAm0lEQVQ4jbWTUQrDIBBEH9QcokjZe+T+ieQaJXiKfvSjIyyJRmzpwHzsuo47qwJMgIlBvIpPMGAFEnAXUyOOLYEEbG7D1oirAsEV3sQoltivdwWO6Ap4C7UWIwMzqBUY8BTtGwvDAmWIBjyAGcjirJypJhwt+HvfdWoGXmJWbgeW0tHPAoHzvQ9Z6KE7xL8LRD5+FxoPqYfL7/wGEBc4QhYRpZIAAAAASUVORK5CYII="
 }];
