@@ -11,12 +11,13 @@
 // @startup         window.FeiRuoMouse.init();
 // @shutdown        window.FeiRuoMouse.onDestroy();
 // @optionsURL		about:config?filter=FeiRuoMouse.
-// @config 			window.FeiRuoMouse.Edit();
+// @config 			window.FeiRuoMouse.OpenPref();
 // @reviewURL		http://www.feiruo.pw
 // @homepageURL		https://github.com/feiruo/userChromeJS/tree/master/FeiRuoMouse
 // @downloadURL		https://github.com/feiruo/userChromeJS/raw/master/FeiRuoMouse/FeiRuoMouse.uc.js
 // @note            Begin 2015.04.23
 // @note            手势与拖拽。
+// @version         0.0.3 	2015.05.18 15:00	修复拖拽，自定义手势轨迹。
 // @version         0.0.2 	2015.05.17 15:00	TextLink&QRCreator&E10s。
 // @version         0.0.1 	2015.04.28 10:00	Build。
 // ==/UserScript==
@@ -105,7 +106,7 @@
 			this.Listen_Ges(false);
 			this.Listen_Drag(false);
 			this.TextToLink = false;
-			this.QRCreator.uninit();
+			this.QRCreator(false);
 			if (this.getWindow(0)) this.getWindow(0).close();
 			if (this.getWindow(1)) this.getWindow(1).close();
 			this.Prefs.removeObserver('', this.Prefobs, false);
@@ -114,15 +115,15 @@
 		},
 
 		SetMenuItmClick: function(e) {
-			if (e.target != e.currentTarget) return;
-			e.stopPropagation();
-			e.preventDefault();
+			//if (e.target != e.currentTarget) return;
 			if (e.button == 0)
 				this.OpenPref();
 			else if (e.button == 1)
 				this.loadCustomCommand(true);
 			else if (e.button == 2)
 				this.Edit(this.file);
+			e.stopPropagation();
+			e.preventDefault();
 		},
 
 		Prefobs: function(subject, topic, data) {
@@ -132,6 +133,10 @@
 					case 'GesCustom':
 					case 'TextLink':
 					case 'QRCreator':
+					case 'GesTrailEnabel':
+					case 'trailZoom':
+					case 'trailSize':
+					case 'trailColor':
 						FeiRuoMouse.loadSetting(data);
 						break;
 				}
@@ -141,33 +146,40 @@
 		loadSetting: function(type) {
 			if (!type || type === "DragCustom") {
 				this.DragCustom = unescape(this.getPrefs(2, "DragCustom", ""));
-				if (this.DragCustom) {
-					this.DragRules_Image = this.DragRules_Url = this.DragRules_Text = {};
-					this.DragRules_AnyImage = this.DragRules_AnyUrl = this.DragRules_AnyText = {};
-					this.loadRule("DragCustom", this.DragCustom);
-					this.Listen_Drag(true);
-				}
+				this.DragRules_Image = {};
+				this.DragRules_Url = {};
+				this.DragRules_Text = {};
+				this.DragRules_AnyImage = {};
+				this.DragRules_AnyUrl = {};
+				this.DragRules_AnyText = {};
+				this.loadRule("DragCustom", this.DragCustom);
+				this.Listen_Drag(true);
 			}
 
 			if (!type || type === "GesCustom") {
 				this.GesCustom = unescape(this.getPrefs(2, "GesCustom", ""));
-				if (this.GesCustom) {
-					this.GesturesRules = {};
-					this.loadRule("GesCustom", this.GesCustom);
-					this.Listen_Ges(true);
-				}
+				this.GesturesRules = {};
+				this.loadRule("GesCustom", this.GesCustom);
+				this.Listen_Ges(true);
 			}
 
-			if (!type || type === "QRCreator") {
-				var QRCreator = this.getPrefs(0, "QRCreator", false);
-				if (QRCreator)
-					this.QRCreator.init();
-				else
-					this.QRCreator.uninit();
-			}
+			if (!type || type === "QRCreator")
+				this.QRCreator(this.getPrefs(0, "QRCreator", true));
+
+			if (!type || type === "GesTrailEnabel")
+				this.GesTrailEnabel = this.getPrefs(0, "GesTrailEnabel", true);
 
 			if (!type || type === "TextLink")
-				this.TextToLink = this.getPrefs(0, "TextLink", false);
+				this.TextToLink = this.getPrefs(0, "TextLink", true);
+
+			if (!type || type === "trailZoom")
+				this.trailZoom = this.getPrefs(1, "trailZoom", 1);
+
+			if (!type || type === "trailSize")
+				this.trailSize = this.getPrefs(1, "trailSize", 2);
+
+			if (!type || type === "trailColor")
+				this.trailColor = this.getPrefs(2, "trailColor", "brown");
 		},
 
 		loadRule: function(Prefs, val) {
@@ -371,9 +383,7 @@
 						else
 							type = "Text";
 						that.lastPoint = "";
-						var EventKey = FeiRuoMouse.ActionEventKey(event)
-						var obj = FeiRuoMouse["DragRules_" + type][that.Drag] || FeiRuoMouse["DragRules_Any" + type][EventKey];
-						FeiRuoMouse.Listen_AidtKey(event, obj, that.Drag);
+						FeiRuoMouse.Listen_AidtKey(event, that.Drag, type);
 					}
 					break;
 			}
@@ -478,10 +488,17 @@
 			that._lastX = event.screenX;
 			that._lastY = event.screenY;
 			that._directionChain = "";
+			if (!this.GesTrailEnabel) return;
+			var obj = {
+				trailZoom: this.trailZoom || 1,
+				trailSize: this.trailSize || 2,
+				trailColor: this.trailColor || "brown",
+			};
 			if (window.content)
-				this.CreateTrail(event.view);
+				this.CreateTrail(event.view, obj);
 			else
-				gBrowser.selectedBrowser.messageManager.loadFrameScript("data:application/x-javascript;charset=UTF-8,(" + escape(this.CreateTrail.toString()) + ")();", true);
+				gBrowser.selectedBrowser.messageManager.loadFrameScript("data:application/x-javascript;charset=UTF-8,(" + escape(this.CreateTrail.toString()) + ")('" + escape(JSON.stringify(obj)) + "');", true);
+
 		},
 
 		ProgressGesture: function(event) {
@@ -499,17 +516,20 @@
 			if (distX > distY) direction = subX < 0 ? "L" : "R";
 			else direction = subY < 0 ? "U" : "D";
 			var dChain = that._directionChain;
-			var obj = {
-				x1: that._lastX,
-				y1: that._lastY,
-				x2: x,
-				y2: y
-			};
-			var str = JSON.stringify(obj);
-			if (window.content)
-				this.DrawTrail(str);
-			else {
-				gBrowser.selectedBrowser.messageManager.loadFrameScript("data:application/x-javascript;charset=UTF-8,(" + escape(this.DrawTrail.toString()) + ")('" + escape(str) + "');", true);
+			if (this.GesTrailEnabel) {
+				var obj = {
+					x1: that._lastX,
+					y1: that._lastY,
+					x2: x,
+					y2: y
+				};
+				var str = JSON.stringify(obj);
+
+				if (window.content)
+					this.DrawTrail(str);
+				else {
+					gBrowser.selectedBrowser.messageManager.loadFrameScript("data:application/x-javascript;charset=UTF-8,(" + escape(this.DrawTrail.toString()) + ")('" + escape(str) + "');", true);
+				}
 			}
 			if (direction != dChain.charAt(dChain.length - 1)) {
 				dChain += direction;
@@ -522,17 +542,24 @@
 
 		StopGesture: function(event) {
 			var that = FeiRuoMouse.GesIng;
-			this.Listen_AidtKey(event, this.GesturesRules[that._directionChain], that._directionChain);
+			this.Listen_AidtKey(event, that._directionChain);
 			that._directionChain = "";
+			if (!this.GesTrailEnabel) return;
 			if (window.content)
 				this.EraseTrail();
 			else
 				gBrowser.selectedBrowser.messageManager.loadFrameScript("data:application/x-javascript;charset=UTF-8,(" + escape(this.EraseTrail.toString()) + ")();", true);
 		},
 
-		CreateTrail: function(win) {
-			win = win || content;
+		CreateTrail: function(win, obj) {
+			if (!obj) {
+				obj = JSON.parse(win);
+				win = content;
+			}
 			if (!win) return;
+			var trailZoom = obj.trailZoom,
+				trailSize = obj.trailSize,
+				trailColor = obj.trailColor;
 			if (win.top.document instanceof Components.interfaces.nsIDOMHTMLDocument) win = win.top;
 			else if (win.document instanceof Components.interfaces.nsIDOMHTMLDocument === false) return;
 			var doc = content.document;
@@ -543,9 +570,9 @@
 			content.FeiRuoMouse_GesTrail_trailLastDot = null;
 			content.FeiRuoMouse_GesTrail_trailOffsetX = 0;
 			content.FeiRuoMouse_GesTrail_trailOffsetY = 0;
-			content.FeiRuoMouse_GesTrail_trailZoom = 1;
-			content.FeiRuoMouse_GesTrail_trailSize = 2;
-			content.FeiRuoMouse_GesTrail_trailColor = "brown";
+			content.FeiRuoMouse_GesTrail_trailZoom = trailZoom;
+			content.FeiRuoMouse_GesTrail_trailSize = trailSize;
+			content.FeiRuoMouse_GesTrail_trailColor = trailColor;
 			let xdTrailArea = content.document.querySelectorAll("[id^='FeiRuoMouse_Ges_']");
 			for (let i = 0; i < xdTrailArea.length; i++) {
 				xdTrailArea[i].parentNode.removeChild(xdTrailArea[i]);
@@ -638,21 +665,27 @@
 		},
 
 		/*****************************************************************************************/
-		Listen_AidtKey: function(e, obj, Action) {
+		Listen_AidtKey: function(e, dChain, type) {
+			var EventKey = this.ActionEventKey(e);
+			var obj;
+			if (!type)
+				obj = this.GesturesRules[dChain];
+			else
+				obj = this["DragRules_" + type][dChain] || this["DragRules_Any" + type][EventKey];
+
 			if (!obj)
-				return this.ActionStaus(e, Action);
+				return this.ActionStaus(e, dChain);
 
 			if (obj.Enable != "1")
-				return this.ActionStaus(e, Action, obj.label + "(未启用)");
+				return this.ActionStaus(e, dChain, obj.label + "(未启用)");
 
-			var EventKey = this.ActionEventKey(e);
 			if (!obj.Key || (obj.TKey != "1" && EventKey == obj.Key) || (obj.TKey == "1" && EventKey != obj.Key))
-				FeiRuoMouse.Listen_Command(e, obj, Action);
+				FeiRuoMouse.Listen_Command(e, obj, dChain);
 			else
-				this.ActionStaus(e, Action);
+				this.ActionStaus(e, dChain);
 		},
 
-		Listen_Command: function(e, obj, Action) {
+		Listen_Command: function(e, obj, dChain) {
 			e.stopPropagation();
 			e.preventDefault();
 			var command = obj.Command;
@@ -667,7 +700,7 @@
 					status(command + "(执行错误：" + e + ")");
 				}
 			} else
-				this.ActionStaus(e, Action, command);
+				this.ActionStaus(e, dChain, command);
 		},
 
 		ActionStaus: function(event, Action, str) {
@@ -726,51 +759,83 @@
 		},
 
 		/*****************************************************************************************/
-		QRCreatorMenuCommand: function(isAlert) {
-			if (content.document.getElementById('qrCreatorimageboxid'))
+		QRCreator: function(isAlert) {
+			if ($("FeiRuoMouse_QRCreator"))
+				$("FeiRuoMouse_QRCreator").parentNode.removeChild($("FeiRuoMouse_QRCreator"));
+			if (!isAlert) return;
+			var ins = $("context-openlinkintab");
+			ins.parentNode.insertBefore($C("menuitem", {
+				id: "FeiRuoMouse_QRCreator",
+				label: "生成QR码",
+				tooltiptext: "左键：自动模式\n右键：自定文字",
+				onclick: "FeiRuoMouse.QRMenuClick(event);",
+				//command: "qrCreator.onMenuItemCommand()",
+				class: "menuitem-iconic",
+				image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAzUlEQVQ4jaWOQYqFMBBE+xgewBO4ceEiIAQaBBHxPjlrFkKWucGbxaf/T/zGYZiCoqraoozwTwhACIHjOCoCt94YQvgM7PterVou762OAGzbRkufvr0H1nWt1stsvtURgGVZvmh3Q6sjPEBVUdWnymvAe4/3ntKX+UkFYJ5nTJ98masXtOCcwzl3m00FYJqmLxrMt1QAxnGs/mz5N30PDMNAS0vedQSg7/vqBWW++mtXYoyoKl3XVQQqvd5UlRgjknMmpcR5nn9iSomcMz9lng2NV0gSXAAAAABJRU5ErkJggg==",
+			}), ins);
+			$("contentAreaContextMenu").addEventListener("popupshowing", this.QRoptionsChangeLabel, false);
+		},
+
+		QRMenuClick: function(event) {
+			var cont = window.content || this.Content;
+			if (cont.document.getElementById('qrCreatorimageboxid'))
 				return;
 			var target_data = '';
 			var altText = "QR码内容[网址]";
 
-			if (gContextMenu) {
-				if (gContextMenu.isTextSelected) {
-					target_data = content.getSelection().toString();
-					altText = "QR码内容[文本]";
-				} else if (gContextMenu.onLink) {
-					target_data = gContextMenu.linkURL;
-				} else if (gContextMenu.onImage) {
-					target_data = gContextMenu.target.src;
-				} else if ((content.document.location == "about:blank" || content.document.location == "about:newtab")) {
-					altText = "QR码内容[文本]";
-					target_data = prompt("请输入文本创建一个QR码（长度不超过250字节）：", "");
-				} else {
-					target_data = content.document.location;
+			if (event.button == 0) {
+				if (gContextMenu) {
+					if (gContextMenu.isTextSelected) {
+						target_data = cont.getSelection().toString();
+						altText = "QR码内容[文本]";
+					} else if (gContextMenu.onLink) {
+						target_data = gContextMenu.linkURL;
+					} else if (gContextMenu.onImage) {
+						target_data = gContextMenu.target.src;
+					} else if ((cont.document.location == "about:blank" || cont.document.location == "about:newtab")) {
+						altText = "QR码内容[文本]";
+						target_data = prompt("请输入文本创建一个QR码（长度不超过250字节）：", "");
+					} else {
+						target_data = cont.document.location;
+					}
 				}
+			} else if (event.button == 2) {
+				altText = "QR码内容[文本]";
+				target_data = prompt("请输入文本创建一个QR码（长度不超过250字节）：", "");
+				event.stopPropagation();
+				event.preventDefault();
 			}
+			this.QRCommand(target_data, altText);
+		},
 
-			if (this.QRCheckLength(target_data)) {
-				this.QRpopupImage(target_data, altText);
+		QRconvertFromUnicode: function(charset, str) {
+			try {
+				var unicodeConverter = Components
+					.classes["@mozilla.org/intl/scriptableunicodeconverter"]
+					.createInstance(Components.interfaces.nsIScriptableUnicodeConverter);
+				unicodeConverter.charset = charset;
+				str = unicodeConverter.ConvertFromUnicode(str);
+				return str + unicodeConverter.Finish();
+			} catch (ex) {
+				return null;
 			}
 		},
 
-		QRpopupImage: function(target_data, altText) {
-			var img_node = content.document.getElementById('qrCreatorimageboxid');
-			if (img_node) {
-				img_node.parentNode.removeChild(img_node);
-			}
-			img_node = this.pinImage(target_data, altText);
+		QRcreateQrcode: function(text, typeNumber, errorCorrectLevel) {
+			for (var type = 4; type <= 40; type += 1) {
+				try {
+					var qr = this.QRCode(type, 'L');
+					qr.addData("" + this.QRconvertFromUnicode("UTF-8", text));
+					qr.make();
 
-			content.document.body.appendChild(img_node);
-			this.ImgDrag(img_node);
-			content.document.addEventListener('click', function(e) {
-				if (img_node && e.button == 0 && e.target != img_node) {
-					img_node.parentNode.removeChild(img_node);
-					this.removeEventListener("click", arguments.callee, true);
-				}
-			}, true);
+					return qr.createImgTag();
+				} catch (err) {}
+			}
+
+			return null;
 		},
 
-		QRCheckLength: function(arg) {
+		QRcheckLength: function(arg) {
 			if (arg) {
 				if (arg.length == 0) {
 					alert("没有要转化为二维码的内容！");
@@ -786,20 +851,99 @@
 			}
 		},
 
-		QRCreatorMenu: function(isAlert) {
-			let itm = $("FeiRuoMouse_QRCreatorMenu");
-			if (itm) itm.parentNode.removeChild(itm);
-			delete itm;
-			if (!isAlert) return;
-			var ins = $("context-openlinkintab");
-			ins.parentNode.insertBefore($C("menuitem", {
-				id: "FeiRuoMouse_QRCreatorMenu",
-				label: "在线生成QR码",
-				tooltiptext: "左键：打开配置窗口\n中键：重载配置文件\n右键：打开配置文件",
-				onclick: "FeiRuoTabplus.QRCreatorMenuCommand(event);",
-				image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAzUlEQVQ4jaWOQYqFMBBE+xgewBO4ceEiIAQaBBHxPjlrFkKWucGbxaf/T/zGYZiCoqraoozwTwhACIHjOCoCt94YQvgM7PterVou762OAGzbRkufvr0H1nWt1stsvtURgGVZvmh3Q6sjPEBVUdWnymvAe4/3ntKX+UkFYJ5nTJ98masXtOCcwzl3m00FYJqmLxrMt1QAxnGs/mz5N30PDMNAS0vedQSg7/vqBWW++mtXYoyoKl3XVQQqvd5UlRgjknMmpcR5nn9iSomcMz9lng2NV0gSXAAAAABJRU5ErkJggg==",
-				class: "menuitem-iconic",
-			}), ins);
+		QRPopupImage: function(src, alt) {
+			var imgnode = content.document.getElementById('qrCreatorimageboxid');
+			if (imgnode) {
+				imgnode.parentNode.removeChild(imgnode);
+			}
+
+			var img_node = content.document.createElement("img");
+			img_node.setAttribute('style', '-moz-box-shadow: 0 0 4px #000000');
+			with(img_node.style) {
+				position = 'fixed';
+				left = '-moz-calc(50% - 183px)';
+				top = '-moz-calc(50% - 183px)';
+				zIndex = 99999;
+				width = "160px";
+				height = "160px";
+				border = '8px solid rgba(0,0,0,.5)';
+				borderRadius = '5px';
+				background = 'white';
+			}
+			img_node.setAttribute('id', 'qrCreatorimageboxid');
+			img_node.setAttribute('src', src);
+			img_node.setAttribute('alt', alt || "");
+			img_node.setAttribute('title', img_node.getAttribute('alt'));
+
+			content.document.body.appendChild(img_node);
+
+			function ImgDrag(node) {
+				var IsMousedown,
+					LEFT,
+					TOP,
+					img_node = node;
+				img_node.onmousedown = function(e) {
+					IsMousedown = true;
+					e = e || event;
+					LEFT = e.clientX - img_node.offsetLeft;
+					TOP = e.clientY - img_node.offsetTop;
+					return false;
+				}
+
+				content.document.addEventListener("mousemove", function(e) {
+					e = e || event;
+					if (IsMousedown) {
+						img_node.style.left = e.clientX - LEFT + "px";
+						img_node.style.top = e.clientY - TOP + "px";
+					}
+				}, false);
+
+				content.document.addEventListener("mouseup", function() {
+					IsMousedown = false;
+				}, false);
+			}
+			ImgDrag(img_node);
+			content.document.addEventListener('click', function(e) {
+				if (img_node && e.button == 0 && e.target != img_node) {
+					img_node.parentNode.removeChild(img_node);
+					this.removeEventListener("click", arguments.callee, true);
+				}
+			}, true);
+		},
+
+		QRCommand: function(target_data, altText) {
+			if (!this.QRcheckLength(target_data)) return;
+			var src = this.QRcreateQrcode(target_data);
+			var alt = altText + ': ' + target_data;
+			if (window.content)
+				this.QRPopupImage(src, alt);
+			else {
+				var E10SFunc = this.QRPopupImage.toString().replace(/^function.*{|}$/g, "");
+				gBrowser.selectedBrowser.messageManager.loadFrameScript("data:application/x-javascript;charset=UTF-8,(function(src, alt){" + escape(E10SFunc) + "})('" + src + "','" + alt + "');", true);
+			}
+		},
+
+		QRoptionsChangeLabel: function() {
+			var url = window.content ? content.document.location : this.Content.document.location;
+			var labelText;
+			if (gContextMenu) {
+				if (gContextMenu.isTextSelected) {
+					labelText = "选区文本";
+				} else if (gContextMenu.onLink) {
+					labelText = "链接地址";
+				} else if (gContextMenu.onImage) {
+					labelText = "图象地址";
+				} else if (url == "about:blank" || url == "about:newtab") {
+					labelText = "手工输入";
+				} else {
+					labelText = "当前网址";
+				}
+				var currentEntry = $("FeiRuoMouse_QRCreator");
+				if (currentEntry) {
+					let LABELTEXT = "生成二维码 : " + labelText;
+					currentEntry.setAttribute("label", LABELTEXT);
+				}
+			}
 		},
 
 		/*****************************************************************************************/
@@ -818,6 +962,23 @@
 				case 2:
 					if (!this.Prefs.prefHasUserValue(name) || this.Prefs.getPrefType(name) != Ci.nsIPrefBranch.PREF_STRING)
 						this.Prefs.setCharPref(name, val ? val : "");
+					return this.Prefs.getCharPref(name);
+					break;
+			}
+		},
+
+		setPrefs: function(type, name, val) {
+			switch (type) {
+				case 0:
+					this.Prefs.setBoolPref(name, val ? val : false);
+					return this.Prefs.getBoolPref(name);
+					break;
+				case 1:
+					this.Prefs.setIntPref(name, val ? val : 0);
+					return this.Prefs.getIntPref(name);
+					break;
+				case 2:
+					this.Prefs.setCharPref(name, val ? val : "");
 					return this.Prefs.getCharPref(name);
 					break;
 			}
@@ -916,199 +1077,6 @@
 			else {
 				var OptionWin = this.OptionWin();
 				window.openDialog("data:application/vnd.mozilla.xul+xml;charset=UTF-8," + OptionWin, '', 'chrome,titlebar,toolbar,centerscreen,dialog=no');
-			}
-		},
-	};
-
-	FeiRuoMouse.QRCreator = {
-		init: function() {
-			this.Enable = true;
-			var ins = $("context-openlinkintab");
-			ins.parentNode.insertBefore($C("menuitem", {
-				id: "FeiRuoMouse_QRCreator",
-				label: "生成QR码",
-				tooltiptext: "左键：自动模式\n右键：自定文字",
-				onclick: "FeiRuoMouse.QRCreator.MenuClick(event);",
-				//command: "qrCreator.onMenuItemCommand()",
-				class: "menuitem-iconic",
-				image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAzUlEQVQ4jaWOQYqFMBBE+xgewBO4ceEiIAQaBBHxPjlrFkKWucGbxaf/T/zGYZiCoqraoozwTwhACIHjOCoCt94YQvgM7PterVou762OAGzbRkufvr0H1nWt1stsvtURgGVZvmh3Q6sjPEBVUdWnymvAe4/3ntKX+UkFYJ5nTJ98masXtOCcwzl3m00FYJqmLxrMt1QAxnGs/mz5N30PDMNAS0vedQSg7/vqBWW++mtXYoyoKl3XVQQqvd5UlRgjknMmpcR5nn9iSomcMz9lng2NV0gSXAAAAABJRU5ErkJggg==",
-			}), ins);
-			$("contentAreaContextMenu").addEventListener("popupshowing", this.optionsChangeLabel, false);
-		},
-
-		uninit: function() {
-			this.Enable = false;
-			if ($("FeiRuoMouse_QRCreator")) $("FeiRuoMouse_QRCreator").parentNode.removeChild($("FeiRuoMouse_QRCreator"));
-		},
-
-		MenuClick: function(event) {
-			if (!this.Enable) return;
-			var cont = window.content || FeiRuoMouse.Content;
-			if (cont.document.getElementById('qrCreatorimageboxid'))
-				return;
-			var target_data = '';
-			var altText = "QR码内容[网址]";
-
-			if (event.button == 0) {
-				if (gContextMenu) {
-					if (gContextMenu.isTextSelected) {
-						target_data = cont.getSelection().toString();
-						altText = "QR码内容[文本]";
-					} else if (gContextMenu.onLink) {
-						target_data = gContextMenu.linkURL;
-					} else if (gContextMenu.onImage) {
-						target_data = gContextMenu.target.src;
-					} else if ((cont.document.location == "about:blank" || cont.document.location == "about:newtab")) {
-						altText = "QR码内容[文本]";
-						target_data = prompt("请输入文本创建一个QR码（长度不超过250字节）：", "");
-					} else {
-						target_data = cont.document.location;
-					}
-				}
-			} else if (event.button == 2) {
-				altText = "QR码内容[文本]";
-				target_data = prompt("请输入文本创建一个QR码（长度不超过250字节）：", "");
-				event.stopPropagation();
-				event.preventDefault();
-			}
-			this.QRCommand(target_data, altText);
-		},
-
-		convertFromUnicode: function(charset, str) {
-			try {
-				var unicodeConverter = Components
-					.classes["@mozilla.org/intl/scriptableunicodeconverter"]
-					.createInstance(Components.interfaces.nsIScriptableUnicodeConverter);
-				unicodeConverter.charset = charset;
-				str = unicodeConverter.ConvertFromUnicode(str);
-				return str + unicodeConverter.Finish();
-			} catch (ex) {
-				return null;
-			}
-		},
-
-		createQrcode: function(text, typeNumber, errorCorrectLevel) {
-			for (var type = 4; type <= 40; type += 1) {
-				try {
-					var qr = FeiRuoMouse.QRCode(type, 'L');
-					qr.addData("" + this.convertFromUnicode("UTF-8", text));
-					qr.make();
-
-					return qr.createImgTag();
-				} catch (err) {}
-			}
-
-			return null;
-		},
-
-		checkLength: function(arg) {
-			if (arg) {
-				if (arg.length == 0) {
-					alert("没有要转化为二维码的内容！");
-					return false;
-				} else if (arg.length > 250) {
-					alert("要转化为二维码的数据超长了！(大于250字节)");
-					return false;
-				} else {
-					return true;
-				}
-			} else {
-				return false;
-			}
-		},
-
-		PopupImage: function(src, alt) {
-			var imgnode = content.document.getElementById('qrCreatorimageboxid');
-			if (imgnode) {
-				imgnode.parentNode.removeChild(imgnode);
-			}
-
-			var img_node = content.document.createElement("img");
-			img_node.setAttribute('style', '-moz-box-shadow: 0 0 4px #000000');
-			with(img_node.style) {
-				position = 'fixed';
-				left = '-moz-calc(50% - 183px)';
-				top = '-moz-calc(50% - 183px)';
-				zIndex = 99999;
-				width = "160px";
-				height = "160px";
-				border = '8px solid rgba(0,0,0,.5)';
-				borderRadius = '5px';
-				background = 'white';
-			}
-			img_node.setAttribute('id', 'qrCreatorimageboxid');
-			img_node.setAttribute('src', src);
-			img_node.setAttribute('alt', alt || "");
-			img_node.setAttribute('title', img_node.getAttribute('alt'));
-
-			content.document.body.appendChild(img_node);
-
-			function ImgDrag(node) {
-				var IsMousedown,
-					LEFT,
-					TOP,
-					img_node = node;
-				img_node.onmousedown = function(e) {
-					IsMousedown = true;
-					e = e || event;
-					LEFT = e.clientX - img_node.offsetLeft;
-					TOP = e.clientY - img_node.offsetTop;
-					return false;
-				}
-
-				content.document.addEventListener("mousemove", function(e) {
-					e = e || event;
-					if (IsMousedown) {
-						img_node.style.left = e.clientX - LEFT + "px";
-						img_node.style.top = e.clientY - TOP + "px";
-					}
-				}, false);
-
-				content.document.addEventListener("mouseup", function() {
-					IsMousedown = false;
-				}, false);
-			}
-			ImgDrag(img_node);
-			content.document.addEventListener('click', function(e) {
-				if (img_node && e.button == 0 && e.target != img_node) {
-					img_node.parentNode.removeChild(img_node);
-					this.removeEventListener("click", arguments.callee, true);
-				}
-			}, true);
-		},
-
-		QRCommand: function(target_data, altText) {
-			if (!this.checkLength(target_data)) return;
-			var src = this.createQrcode(target_data);
-			var alt = altText + ': ' + target_data;
-			if (window.content)
-				this.PopupImage(src, alt);
-			else {
-				var E10SFunc = this.PopupImage.toString().replace(/^function.*{|}$/g, "");
-				gBrowser.selectedBrowser.messageManager.loadFrameScript("data:application/x-javascript;charset=UTF-8,(function(src, alt){" + escape(E10SFunc) + "})('" + src + "','" + alt + "');", true);
-			}
-		},
-
-		optionsChangeLabel: function() {
-			var url = window.content ? content.document.location : FeiRuoMouse.Content.document.location;
-			var labelText;
-			if (gContextMenu) {
-				if (gContextMenu.isTextSelected) {
-					labelText = "选区文本";
-				} else if (gContextMenu.onLink) {
-					labelText = "链接地址";
-				} else if (gContextMenu.onImage) {
-					labelText = "图象地址";
-				} else if (url == "about:blank" || url == "about:newtab") {
-					labelText = "手工输入";
-				} else {
-					labelText = "当前网址";
-				}
-				var currentEntry = $("FeiRuoMouse_QRCreator");
-				if (currentEntry) {
-					let LABELTEXT = "生成二维码 : " + labelText;
-					currentEntry.setAttribute("label", LABELTEXT);
-				}
 			}
 		},
 	};
@@ -1814,17 +1782,23 @@
 			this.ChangeStatus();
 		},
 
-		ChangeStatus: function() {},
+		ChangeStatus: function() {
+			_$("trailColor").disabled = _$("trailSize").disabled = !(_$("GesTrailr").checked);
+		},
 
 		Resets: function() {
 			this.TreeResets("TreeList0");
 			this.TreeResets("TreeList1");
 			_$("TextLink").value = false;
 			_$("QRCreator").value = false;
+			_$("trailColor").value = "brown";
+			_$("trailSize").value = 2;
 			this.ChangeStatus();
 		},
 
 		Save: function() {
+			FeiRuoMouse.Prefs.setCharPref("trailColor", _$("trailColor").value);
+			FeiRuoMouse.Prefs.setIntPref("trailSize", _$("trailSize").value);
 			FeiRuoMouse.Prefs.setBoolPref("TextLink", _$("TextLink").value);
 			FeiRuoMouse.Prefs.setBoolPref("QRCreator", _$("QRCreator").value);
 			this.TreeSave("TreeList0", "DragCustom");
@@ -2259,12 +2233,16 @@
 					windowtype="FeiRuoMouse:Preferences">\
 					<prefpane id="main" flex="1">\
 						<preferences>\
+							<preference id="GesTrail" type="bool" name="userChromeJS.FeiRuoMouse.GesTrailEnabel"/>\
+							<preference id="trailZoom" type="int" name="userChromeJS.FeiRuoMouse.trailZoom"/>\
+							<preference id="trailSize" type="int" name="userChromeJS.FeiRuoMouse.trailSize"/>\
+							<preference id="trailColor" type="string" name="userChromeJS.FeiRuoMouse.trailColor"/>\
 							<preference id="TextLink" type="bool" name="userChromeJS.FeiRuoMouse.TextLink"/>\
 							<preference id="QRCreator" type="bool" name="userChromeJS.FeiRuoMouse.QRCreator"/>\
 						</preferences>\
 						<script>\
 							function Change() {\
-								opener.FeiRuoMouse.OptionScript.changeStatus();\
+								opener.FeiRuoMouse.OptionScript.ChangeStatus();\
 							}\
 						</script>\
 						<tabbox class="text">\
@@ -2275,6 +2253,25 @@
 							<tabpanels flex="1">\
 								<tabpanel orient="vertical" flex="1">\
 									<groupbox>\
+										<caption label="鼠标手势自定义"/>\
+											<grid>\
+												<rows>\
+													<row align="center">\
+														<checkbox id="GesTrailr" label="显示轨迹" preference="GesTrail" oncommand="Change();"/>\
+													</row>\
+													<row align="center">\
+														<label value="轨迹尺寸："/>\
+														<textbox id="trailSize" type="number" preference="trailSize" style="width:200px" tooltiptext="单位：像素(px)"/>\
+													</row>\
+													<row align="center">\
+														<label value="轨迹颜色："/>\
+														<textbox id="trailColor" preference="trailColor" style="width:200px" tooltiptext="如：brown、#999、#FFFFFF 、rgba(153, 153, 153, 0) 等"/>\
+													</row>\
+												</rows>\
+											</grid>\
+									</groupbox>\
+									<groupbox>\
+										<caption label="其他功能"/>\
 											<checkbox id="TextLink" label="双击打开文链接(TextLink)" preference="TextLink"/>\
 											<checkbox id="QRCreator" label="生成二维码(QRCreator)" preference="QRCreator"/>\
 									</groupbox>\

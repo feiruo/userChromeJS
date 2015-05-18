@@ -4,7 +4,14 @@
  url-1:FeiRuoMouse.DragScript.Url(event);
  url-2:FeiRuoMouse.DragScript.Url2(event);
  *******************************************************************************************/
-var CustomCommand = [ {
+var CustomCommand = [{
+	label: "新建标签", //命令的说明文字
+	ActionType: "Gestures", //鼠标手势命令
+	Type: "", //当ActionType有Drag(拖拽命令)时生效，拖拽的目标
+	command: function(event) { //自定义命令，event为回传事件
+		BrowserOpenTab();
+	}
+}, {
 	label: "转到页面顶部", //命令的说明文字
 	ActionType: "Gestures", //鼠标手势命令
 	Type: "", //当ActionType有Drag(拖拽命令)时生效，拖拽的目标
