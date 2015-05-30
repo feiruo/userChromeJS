@@ -17,6 +17,10 @@
 // @downloadURL		https://github.com/feiruo/userChromeJS/raw/master/FeiRuoMouse/FeiRuoMouse.uc.js
 // @note            Begin 2015.04.23
 // @note            手势与拖拽。
+// @version      	0.0.7 	2015.05.30	18:00 	Add mouse button&&staus time&&Fix R<L R>L etc。
+// @version      	0.0.6 	2015.05.29	10:00 	delete TextLink&&QRCreator。
+// @version      	0.0.5 	2015.05.20	23:00 	Fix Ges disable on some page ex http://news.qq.com/a/20150521/002254.htm。
+// @version      	0.0.4 	2015.05.20	23:00 	Fix dead object。
 // @version         0.0.3 	2015.05.18 15:00	修复拖拽，自定义手势轨迹。
 // @version         0.0.2 	2015.05.17 15:00	TextLink&QRCreator&E10s。
 // @version         0.0.1 	2015.04.28 10:00	Build。
@@ -39,15 +43,7 @@
 
 	var FeiRuoMouse = {
 		DragIng: {},
-		GesIng: {
-			_lastX: 0,
-			_lastY: 0,
-			_directionChain: '',
-			_isMouseDownL: false,
-			_isMouseDownR: false,
-			_hideFireContext: false,
-			_shouldFireContext: false,
-		},
+		GesIng: {},
 		get Prefs() {
 			delete this.Prefs;
 			return this.Prefs = Services.prefs.getBranch("userChromeJS.FeiRuoMouse.");
@@ -63,23 +59,6 @@
 			delete this.file;
 			return this.file = aFile;
 		},
-		get Content() {
-			var cont;
-			if (!window.content) {
-				function listener(message) {
-					cont = message.objects.cont
-				}
-				gBrowser.selectedBrowser.messageManager.loadFrameScript("data:application/x-javascript;charset=UTF-8," + escape('sendAsyncMessage("FeiRuoMouse:FeiRuoMouse-e10s-content-message", {}, {cont: content,})'), true);
-				gBrowser.selectedBrowser.messageManager.addMessageListener("FeiRuoMouse:FeiRuoMouse-e10s-content-message", listener);
-			}
-			try {
-				cont = cont;
-			} catch (e) {
-				cont = gBrowser.selectedBrowser.contentWindowAsCPOW;
-			}
-			delete this.Content;
-			return this.Content = window.content || cont || gBrowser.selectedBrowser._contentWindow;
-		},
 
 		init: function() {
 			var ins = $("menu_ToolsPopup").firstChild;
@@ -94,7 +73,6 @@
 
 			this.loadSetting();
 			this.loadCustomCommand();
-			this.AddListen_TextLink();
 
 			this.Prefs.addObserver('', this.Prefobs, false);
 			window.addEventListener("unload", function() {
@@ -106,7 +84,6 @@
 			this.Listen_Ges(false);
 			this.Listen_Drag(false);
 			this.TextToLink = false;
-			this.QRCreator(false);
 			if (this.getWindow(0)) this.getWindow(0).close();
 			if (this.getWindow(1)) this.getWindow(1).close();
 			this.Prefs.removeObserver('', this.Prefobs, false);
@@ -115,7 +92,7 @@
 		},
 
 		SetMenuItmClick: function(e) {
-			//if (e.target != e.currentTarget) return;
+			if (e.target != e.currentTarget) return;
 			if (e.button == 0)
 				this.OpenPref();
 			else if (e.button == 1)
@@ -131,12 +108,12 @@
 				switch (data) {
 					case 'DragCustom':
 					case 'GesCustom':
-					case 'TextLink':
-					case 'QRCreator':
 					case 'GesTrailEnabel':
-					case 'trailZoom':
 					case 'trailSize':
 					case 'trailColor':
+					case 'isStatus':
+					case 'StatusTime':
+					case 'GesIngBtn':
 						FeiRuoMouse.loadSetting(data);
 						break;
 				}
@@ -163,17 +140,17 @@
 				this.Listen_Ges(true);
 			}
 
-			if (!type || type === "QRCreator")
-				this.QRCreator(this.getPrefs(0, "QRCreator", true));
+			if (!type || type === "GesIngBtn")
+				this.GesIngBtn = this.getPrefs(1, "GesIngBtn", 2);
+
+			if (!type || type === "isStatus")
+				this.isStatus = this.getPrefs(0, "isStatus", true);
+
+			if (!type || type === "StatusTime")
+				this.StatusTime = this.getPrefs(1, "StatusTime", 3000);
 
 			if (!type || type === "GesTrailEnabel")
 				this.GesTrailEnabel = this.getPrefs(0, "GesTrailEnabel", true);
-
-			if (!type || type === "TextLink")
-				this.TextToLink = this.getPrefs(0, "TextLink", true);
-
-			if (!type || type === "trailZoom")
-				this.trailZoom = this.getPrefs(1, "trailZoom", 1);
 
 			if (!type || type === "trailSize")
 				this.trailSize = this.getPrefs(1, "trailSize", 2);
@@ -198,6 +175,12 @@
 
 				obj.Enable = Enable;
 				obj.Command = Command;
+
+				if (Action.indexOf("R") == 0 && Action.match(">"))
+					Action = "L<R";
+				else if (Action.indexOf("R") == 0 && Action.match("<"))
+					Action = "L>R";
+
 				obj.Action = Action;
 				obj.Type = Type;
 				obj.TKey = TKey;
@@ -256,8 +239,6 @@
 				return alert("无自定义命令！");
 
 			delete this.CustomCommand;
-			delete this.QRCode;
-			this.QRCode = sandbox.QRCode;
 			var CustomCommand = sandbox.CustomCommand || {};
 			this.CustomCommand = {};
 			for (var i in CustomCommand) {
@@ -269,57 +250,22 @@
 		},
 
 		/*****************************************************************************************/
-		AddListen_TextLink: function() {
-			if (window.content) {
-				if (/^chrome:\/\/messenger\/content\//.test(window.location.href)) {
-					var target = document.getElementById("messagepane");
-				} else {
-					var target = document.getElementById("appcontent");
-				}
-				target.removeEventListener('dblclick', FeiRuoMouse.Listener_TextLink, false);
-				target.removeEventListener('keypress', FeiRuoMouse.Listener_TextLink, false);
-				target.addEventListener('dblclick', FeiRuoMouse.Listener_TextLink, false);
-				target.addEventListener('keypress', FeiRuoMouse.Listener_TextLink, false);
-				if (!/^chrome:\/\/messenger\/content\//.test(window.location.href)) {
-					setTimeout(function() {
-						try {
-							var doc = document.getElementById('sidebar').contentDocument;
-							if (doc && doc.location && doc.location.href == "chrome://browser/content/web-panels.xul")
-								doc.addEventListener('dblclick', FeiRuoMouse.Listener_TextLink, false);
-							doc.addEventListener('keypress', FeiRuoMouse.Listener_TextLink, false);
-						} catch (e) {}
-					}, 1000);
-				}
-			} else {
-				function listener(message) {
-					FeiRuoMouse.Listener_TextLink(message.objects.event)
-				}
-				var TextLinkFunc = function() {
-					addEventListener("dblclick", function(event) {
-						sendAsyncMessage("FeiRuoMouse:FeiRuoMouse-e10s-TextLink-message", {}, {
-							event: event,
-						});
-					}, false);
-				}.toString().replace(/^function.*{|}$/g, "");
-				let globalMM = Cc["@mozilla.org/globalmessagemanager;1"].getService(Ci.nsIMessageListenerManager);
-				globalMM.loadFrameScript("data:application/x-javascript;charset=UTF-8," + escape(TextLinkFunc), true);
-				Cc["@mozilla.org/globalmessagemanager;1"].getService(Ci.nsIMessageListenerManager).addMessageListener("FeiRuoMouse:FeiRuoMouse-e10s-TextLink-message", listener);
-			}
-		},
-
-		/*****************************************************************************************/
 		Listen_Ges: function(isAlert) {
-			var Events = ["mousedown", "mousemove", "mouseup", "contextmenu", "draggesture", "DOMMouseScroll"];
-
-			Events.forEach(function(type) {
-				gBrowser.mPanelContainer.removeEventListener(type, FeiRuoMouse.Listener_Ges, type == "contextmenu");
-			});
+			gBrowser.mPanelContainer.removeEventListener("mousedown", FeiRuoMouse.Listener_Ges, true);
+			gBrowser.mPanelContainer.ownerDocument.defaultView.document.documentElement.removeEventListener("mousemove", FeiRuoMouse.Listener_Ges, true);
+			gBrowser.mPanelContainer.ownerDocument.defaultView.document.documentElement.removeEventListener("mouseup", FeiRuoMouse.Listener_Ges, true);
+			gBrowser.mPanelContainer.removeEventListener("contextmenu", FeiRuoMouse.Listener_Ges, true);
+			gBrowser.mPanelContainer.removeEventListener("draggesture", FeiRuoMouse.Listener_Ges, true);
+			gBrowser.mPanelContainer.removeEventListener("DOMMouseScroll", FeiRuoMouse.Listener_Ges, true);
 
 			if (!isAlert) return;
 
-			Events.forEach(function(type) {
-				gBrowser.mPanelContainer.addEventListener(type, FeiRuoMouse.Listener_Ges, type == "contextmenu");
-			});
+			gBrowser.mPanelContainer.addEventListener("mousedown", FeiRuoMouse.Listener_Ges, true);
+			gBrowser.mPanelContainer.ownerDocument.defaultView.document.documentElement.addEventListener("mousemove", FeiRuoMouse.Listener_Ges, true);
+			gBrowser.mPanelContainer.ownerDocument.defaultView.document.documentElement.addEventListener("mouseup", FeiRuoMouse.Listener_Ges, true);
+			gBrowser.mPanelContainer.addEventListener("contextmenu", FeiRuoMouse.Listener_Ges, true);
+			gBrowser.mPanelContainer.addEventListener("draggesture", FeiRuoMouse.Listener_Ges, true);
+			gBrowser.mPanelContainer.addEventListener("DOMMouseScroll", FeiRuoMouse.Listener_Ges, true);
 		},
 
 		Listen_Drag: function(isAlert) {
@@ -336,13 +282,6 @@
 		},
 
 		/*****************************************************************************************/
-		Listener_TextLink: function(event) {
-			if (!FeiRuoMouse.TextToLink) return;
-			setTimeout(function() {
-				FeiRuoMouse.TextLink.init(event);
-			}, 100);
-		},
-
 		Listener_Drag: function(event) {
 			var that = FeiRuoMouse.DragIng;
 			switch (event.type) {
@@ -393,17 +332,23 @@
 			var that = FeiRuoMouse.GesIng;
 			switch (event.type) {
 				case "mousedown":
-					if (/object|embed/i.test(event.target.localName)) return;
-					if (event.button == 2) {
-						that._isMouseDownR = true;
+					if (gInPrintPreviewMode) return;
+					if (event.target instanceof HTMLCanvasElement && event.target.parentNode instanceof Ci.nsIDOMXULElement) return;
+					if (event.button == FeiRuoMouse.GesIngBtn) {
+						event.preventDefault();
+						event.stopPropagation();
+						that.isGesIngBtn = true;
 						that._hideFireContext = false;
 						FeiRuoMouse.StartGesture(event);
 					}
+					if (event.button == 2)
+						that._isMouseDownR = true;
 					if (event.button == 2 && that._isMouseDownL) {
 						that._isMouseDownR = false;
 						that._shouldFireContext = false;
 						that._hideFireContext = true;
 						that._directionChain = "L>R";
+						FeiRuoMouse.ActionStaus(event, that._directionChain);
 						FeiRuoMouse.StopGesture(event);
 					} else if (event.button == 0) {
 						that._isMouseDownL = true;
@@ -412,42 +357,36 @@
 							that._shouldFireContext = false;
 							that._hideFireContext = true;
 							that._directionChain = "L<R";
+							FeiRuoMouse.ActionStaus(event, that._directionChain);
 							FeiRuoMouse.StopGesture(event);
 						}
 					}
 					break;
 				case "mousemove":
-					if (that._isMouseDownR) {
+					if (that.isGesIngBtn) {
 						that._hideFireContext = true;
 						FeiRuoMouse.ProgressGesture(event);
 					}
 					break;
 				case "mouseup":
-					/*if (event.ctrlKey && event.button == 2) {
-						that._isMouseDownL = false;
-						that._isMouseDownR = false;
-						that._shouldFireContext = false;
-						that._hideFireContext = false;
-						that._directionChain = '';
-						event.preventDefault();
-						FeiRuoMouse.ActionStaus(event, "", "取消手势");
-						break;
-					}*/
-					if (that._isMouseDownR && event.button == 2) {
-						if (that._directionChain) that._shouldFireContext = false;
-						that._isMouseDownR = false;
+					if (that.isGesIngBtn && event.button == FeiRuoMouse.GesIngBtn) {
+						if (that._directionChain)
+							that._shouldFireContext = false;
+						that.isGesIngBtn = false;
 						that._directionChain && FeiRuoMouse.StopGesture(event);
 						if (that._shouldFireContext && !that._hideFireContext) {
 							that._shouldFireContext = false;
 							FeiRuoMouse._displayContextMenu(event);
 						}
-					} else if (event.button == 0 && that._isMouseDownL) {
-						that._isMouseDownL = false;
-						that._shouldFireContext = false;
 					}
+					if (that._isMouseDownR && event.button == 2)
+						that._isMouseDownR = false;
+					else if (event.button == 0 && that._isMouseDownL)
+						that._isMouseDownL = false;
+					that._shouldFireContext = false;
 					break;
 				case "contextmenu":
-					if (that._isMouseDownL || that._isMouseDownR || that._hideFireContext) {
+					if (that._isMouseDownL || that.isGesIngBtn || that._hideFireContext) {
 						var pref = Cc["@mozilla.org/preferences-service;1"].getService(Ci.nsIPrefService);
 						var contextmenu = pref.getBoolPref("dom.event.contextmenu.enabled");
 						pref.setBoolPref("dom.event.contextmenu.enabled", true);
@@ -461,7 +400,7 @@
 					}
 					break;
 				case "DOMMouseScroll":
-					if (that._isMouseDownR) {
+					if (that.isGesIngBtn) {
 						event.preventDefault();
 						event.stopPropagation();
 						that._shouldFireContext = false;
@@ -474,6 +413,100 @@
 					that._isMouseDownL = false;
 					break;
 			}
+		},
+
+		/*****************************************************************************************/
+		Listen_AidtKey: function(event, dChain, type) {
+			var EventKey = this.ActionEventKey(event);
+			var obj;
+			if (!type)
+				obj = this.GesturesRules[dChain];
+			else
+				obj = this["DragRules_" + type][dChain] || this["DragRules_Any" + type][EventKey];
+
+			if (!obj)
+				return this.ActionStaus(event, dChain);
+
+			if (obj.Enable != "1")
+				return this.ActionStaus(event, dChain, obj.label + "(未启用)");
+
+			if (!obj.Key || (obj.TKey != "1" && EventKey == obj.Key) || (obj.TKey == "1" && EventKey != obj.Key))
+				FeiRuoMouse.Listen_Command(event, obj, dChain);
+			else
+				this.ActionStaus(event, dChain);
+		},
+
+		Listen_Command: function(event, obj, dChain) {
+			event.stopPropagation();
+			event.preventDefault();
+			var command = obj.Command;
+			var cmd = this.CustomCommand[command];
+			if (cmd) {
+				try {
+					var funstr = cmd.command.toString().replace(/^function.*{|}$/g, "");
+					(new Function("event", funstr))(event);
+				} catch (ex) {
+					log(command + "(执行错误：" + ex + ")")
+					status(command + "(执行错误：" + ex + ")");
+				}
+			} else
+				this.ActionStaus(event, dChain, command);
+		},
+
+		ActionStaus: function(event, dChain, str) {
+			if (!this.isStatus) return;
+			var type = this.ActionEventType(event);
+			var key = this.ActionEventKey(event);
+			if (!str) {
+				var obj;
+				if (type)
+					obj = FeiRuoMouse["DragRules_" + type.en][dChain] || FeiRuoMouse["DragRules_Any" + type.en][key];
+				else
+					obj = FeiRuoMouse.GesturesRules[dChain];
+			}
+
+			if (obj) {
+				str = obj.Command ? ("(" + obj.Command + ")") : "";
+
+				if (!obj.TKey && key != obj.Key)
+					str = "";
+
+				if (obj.TKey && key == obj.Key)
+					str = str + "(已排除)";
+			}
+
+			type = type ? (type.cn + "拖拽：") : "手势：";
+			key = key ? (key + "+") : "";
+			status(type + key + dChain + (str ? str : "(未定义)"));
+		},
+
+		ActionEventKey: function(event) {
+			var EventKey = [];
+			if (event.altKey)
+				EventKey.push("Alt")
+			if (event.ctrlKey)
+				EventKey.push("Ctrl")
+			if (event.shiftKey)
+				EventKey.push("Shift")
+			EventKey = EventKey.join("+");
+			return EventKey;
+		},
+
+		ActionEventType: function(event) {
+			var drag = event.dataTransfer;
+			if (!drag) return "";
+			var type = {};
+			if (drag.types.contains("application/x-moz-file-promise-url")) {
+				type.en = "Image";
+				type.cn = "图片";
+			} else if (drag.types.contains("text/x-moz-url")) {
+				type.en = "Url";
+				type.cn = "链接";
+			} else {
+				type.en = "Text";
+				type.cn = "文字";
+			}
+			return type;
 		},
 
 		/*****************************************************************************************/
@@ -490,15 +523,16 @@
 			that._directionChain = "";
 			if (!this.GesTrailEnabel) return;
 			var obj = {
-				trailZoom: this.trailZoom || 1,
 				trailSize: this.trailSize || 2,
 				trailColor: this.trailColor || "brown",
 			};
+			var str = JSON.stringify(obj);
 			if (window.content)
-				this.CreateTrail(event.view, obj);
-			else
-				gBrowser.selectedBrowser.messageManager.loadFrameScript("data:application/x-javascript;charset=UTF-8,(" + escape(this.CreateTrail.toString()) + ")('" + escape(JSON.stringify(obj)) + "');", true);
-
+				this.CreateTrail(str, event.view);
+			else {
+				window.messageManager.loadFrameScript("data:application/x-javascript;charset=UTF-8,(" + escape(this.EraseTrail.toString()) + ")();", true);
+				gBrowser.selectedBrowser.messageManager.loadFrameScript("data:application/x-javascript;charset=UTF-8,(" + escape(this.CreateTrail.toString()) + ")('" + escape(str) + "');", true);
+			}
 		},
 
 		ProgressGesture: function(event) {
@@ -548,17 +582,14 @@
 			if (window.content)
 				this.EraseTrail();
 			else
-				gBrowser.selectedBrowser.messageManager.loadFrameScript("data:application/x-javascript;charset=UTF-8,(" + escape(this.EraseTrail.toString()) + ")();", true);
+				window.messageManager.loadFrameScript("data:application/x-javascript;charset=UTF-8,(" + escape(this.EraseTrail.toString()) + ")();", true);
 		},
 
-		CreateTrail: function(win, obj) {
-			if (!obj) {
-				obj = JSON.parse(win);
-				win = content;
-			}
+		CreateTrail: function(str, win) {
+			var obj = JSON.parse(str);
+			win = win || content;
 			if (!win) return;
-			var trailZoom = obj.trailZoom,
-				trailSize = obj.trailSize,
+			var trailSize = obj.trailSize,
 				trailColor = obj.trailColor;
 			if (win.top.document instanceof Components.interfaces.nsIDOMHTMLDocument) win = win.top;
 			else if (win.document instanceof Components.interfaces.nsIDOMHTMLDocument === false) return;
@@ -570,7 +601,7 @@
 			content.FeiRuoMouse_GesTrail_trailLastDot = null;
 			content.FeiRuoMouse_GesTrail_trailOffsetX = 0;
 			content.FeiRuoMouse_GesTrail_trailOffsetY = 0;
-			content.FeiRuoMouse_GesTrail_trailZoom = trailZoom;
+			content.FeiRuoMouse_GesTrail_trailZoom = 1;
 			content.FeiRuoMouse_GesTrail_trailSize = trailSize;
 			content.FeiRuoMouse_GesTrail_trailColor = trailColor;
 			let xdTrailArea = content.document.querySelectorAll("[id^='FeiRuoMouse_Ges_']");
@@ -662,288 +693,6 @@
 			content.FeiRuoMouse_GesTrail_trailDot = null;
 			content.FeiRuoMouse_GesTrail_trailArea = null;
 			content.FeiRuoMouse_GesTrail_trailLastDot = null;
-		},
-
-		/*****************************************************************************************/
-		Listen_AidtKey: function(e, dChain, type) {
-			var EventKey = this.ActionEventKey(e);
-			var obj;
-			if (!type)
-				obj = this.GesturesRules[dChain];
-			else
-				obj = this["DragRules_" + type][dChain] || this["DragRules_Any" + type][EventKey];
-
-			if (!obj)
-				return this.ActionStaus(e, dChain);
-
-			if (obj.Enable != "1")
-				return this.ActionStaus(e, dChain, obj.label + "(未启用)");
-
-			if (!obj.Key || (obj.TKey != "1" && EventKey == obj.Key) || (obj.TKey == "1" && EventKey != obj.Key))
-				FeiRuoMouse.Listen_Command(e, obj, dChain);
-			else
-				this.ActionStaus(e, dChain);
-		},
-
-		Listen_Command: function(e, obj, dChain) {
-			e.stopPropagation();
-			e.preventDefault();
-			var command = obj.Command;
-			var cmd = this.CustomCommand[command];
-			if (cmd) {
-				try {
-					var funstr = cmd.command.toString();
-					var func = new Function('', 'return ' + funstr)();
-					func(e);
-				} catch (e) {
-					log(command + "(执行错误：" + e + ")")
-					status(command + "(执行错误：" + e + ")");
-				}
-			} else
-				this.ActionStaus(e, dChain, command);
-		},
-
-		ActionStaus: function(event, Action, str) {
-			var type = this.ActionEventType(event);
-			var key = this.ActionEventKey(event);
-			if (!str) {
-				var obj;
-				if (type)
-					obj = FeiRuoMouse["DragRules_" + type.en][Action] || FeiRuoMouse["DragRules_Any" + type.en][key];
-				else
-					obj = FeiRuoMouse.GesturesRules[Action];
-			}
-
-			if (obj) {
-				str = obj.Command ? ("(" + obj.Command + ")") : "";
-
-				if (!obj.TKey && key != obj.Key)
-					str = "";
-
-				if (obj.TKey && key == obj.Key)
-					str = str + "(已排除)";
-			}
-
-			type = type ? (type.cn + "拖拽：") : "手势：";
-			key = key ? (key + "+") : "";
-			status(type + key + Action + (str ? str : "(未定义)"));
-		},
-
-		ActionEventKey: function(event) {
-			var EventKey = [];
-			if (event.altKey)
-				EventKey.push("Alt")
-			if (event.ctrlKey)
-				EventKey.push("Ctrl")
-			if (event.shiftKey)
-				EventKey.push("Shift")
-			EventKey = EventKey.join("+");
-			return EventKey;
-		},
-
-		ActionEventType: function(event) {
-			var drag = event.dataTransfer;
-			if (!drag) return "";
-			var type = {};
-			if (drag.types.contains("application/x-moz-file-promise-url")) {
-				type.en = "Image";
-				type.cn = "图片";
-			} else if (drag.types.contains("text/x-moz-url")) {
-				type.en = "Url";
-				type.cn = "链接";
-			} else {
-				type.en = "Text";
-				type.cn = "文字";
-			}
-			return type;
-		},
-
-		/*****************************************************************************************/
-		QRCreator: function(isAlert) {
-			if ($("FeiRuoMouse_QRCreator"))
-				$("FeiRuoMouse_QRCreator").parentNode.removeChild($("FeiRuoMouse_QRCreator"));
-			if (!isAlert) return;
-			var ins = $("context-openlinkintab");
-			ins.parentNode.insertBefore($C("menuitem", {
-				id: "FeiRuoMouse_QRCreator",
-				label: "生成QR码",
-				tooltiptext: "左键：自动模式\n右键：自定文字",
-				onclick: "FeiRuoMouse.QRMenuClick(event);",
-				//command: "qrCreator.onMenuItemCommand()",
-				class: "menuitem-iconic",
-				image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAzUlEQVQ4jaWOQYqFMBBE+xgewBO4ceEiIAQaBBHxPjlrFkKWucGbxaf/T/zGYZiCoqraoozwTwhACIHjOCoCt94YQvgM7PterVou762OAGzbRkufvr0H1nWt1stsvtURgGVZvmh3Q6sjPEBVUdWnymvAe4/3ntKX+UkFYJ5nTJ98masXtOCcwzl3m00FYJqmLxrMt1QAxnGs/mz5N30PDMNAS0vedQSg7/vqBWW++mtXYoyoKl3XVQQqvd5UlRgjknMmpcR5nn9iSomcMz9lng2NV0gSXAAAAABJRU5ErkJggg==",
-			}), ins);
-			$("contentAreaContextMenu").addEventListener("popupshowing", this.QRoptionsChangeLabel, false);
-		},
-
-		QRMenuClick: function(event) {
-			var cont = window.content || this.Content;
-			if (cont.document.getElementById('qrCreatorimageboxid'))
-				return;
-			var target_data = '';
-			var altText = "QR码内容[网址]";
-
-			if (event.button == 0) {
-				if (gContextMenu) {
-					if (gContextMenu.isTextSelected) {
-						target_data = cont.getSelection().toString();
-						altText = "QR码内容[文本]";
-					} else if (gContextMenu.onLink) {
-						target_data = gContextMenu.linkURL;
-					} else if (gContextMenu.onImage) {
-						target_data = gContextMenu.target.src;
-					} else if ((cont.document.location == "about:blank" || cont.document.location == "about:newtab")) {
-						altText = "QR码内容[文本]";
-						target_data = prompt("请输入文本创建一个QR码（长度不超过250字节）：", "");
-					} else {
-						target_data = cont.document.location;
-					}
-				}
-			} else if (event.button == 2) {
-				altText = "QR码内容[文本]";
-				target_data = prompt("请输入文本创建一个QR码（长度不超过250字节）：", "");
-				event.stopPropagation();
-				event.preventDefault();
-			}
-			this.QRCommand(target_data, altText);
-		},
-
-		QRconvertFromUnicode: function(charset, str) {
-			try {
-				var unicodeConverter = Components
-					.classes["@mozilla.org/intl/scriptableunicodeconverter"]
-					.createInstance(Components.interfaces.nsIScriptableUnicodeConverter);
-				unicodeConverter.charset = charset;
-				str = unicodeConverter.ConvertFromUnicode(str);
-				return str + unicodeConverter.Finish();
-			} catch (ex) {
-				return null;
-			}
-		},
-
-		QRcreateQrcode: function(text, typeNumber, errorCorrectLevel) {
-			for (var type = 4; type <= 40; type += 1) {
-				try {
-					var qr = this.QRCode(type, 'L');
-					qr.addData("" + this.QRconvertFromUnicode("UTF-8", text));
-					qr.make();
-
-					return qr.createImgTag();
-				} catch (err) {}
-			}
-
-			return null;
-		},
-
-		QRcheckLength: function(arg) {
-			if (arg) {
-				if (arg.length == 0) {
-					alert("没有要转化为二维码的内容！");
-					return false;
-				} else if (arg.length > 250) {
-					alert("要转化为二维码的数据超长了！(大于250字节)");
-					return false;
-				} else {
-					return true;
-				}
-			} else {
-				return false;
-			}
-		},
-
-		QRPopupImage: function(src, alt) {
-			var imgnode = content.document.getElementById('qrCreatorimageboxid');
-			if (imgnode) {
-				imgnode.parentNode.removeChild(imgnode);
-			}
-
-			var img_node = content.document.createElement("img");
-			img_node.setAttribute('style', '-moz-box-shadow: 0 0 4px #000000');
-			with(img_node.style) {
-				position = 'fixed';
-				left = '-moz-calc(50% - 183px)';
-				top = '-moz-calc(50% - 183px)';
-				zIndex = 99999;
-				width = "160px";
-				height = "160px";
-				border = '8px solid rgba(0,0,0,.5)';
-				borderRadius = '5px';
-				background = 'white';
-			}
-			img_node.setAttribute('id', 'qrCreatorimageboxid');
-			img_node.setAttribute('src', src);
-			img_node.setAttribute('alt', alt || "");
-			img_node.setAttribute('title', img_node.getAttribute('alt'));
-
-			content.document.body.appendChild(img_node);
-
-			function ImgDrag(node) {
-				var IsMousedown,
-					LEFT,
-					TOP,
-					img_node = node;
-				img_node.onmousedown = function(e) {
-					IsMousedown = true;
-					e = e || event;
-					LEFT = e.clientX - img_node.offsetLeft;
-					TOP = e.clientY - img_node.offsetTop;
-					return false;
-				}
-
-				content.document.addEventListener("mousemove", function(e) {
-					e = e || event;
-					if (IsMousedown) {
-						img_node.style.left = e.clientX - LEFT + "px";
-						img_node.style.top = e.clientY - TOP + "px";
-					}
-				}, false);
-
-				content.document.addEventListener("mouseup", function() {
-					IsMousedown = false;
-				}, false);
-			}
-			ImgDrag(img_node);
-			content.document.addEventListener('click', function(e) {
-				if (img_node && e.button == 0 && e.target != img_node) {
-					img_node.parentNode.removeChild(img_node);
-					this.removeEventListener("click", arguments.callee, true);
-				}
-			}, true);
-		},
-
-		QRCommand: function(target_data, altText) {
-			if (!this.QRcheckLength(target_data)) return;
-			var src = this.QRcreateQrcode(target_data);
-			var alt = altText + ': ' + target_data;
-			if (window.content)
-				this.QRPopupImage(src, alt);
-			else {
-				var E10SFunc = this.QRPopupImage.toString().replace(/^function.*{|}$/g, "");
-				gBrowser.selectedBrowser.messageManager.loadFrameScript("data:application/x-javascript;charset=UTF-8,(function(src, alt){" + escape(E10SFunc) + "})('" + src + "','" + alt + "');", true);
-			}
-		},
-
-		QRoptionsChangeLabel: function() {
-			var url = window.content ? content.document.location : this.Content.document.location;
-			var labelText;
-			if (gContextMenu) {
-				if (gContextMenu.isTextSelected) {
-					labelText = "选区文本";
-				} else if (gContextMenu.onLink) {
-					labelText = "链接地址";
-				} else if (gContextMenu.onImage) {
-					labelText = "图象地址";
-				} else if (url == "about:blank" || url == "about:newtab") {
-					labelText = "手工输入";
-				} else {
-					labelText = "当前网址";
-				}
-				var currentEntry = $("FeiRuoMouse_QRCreator");
-				if (currentEntry) {
-					let LABELTEXT = "生成二维码 : " + labelText;
-					currentEntry.setAttribute("label", LABELTEXT);
-				}
-			}
 		},
 
 		/*****************************************************************************************/
@@ -1081,636 +830,11 @@
 		},
 	};
 
-	FeiRuoMouse.TextLink = {
-		init: function(event) {
-			if (!event || event.button != 0) return;
-
-			var Start = new Date().getTime();
-
-			const RELATIVE = true; //相対urlを解決するかどうか
-			const SELECTUTL = false; //urlらしき文字列を選択するかどうか
-
-			const ioService = Components.classes['@mozilla.org/network/io-service;1'].getService(Components.interfaces.nsIIOService);
-			/*
-			/(([\w-]+:\/\/?|[\w\d]+[.])?[^\s()<>]+[.](?:\([\w\d]+\)|([^`!()\[\]{};:'\".,<>?«»“”‘’\s]|\/)+))/
-			*/
-			const urlRegex = /(((h?t)?tps?|h..ps?|ftp|((\uff48)?\uff54)?\uff54\uff50(\uff53)?|\uff48..\uff50(\uff53)?|\uff46\uff54\uff50)(:\/\/|\uff1a\/\/|:\uff0f\uff0f|\uff1a\uff0f\uff0f)[-_.~*'()|a-zA-Z0-9;:\/?,@&=+$%#\uff0d\uff3f\u301c\uffe3\uff0e\uff01\uff5e\uff0a\u2019\uff08\uff09\uff5c\uff41-\uff5a\uff21-\uff3a\uff10-\uff19\uff1b\uff1a\uff0f\uff1f\uff1a\uff20\uff06\uff1d\uff0b\uff04\uff0c\uff05\uff03\uff5c\uff3b\uff3d]*[-_,.~*)\[\]|a-zA-Z0-9;!:\/?@&=+$%#\uff0d\uff3f\u301c\uffe3\uff0e\uff01\uff5e\uff0a\u2019\uff5c\uff41-\uff5a\uff21-\uff3a\uff10-\uff19\uff1b\uff1a\uff0f\uff1f\uff20\uff06\uff1d\uff0b\uff04\uff0c\uff05\uff03\uff5c\uff3b\uff3d]+)/ig;
-			const urlRegex1 = /([-_.~*'()|a-zA-Z0-9;:\/?,@&=+$%#\uff0d\uff3f\u301c\uffe3\uff0e\uff01\uff5e\uff0a\u2019\uff08\uff09\uff5c\uff41-\uff5a\uff21-\uff3a\uff10-\uff19\uff1b\uff1a\uff0f\uff1f\uff20\uff06\uff1d\uff0b\uff04\uff0c\uff05\uff03\uff5c\uff3b\uff3d]*[.\uff0e]+[-_.~*'\[\]|a-zA-Z0-9;:\/?,@&=+$%#\uff0d\uff3f\u301c\uffe3\uff0e\uff01\uff5e\uff0a\u2019\uff08\uff09\uff5c\uff41-\uff5a\uff21-\uff3a\uff10-\uff19\uff1b\uff1a\uff0f\uff1f\uff1a\uff20\uff06\uff1d\uff0b\uff04\uff0c\uff05\uff03\uff5c]+[.\uff0e/\uff0f]*[-_,.~*\[\]|a-zA-Z0-9;!:\/?@&=+$%#\uff0d\uff3f\u301c\uffe3\uff0e\uff01\uff5e\uff0a\u2019\uff5c\uff41-\uff5a\uff21-\uff3a\uff10-\uff19\uff1b\uff1a\uff0f\uff1f\uff1a\uff20\uff06\uff1d\uff0b\uff04\uff0c\uff05\uff03\uff5c]+)/ig;
-			const urlRx = /^(ttp|tp|h..p|\uff54\uff54\uff50|\uff54\uff50|\uff48..\uff50)/i;
-			const urlRx1 = /(:\/\/|\uff1a\/\/|:\uff0f\uff0f|\uff1a\uff0f\uff0f)/i;
-			const mailRx = /(^(mailto:|\uff4d\uff41\uff49\uff4c\uff54\uff4f\uff1a)(?:(?:(?:(?:[a-zA-Z0-9_#\$\%&'*+/=?\^`{}~|\-]+)(?:\.(?:[a-zA-Z0-9_#\$\%&'*+/=?\^`{}~|\-]+))*)|(?:"(?:\\[^\r\n]|[^\\"])*")))\@(?:(?:(?:(?:[a-zA-Z0-9_#\$\%&'*+/=?\^`{}~|\-]+)(?:\.(?:[a-zA-Z0-9_#\$\%&'*+/=?\^`{}~|\-]+))*)|(?:\[(?:\\\S|[\x21-\x5a\x5e-\x7e])*\])))$)/;
-			const mailRx1 = /(^(?:(?:(?:(?:[a-zA-Z0-9_#\$\%&'*+/=?\^`{}~|\-]+)(?:\.(?:[a-zA-Z0-9_#\$\%&'*+/=?\^`{}~|\-]+))*)|(?:"(?:\\[^\r\n]|[^\\"])*")))\@(?:(?:(?:(?:[a-zA-Z0-9_#\$\%&'*+/=?\^`{}~|\-]+)(?:\.(?:[a-zA-Z0-9_#\$\%&'*+/=?\^`{}~|\-]+))*)|(?:\[(?:\\\S|[\x21-\x5a\x5e-\x7e])*\])))$)/;
-
-			//ドキュメントとコンテントタイプ
-			var doc = event.originalTarget.ownerDocument;
-			if (doc.contentType != 'text/plain' && doc.contentType != 'text/html' && doc.contentType != 'application/xml' && doc.contentType != 'application/xhtml+xml') return;
-
-			//designModeなら何もしない
-			if (doc.designMode == 'on') return;
-
-			var win = doc.defaultView;
-			if (!win) return;
-
-			var str1, text, str2;
-
-			//textarea かどうか
-			var node = isParentEditableNode(document.commandDispatcher.focusedElement);
-			if (!node) {
-				// このif ブロックは textarea等以外の処理
-				//ダブルクリックで選択された選択文字列のレンジを得る
-				var selection = win.getSelection();
-				var selRange;
-				try {
-					selRange = selection.getRangeAt(0);
-				} catch (e) {
-					selRange = selection;
-				}
-				if (!selRange) return;
-				//レンジのノードなど
-				text = selection.toString();
-				if (text == '') return;
-				//debug(text);
-				var sNode = selRange.startContainer; //debug(sNode.localName);
-				var soffset = selRange.startOffset;
-				var eNode = selRange.endContainer; //debug(eNode.localName);
-				var eoffset = selRange.endOffset;
-				if (sNode != eNode) {
-					eNode = sNode;
-					eoffset = soffset + text.length - 1;
-				}
-				var sOyaNode = oyaNode(sNode);
-				var eOyaNode = oyaNode(eNode);
-				var root;
-				if (sOyaNode == eOyaNode)
-					root = sOyaNode;
-				else
-					root = doc;
-				if (!root)
-					return;
-				//debug("sOyaNode " + sOyaNode.localName + " soffset " + soffset);
-				//debug("eOyaNode " + eOyaNode.localName + " eoffset " + eoffset);
-
-				//親ブロック要素の文字列をすべて得る
-				const allowedParents = [
-					"a", "abbr", "acronym", "address", "applet", "b", "bdo", "big", "blockquote", "body",
-					"caption", "center", "cite", "code", "dd", "del", "dir", "div", "dfn", "dl", "dt", "em",
-					"fieldset", "font", "form", "h1", "h2", "h3", "h4", "h5", "h6", "i", "iframe",
-					"ins", "kdb", "li", "menu", "noframes", "noscript", "object", "ol", "p", "pre", "q", "samp", "small", "span", "strike",
-					"s", "strong", "sub", "sup", "table", "td", "th", "thead", "tt", "u", "var"
-				];
-				var xpath = ".//text()[(parent::" + allowedParents.join(" or parent::") + ")]";
-
-				var candidates = doc.evaluate(xpath, root, null, XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE, null);
-				//debug("candidates.snapshotLength " + candidates.snapshotLength);
-				//レンジより前にある文字列
-				var i1 = -1;
-				for (var i = i1 + 1, len = candidates.snapshotLength; i < len; i++) {
-					if (candidates.snapshotItem(i) != sNode) continue;
-					i1 = i - 1;
-					break;
-				}
-				str1 = "";
-				if (i >= 0) {
-					for (var i = i1; i >= 0; i--) {
-						if (sOyaNode == oyaNode(candidates.snapshotItem(i))) {
-							if (candidates.snapshotItem(i).nextSibling &&
-								/^br$/i.test(candidates.snapshotItem(i).nextSibling.localName)) {
-								//debug(candidates.snapshotItem(i).nodeValue + "  " + candidates.snapshotItem(i).nextSibling.localName);
-								break;
-							}
-							//debug("candidates.snapshotItem(i).parentNode.localName "+candidates.snapshotItem(i).parentNode.localName);
-							if (/^a$/i.test(candidates.snapshotItem(i).parentNode.localName) &&
-								candidates.snapshotItem(i).parentNode.hasAttribute("href"))
-								break;
-							str1 = candidates.snapshotItem(i).nodeValue + str1;
-							//debug("str1 "+str1);
-							if (/[ 　]/.test(str1))
-								break;
-						} else {
-							break;
-						}
-					}
-				}
-				str2 = str1;
-				if (sNode.nodeValue && soffset > 0) str1 = str1 + sNode.nodeValue.substr(0, soffset);
-
-				//レンジより後ろにある文字列
-				for (var i = i1 + 1, len = candidates.snapshotLength; i < len; i++) {
-					if (sOyaNode == oyaNode(candidates.snapshotItem(i))) {
-						str2 = str2 + candidates.snapshotItem(i).nodeValue;
-						//debug(candidates.snapshotItem(i).nodeValue);
-						if (i > i1 + 1 && /[ 　]/.test(candidates.snapshotItem(i).nodeValue))
-							break;
-					} else {
-						break;
-					}
-
-					if (candidates.snapshotItem(i).nextSibling &&
-						/^br$/i.test(candidates.snapshotItem(i).nextSibling.localName)) {
-						break;
-					}
-					if (!candidates.snapshotItem(i).nextSibling &&
-						candidates.snapshotItem(i).parentNode &&
-						candidates.snapshotItem(i).parentNode.nextSibling &&
-						/^br$/i.test(candidates.snapshotItem(i).parentNode.nextSibling.localName)) {
-						break;
-					}
-				}
-
-				str2 = str2.substr(str1.length + text.length);
-			} else {
-				// この elseブロックは textarea等の処理
-				// readonlyでないなら何もしない
-				if (!node.hasAttribute("readonly"))
-					return;
-				if (node &&
-					(node.type == "text" || node.type == "textarea") &&
-					'selectionStart' in node &&
-					node.selectionStart != node.selectionEnd) {
-					var offsetStart = Math.min(node.selectionStart, node.selectionEnd);
-					var offsetEnd = Math.max(node.selectionStart, node.selectionEnd);
-					str1 = node.value.substr(0, offsetStart);
-					text = node.value.substr(offsetStart, offsetEnd - offsetStart);
-					str2 = node.value.substr(offsetEnd);
-				} else {
-					return;
-				}
-			}
-			//すべての文字列の中でのレンジの位置を得る
-			var allStr = str1 + text + str2;
-			var si = str1.length
-			var ei = si + text.length;
-			//全角括弧調整
-			while (text.match(/^[\u3001\u3002\uff08\uff5b\uff3b\u300c\u3014\u3008\u300a\u300e\u3010\u2018\u201c\u201d\u2019\u226a\uff1c\uff09\uff5d\uff3d\u300d\u3015\u3009\u300b\u300f\u3011\u2018\u201c\u201d\u2019\u226b\uff1e]/)) {
-				si = si + 1;
-				text = text.substr(1);
-			}
-			while (text.match(/[\s\u3001\u3002\uff08\uff5b\uff3b\u300c\u3014\u3008\u300a\u300e\u3010\u2018\u201c\u201d\u2019\u226a\uff1c\uff09\uff5d\uff3d\u300d\u3015\u3009\u300b\u300f\u3011\u2018\u201c\u201d\u2019\u226b\uff1e]$/)) {
-				ei = ei - 1;
-				text = text.substr(0, text.length - 1);
-			}
-			//文末の.は無いことに
-			allStr = allStr.replace(/\.$/, '');
-
-			//debug("2 " + str2);
-			//debug("Str " + text);
-			//debug("1 " + str1);
-			//debug("all " + allStr);
-
-			//すべての文字列の中でURLと思しき文字列を配列として得る
-			var i1, i2;
-			var arrUrl = allStr.match(urlRegex);
-			if (arrUrl) {
-				//見つかったURLと思しき文字列の中にレンジが含まれているかどうか
-				i2 = 0;
-				for (var i = 0, len = arrUrl.length; i < len; i++) {
-					//debug(i + "] " + arrUrl[i]);
-					i1 = allStr.indexOf(arrUrl[i], i2);
-					i2 = i1 + arrUrl[i].length;
-					//debug(i1 <= si && ei <= i2);
-					if (i1 <= si && ei <= i2) {
-						//debug(arrUrl[i]);
-						//このURLと思しき文字列の中にレンジが含まれていたので,これをURLとして新しいタブで開きましょう
-						var url = arrUrl[i];
-						url = additionalFixUpURL(url);
-						if (SELECTUTL)
-							var URLRange = getURLRange(selRange, url)
-
-						// ttp等を http等に および  :// を 半角に
-						url = /^(ftp|\uff46\uff54\uff50)/i.test(url) ? url.replace(urlRx1, '://') : url.replace(urlRx, 'http').replace(urlRx1, '://');
-						if (/,$|，$|，$|，$|．$|。$|。$/.test(url))
-							url = url.replace(/,$|，$|，$|，$|．$|。$|。$/, "");
-						var URIFixup = Components.classes['@mozilla.org/docshell/urifixup;1']
-							.getService(Components.interfaces.nsIURIFixup);
-						var uri = URIFixup.createFixupURI(
-							url,
-							URIFixup.FIXUP_FLAG_ALLOW_KEYWORD_LOOKUP);
-						if (!uri) return;
-						if (!isValidTld(uri))
-							return;
-						uri = ioService.newURI(uri.spec, null, null);
-						//debug('Parsing ucjs_textlink: '+((new Date()).getTime()-Start) +'msec\n');
-						if (SELECTUTL)
-							selectRange(URLRange);
-						textlink(event, doc, uri);
-						return;
-					}
-				}
-			}
-			if (!RELATIVE) return;
-			//すべての文字列の中で相対URLと思しき文字列を配列として得る
-			arrUrl = allStr.match(urlRegex1);
-			if (!arrUrl) return;
-			i2 = 0;
-			for (var i = 0, len = arrUrl.length; i < len; i++) {
-				//debug("Relative " + arrUrl[i]);
-				i1 = allStr.indexOf(arrUrl[i], i2);
-				i2 = i1 + arrUrl[i].length;
-
-				//debug(i1 +" "+ si +" "+ ei +" "+ i2);
-				if (i1 <= si && ei <= i2) {
-					// .hoge とか ..huga はスキップ
-					if (/^\./.test(arrUrl[i]) && !/^[\.]+[/]/.test(arrUrl[i]))
-						return;
-					//debug(arrUrl[i]);
-					//このURLと思しき文字列の中にレンジが含まれていたので,これをURLとして新しいタブで開きましょう
-					var url = arrUrl[i];
-					url = additionalFixUpURL(url);
-					if (SELECTUTL)
-						var URLRange = getURLRange(selRange, url)
-
-					// host名が ftp で始まるなら ftp://に
-					if (/^ftp/.test(url)) {
-						url = "ftp://" + url;
-					}
-					// host名が irc で始まるなら irc:に
-					if (/^irc/.test(url)) {
-						url = "irc://" + url;
-					}
-					//メール?
-					if (mailRx1.test(url)) {
-						url = "mailto:" + url;
-					}
-					//相対パスの処理
-					if (url.match(/^\.{1,}/)) {
-						var baseURI = ioService.newURI(win.document.documentURI, null, null);
-						url = ioService.newURI(url, null, baseURI).spec;
-					}
-					if (/,$|，$|，$|，$|．$|。$|。$/.test(url))
-						url = url.replace(/,$|，$|，$|，$|．$|。$|。$/, "");
-					//debug(url.indexOf(url.match(urlRegex)));
-					if (!mailRx.test(url) && url.indexOf(url.match(urlRegex)) > 1) return;
-					var URIFixup = Components.classes['@mozilla.org/docshell/urifixup;1']
-						.getService(Components.interfaces.nsIURIFixup);
-					try {
-						//debug(url);
-						var uri = URIFixup.createFixupURI(
-							url,
-							URIFixup.FIXUP_FLAG_NONE); //FIXUP_FLAG_ALLOW_KEYWORD_LOOKUP→FIXUP_FLAG_NONE
-					} catch (e) {
-						return;
-					}
-					if (!uri) return;
-
-					if (!isValidTld(uri)) {
-						return;
-					}
-					//debug('Parsing ucjs_textlink: ' + url);
-					if (SELECTUTL)
-						selectRange(URLRange);
-
-					uri = ioService.newURI(uri.spec, null, null);
-					//debug('Parsing ucjs_textlink: '+((new Date()).getTime()-Start) +'msec\n'+uri.spec);
-					textlink(event, doc, uri);
-					return;
-				}
-			}
-
-			function additionalFixUpURL(url) {
-				// ad hoc fix up
-				// ~等 を半角に
-				url = url.replace(/\u301c/g, '\uff5e');
-				url = url.replace(/\uffe3/g, '\uff5e');
-
-				// 末尾の )や] の調整
-				if (/^[:\uff1a;\uff1b,\uff0c]/.test(url)) {
-					url = url.replace(/^[:\uff1a;\uff1b,\uff0c]/, '');
-				}
-				if (/[:\uff1a]$/.test(url)) {
-					url = url.replace(/[:\uff1a]$/, '');
-				}
-				if (/[.,]$/.test(url)) {
-					url = url.replace(/[.,]$/, '');
-				}
-
-				if (/\)$/.test(url)) {
-					if (url.indexOf("(") == -1)
-						url = url.replace(/\)$/, '');
-				}
-				/*
-				if (/\]$/.test(url)) {
-				  if (url.indexOf("[") == -1)
-				    url = url.replace(/\]$/,'');
-				}
-				*/
-				return url;
-			}
-
-			function activeBrowser() {
-				return ('SplitBrowser' in window ? SplitBrowser.activeBrowser : null) || gBrowser;
-			}
-
-			function _getFocusedWindow() { //現在のウインドウを得る
-				var focusedWindow = document.commandDispatcher.focusedWindow;
-				if (!focusedWindow || focusedWindow == window)
-					return window._content;
-				else
-					return focusedWindow;
-			}
-
-			//レンジの要素が所属する親ブロック要素を得る
-			function oyaNode(aNode) {
-				var pNode = aNode.parentNode;
-				while (pNode && /^(a|abbr|acronym|b|bdo|big|body|code|dfn|em|font|i|kbd|label|pre|q|samp|small|span|strong|sub|sup|tt|var|wbr)$/i.test(pNode.localName)) {
-					pNode = pNode.parentNode;
-				}
-				return pNode;
-			}
-
-			function isParentEditableNode(node) {
-				//if (node.ownerDocument.designMode == 'on')
-				//  return node;
-				while (node && node.parentNode) {
-					try {
-						if (!(node instanceof Ci.nsIDOMNSEditableElement))
-							throw 0;
-						node.QueryInterface(Ci.nsIDOMNSEditableElement);
-						return node;
-					} catch (e) {}
-					if (/input|textarea/.test(node.localName))
-						return node;
-					if (node.isContentEditable || node.contentEditable == 'true')
-						return node;
-					node = node.parentNode;
-				}
-				return null;
-			}
-
-			function isValidTld(aURI) {
-				const regexpTLD = new RegExp("\\.(arpa|asia|int|nato|cat|com|net|org|info|biz|name|pro|mobi|museum|coop|aero|edu|gov|jobs|mil|tel|travel|xxx|ac|ad|ae|af|ag|ai|al|am|an|ao|aq|ar|as|at|au|aw|ax|az|ba|bb|bd|be|bf|bg|bh|bi|bj|bm|bn|bo|br|bs|bt|bu|bv|bw|by|bz|ca|canon|cc|cd|cf|cg|ch|ci|ck|cl|cm|cn|co|cp|cr|cs|sk|cu|cv|cx|cy|cz|dd|de|dg|dj|dk|dm|do|dz|ea|ec|ee|eg|eh|er|es|et|eu|fi|fj|fk|fm|fo|fr|fx|ga|gb|gd|ge|gf|gg|gh|gi|gl|gm|gn|gp|gq|gr|gs|gt|gu|gw|gy|hk|hm|hn|hr|ht|hu|ic|id|ie|il|im|in|io|iq|ir|is|it|je|jm|jo|jp|ke|kg|kh|ki|km|kn|kp|kr|kw|ky|kz|la|lb|lc|li|lk|lr|ls|lt|lu|lv|ly|ma|mc|me|md|mg|mh|mk|ml|mm|mn|mo|moe|mp|mq|mr|ms|mt|mu|mv|mw|mx|my|mz|na|nagoya|nc|ne|nf|ng|ni|nl|no|np|nr|nt|nu|nz|om|osaka|pa|pc|pe|pf|pg|ph|pk|pl|pm|pn|pr|ps|pt|pw|py|qa|re|ro|rs|ru|rw|sa|sb|sc|sd|se|sg|sh|si|sj|sk|sl|sm|sn|so|sr|ss|st|su|sv|sy|sz|ta|tc|td|tf|tg|th|tj|tk|tl|tm|tn|to|tokyo|toyota|tp|tr|tt|tv|tw|tz|ua|ug|uk|um|us|uy|uz|va|vc|ve|vg|vi|vn|vu|wf|wg|ws|yd|ye|yokohama|yt|yu|za|zm|zr|zw|localhost)\\.?$", "");
-				const regexpIP = new RegExp("^[1-2]?[0-9]?[0-9]\\.[1-2]?[0-9]?[0-9]\\.[1-2]?[0-9]?[0-9]\\.[1-2]?[0-9]?[0-9]$", "");
-				const idnService = Components.classes["@mozilla.org/network/idn-service;1"]
-					.getService(Components.interfaces.nsIIDNService);
-				var host, tlds;
-				try {
-					host = aURI.host.split('/')[0];
-					host = idnService.convertUTF8toACE(host);
-				} catch (e) {
-					if (aURI.spec.match(/^(.+?\/\/(?:[^\/]+@)?)([^\/]+)(:\d+)?(?:.*)$/)) {
-						host = RegExp.$2;
-					} else if (aURI.spec.match(/^(mailto:(?:[^\/]+@)?)([^\/]+)(:\d+)?(?:.*)$/)) {
-						host = RegExp.$2;
-					}
-				}
-				//debug("host  " + host);
-				if (!host)
-					return false;
-				if (getVer() < 3.0) {
-					if (regexpTLD.test(host))
-						return true;
-					else
-						return (regexpIP.test(host));
-				} else {
-					var eTLDService = Components.classes["@mozilla.org/network/effective-tld-service;1"]
-						.getService(Components.interfaces.nsIEffectiveTLDService);
-					try {
-						var tld = eTLDService.getPublicSuffixFromHost(host);
-						return regexpTLD.test('.' + tld);
-					} catch (e) {
-						return (regexpIP.test(host));
-					}
-				}
-			}
-
-			function textlink(event, doc, uri) {
-				if ("autoCopy" in window) {
-					autoCopy.forceDisable = true;
-					setTimeout(function() {
-						autoCopy.forceDisable = false;
-					}, 1500);
-				}
-				try {
-					if (event.shiftKey)
-						saveAsURL(uri, doc);
-					else
-						openNewTab(uri, doc);
-				} catch (e) {}
-				closeContextMenu();
-			}
-
-			function saveAsURL(uri, doc) {
-				var linkText = uri.spec;
-				var aReferrer = doc;
-				if (aReferrer instanceof HTMLDocument) {
-					aReferrer = aReferrer.documentURIObject;
-				}
-				//Thunderbird
-				if (/^chrome:\/\/messenger\/content\//.test(window.location.href)) {
-					// URL Loading Security Check
-					const nsIScriptSecurityManager = Components.interfaces.nsIScriptSecurityManager;
-					var secMan = Components.classes["@mozilla.org/scriptsecuritymanager;1"]
-						.getService(nsIScriptSecurityManager);
-					try {
-						if (uri instanceof Components.interfaces.nsIURI)
-							secMan.checkLoadURIWithPrincipal(doc.nodePrincipal, uri, nsIScriptSecurityManager.STANDARD);
-						else
-							secMan.checkLoadURIStrWithPrincipal(doc.nodePrincipal, uri, nsIScriptSecurityManager.STANDARD);
-					} catch (e) {
-						throw "Load denied.";
-					}
-					saveURL(uri.spec, linkText, null, true, false, aReferrer, doc);
-					return;
-				}
-
-				// urlSecurityCheck wanted a URL-as-string for Fx 2.0, but an nsIPrincipal on trunk
-				if (activeBrowser().contentPrincipal)
-					urlSecurityCheck(uri.spec, activeBrowser().contentPrincipal, Ci.nsIScriptSecurityManager.DISALLOW_INHERIT_PRINCIPAL);
-				else
-					urlSecurityCheck(uri.spec, activeBrowser().currentURI.spec, Ci.nsIScriptSecurityManager.DISALLOW_SCRIPT);
-
-				saveURL(uri.spec, linkText, null, true, false, aReferrer, doc);
-			}
-
-			function openNewTab(uri, doc) {
-				//Thunderbird
-				if (/^chrome:\/\/messenger\/content\//.test(window.location.href)) {
-					// Make sure we are allowed to open this URL
-					// URL Loading Security Check
-					const nsIScriptSecurityManager = Components.interfaces.nsIScriptSecurityManager;
-					var secMan = Components.classes["@mozilla.org/scriptsecuritymanager;1"]
-						.getService(nsIScriptSecurityManager);
-					try {
-						if (uri instanceof Components.interfaces.nsIURI)
-							secMan.checkLoadURIWithPrincipal(doc.nodePrincipal, uri, nsIScriptSecurityManager.STANDARD);
-						else
-							secMan.checkLoadURIStrWithPrincipal(doc.nodePrincipal, uri, nsIScriptSecurityManager.STANDARD);
-					} catch (e) {
-						throw "Load denied.";
-					}
-					var protocolSvc = Components.classes["@mozilla.org/uriloader/external-protocol-service;1"]
-						.getService(Components.interfaces.nsIExternalProtocolService);
-					protocolSvc.loadUrl(uri);
-					return;
-				}
-
-				// urlSecurityCheck wanted a URL-as-string for Fx 2.0, but an nsIPrincipal on trunk
-				if (activeBrowser().contentPrincipal)
-					urlSecurityCheck(uri.spec, activeBrowser().contentPrincipal, Ci.nsIScriptSecurityManager.DISALLOW_INHERIT_PRINCIPAL);
-				else
-					urlSecurityCheck(uri.spec, activeBrowser().currentURI.spec, Ci.nsIScriptSecurityManager.DISALLOW_SCRIPT);
-				if ((event.ctrlKey)) {
-					openLinkIn(uri.spec, "current", {});
-				} else {
-					if ('TreeStyleTabService' in window)
-						TreeStyleTabService.readyToOpenChildTab(activeBrowser().selectedTab);
-					openLinkIn(uri.spec, "tab", {
-						relatedToCurrent: true
-					});
-					//openNewTabWith(uri.spec, null,  null, null, false)
-				}
-			}
-
-			function closeContextMenu() {
-				var popup = document.getElementById("contentAreaContextMenu");
-				if (popup)
-					popup.hidePopup();
-			}
-
-			function getURLRange(selRange, url) {
-				//レンジのノードなど
-				var doc = selRange.startContainer.ownerDocument
-				var bodyNode = getDocumentBody(doc);
-				if (!bodyNode) return;
-
-				//nsIFindげと
-				var mFind = Components.classes["@mozilla.org/embedcomp/rangefind;1"]
-					.createInstance(Components.interfaces.nsIFind);
-
-				//Rangeげと
-				var theRange = doc.createRange();
-				var start = doc.createRange();
-				var end = doc.createRange();
-
-				try {
-					var count = bodyNode.childNodes.length;
-				} catch (e) {
-					var count = 0;
-				}
-				theRange.setStart(bodyNode, 0);
-				theRange.setEnd(bodyNode, count);
-
-				start.setStart(bodyNode, 0);
-				start.setEnd(bodyNode, 0);
-				end.setStart(bodyNode, count);
-				end.setEnd(bodyNode, count);
-
-				var selRangeBox = selRange.getBoundingClientRect();
-				mFind.caseSensitive = false;
-				while ((foundRange = mFind.Find(url, theRange, start, end))) {
-					//検索range更新
-					start = doc.createRange();
-					start.setStart(foundRange.endContainer, foundRange.endOffset);
-					start.collapse(true);
-
-					//debug("loop 1");
-					// selRange 始点が foundRange の始点よりも前
-					if (selRange.compareBoundaryPoints(Range.START_TO_START, foundRange) == -1)
-						continue;
-					// selRangeの終点がfoundRangeの終点より後ろにある場合
-					//if (foundRange.compareBoundaryPoints(Range.END_TO_END, selRange) == -1)
-					// xxx selRangeの次がbrの時endContainerが先祖の要素になるので...
-					var foundRangeBox = foundRange.getBoundingClientRect();
-					if (selRangeBox.right > foundRangeBox.right ||
-						selRangeBox.top < foundRangeBox.top ||
-						selRangeBox.bottom > foundRangeBox.bottom)
-						continue;
-					return foundRange;
-				}
-				return null;
-			}
-
-			function getDocumentBody(aDocument) {
-				if (aDocument instanceof Components.interfaces.nsIDOMHTMLDocument)
-					return aDocument.body;
-
-				try {
-					var xpathResult = aDocument.evaluate(
-						'descendant::*[contains(" BODY body ", concat(" ", local-name(), " "))]',
-						aDocument,
-						null,
-						Components.interfaces.nsIDOMXPathResult.FIRST_ORDERED_NODE_TYPE,
-						null
-					);
-					return xpathResult.singleNodeValue;
-				} catch (e) {}
-				return null;
-			}
-
-			function selectRange(aRange) {
-				if (!aRange)
-					return;
-
-				var doc = aRange.startContainer.ownerDocument;
-				var elm = findParentEditable(aRange);
-
-				var selCon = getSelectionController(elm);
-				if (!selCon) selCon = getSelconForDoc(doc);
-				var selection = selCon.getSelection(selCon.SELECTION_NORMAL);
-				selection.removeAllRanges(); //既存の選択領域を取得し、全て破棄
-				selection.addRange(aRange);
-			}
-
-			//レンジは編集可能ノードにある?
-			function findParentEditable(aRange) {
-				var node = aRange.commonAncestorContainer.parentNode;
-				while (node && node.parentNode) {
-					try {
-						if (!(node instanceof Components.interfaces.nsIDOMNSEditableElement))
-							throw 0;
-						node.QueryInterface(Components.interfaces.nsIDOMNSEditableElement);
-						return node;
-					} catch (e) {}
-					node = node.parentNode;
-				}
-				return null;
-			}
-
-			function getSelectionController(aTarget) {
-				if (!aTarget) return null;
-
-				const nsIDOMNSEditableElement = Components.interfaces.nsIDOMNSEditableElement;
-				const nsIDOMWindow = Components.interfaces.nsIDOMWindow;
-				try {
-					return (aTarget instanceof nsIDOMNSEditableElement) ?
-						aTarget.QueryInterface(nsIDOMNSEditableElement).editor.selectionController :
-						(aTarget instanceof nsIDOMWindow) ?
-						DocShellIterator.prototype.getDocShellFromFrame(aTarget)
-						.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
-						.getInterface(Components.interfaces.nsISelectionDisplay)
-						.QueryInterface(Components.interfaces.nsISelectionController) :
-						null;
-				} catch (e) {}
-				return null;
-			}
-
-			function getSelconForDoc(doc) {
-				var docShell = getDocShellForFrame(doc.defaultView);
-				var selCon = docShell
-					.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
-					.getInterface(Components.interfaces.nsISelectionDisplay)
-					.QueryInterface(Components.interfaces.nsISelectionController);
-				return selCon;
-			}
-
-			function getDocShellForFrame(aFrame) {
-				return aFrame
-					.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
-					.getInterface(Components.interfaces.nsIWebNavigation)
-					.QueryInterface(Components.interfaces.nsIDocShell);
-			}
-
-			function getVer() {
-				const Cc = Components.classes;
-				const Ci = Components.interfaces;
-				var info = Cc["@mozilla.org/xre/app-info;1"].getService(Ci.nsIXULAppInfo);
-				// このコードを実行しているアプリケーションの名前を取得する
-				var ver = parseInt(info.version.substr(0, 3) * 10, 10) / 10;
-				return ver;
-			}
-		},
-	};
-
 	FeiRuoMouse.DragScript = {
+		Image: function(e) {
+			return e.dataTransfer.getData("application/x-moz-file-promise-url")
+		},
+
 		Text: function(e) {
 			return e.dataTransfer.getData("text/unicode");
 		},
@@ -1758,6 +882,7 @@
 		}],
 
 		init: function() {
+			FeiRuoMouse.UpdateFile(true);
 			var checkboximg = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA0AAAAaCAYAAABsONZfAAABD0lEQVQ4je2TMa5FQBSGrUIURiURhVJH3BXYgg1IprYGHa1FCGtheslf0UgkFMZ51ZUn3rvkJvdVr/iLKb4z55z5Ronj+ME5p7uJ4/ihcM5pmiYQ0a9ZlgVEhGmawDknhXNOr4BxHBFFEYQQIKJraBgG+L4PxhjSNIWU8git6woiwrZteJ7DMISqqsiybC90gNq2RV3XO1gUBRhjSJJkL3SCgiCAYRioqgp938OyLLiui3meDy0foKZp4DgOGGPwPA+6rqMsy9Ocp0U0TQPbtqFpGhhj+5wvISKCEAKmaSLPc0gp70FSSggh0HXdj8+wQ1dGPLMb8ZZ7HxP21N6VsLe29w+9C33/bJ+56U+E/QKpA0b/pEOBQAAAAABJRU5ErkJggg==";
 
 			var cssStr = ('\
@@ -1783,15 +908,18 @@
 		},
 
 		ChangeStatus: function() {
-			_$("trailColor").disabled = _$("trailSize").disabled = !(_$("GesTrailr").checked);
+			_$("trailColor").disabled = _$("trailSize").disabled = !(_$("GesTrailEnabelr").checked);
+			_$("StatusTime").disabled = !(_$("isStatusr").checked);
 		},
 
 		Resets: function() {
 			this.TreeResets("TreeList0");
 			this.TreeResets("TreeList1");
-			_$("TextLink").value = false;
-			_$("QRCreator").value = false;
 			_$("trailColor").value = "brown";
+			_$("GesIngBtn").value = 2;
+			_$("GesTrailr").value = true;
+			_$("isStatus").value = true;
+			_$("StatusTime").value = 3000;
 			_$("trailSize").value = 2;
 			this.ChangeStatus();
 		},
@@ -1799,8 +927,10 @@
 		Save: function() {
 			FeiRuoMouse.Prefs.setCharPref("trailColor", _$("trailColor").value);
 			FeiRuoMouse.Prefs.setIntPref("trailSize", _$("trailSize").value);
-			FeiRuoMouse.Prefs.setBoolPref("TextLink", _$("TextLink").value);
-			FeiRuoMouse.Prefs.setBoolPref("QRCreator", _$("QRCreator").value);
+			FeiRuoMouse.Prefs.setIntPref("GesIngBtn", _$("GesIngBtn").value);
+			FeiRuoMouse.Prefs.setIntPref("StatusTime", _$("StatusTime").value);
+			FeiRuoMouse.Prefs.setBoolPref("isStatus", _$("isStatusr").checked);
+			FeiRuoMouse.Prefs.setBoolPref("GesTrailEnabel", _$("GesTrailEnabelr").checked);
 			this.TreeSave("TreeList0", "DragCustom");
 			this.TreeSave("TreeList1", "GesCustom");
 		},
@@ -2233,12 +1363,12 @@
 					windowtype="FeiRuoMouse:Preferences">\
 					<prefpane id="main" flex="1">\
 						<preferences>\
-							<preference id="GesTrail" type="bool" name="userChromeJS.FeiRuoMouse.GesTrailEnabel"/>\
-							<preference id="trailZoom" type="int" name="userChromeJS.FeiRuoMouse.trailZoom"/>\
+							<preference id="isStatus" type="bool" name="userChromeJS.FeiRuoMouse.isStatus"/>\
+							<preference id="GesTrailEnabel" type="bool" name="userChromeJS.FeiRuoMouse.GesTrailEnabel"/>\
+							<preference id="GesIngBtn" type="int" name="userChromeJS.FeiRuoMouse.GesIngBtn"/>\
+							<preference id="StatusTime" type="int" name="userChromeJS.FeiRuoMouse.StatusTime"/>\
 							<preference id="trailSize" type="int" name="userChromeJS.FeiRuoMouse.trailSize"/>\
 							<preference id="trailColor" type="string" name="userChromeJS.FeiRuoMouse.trailColor"/>\
-							<preference id="TextLink" type="bool" name="userChromeJS.FeiRuoMouse.TextLink"/>\
-							<preference id="QRCreator" type="bool" name="userChromeJS.FeiRuoMouse.QRCreator"/>\
 						</preferences>\
 						<script>\
 							function Change() {\
@@ -2257,23 +1387,35 @@
 											<grid>\
 												<rows>\
 													<row align="center">\
-														<checkbox id="GesTrailr" label="显示轨迹" preference="GesTrail" oncommand="Change();"/>\
+														<checkbox id="GesTrailEnabelr" label="显示轨迹" preference="GesTrailEnabel" oncommand="Change();"/>\
 													</row>\
 													<row align="center">\
 														<label value="轨迹尺寸："/>\
-														<textbox id="trailSize" type="number" preference="trailSize" style="width:200px" tooltiptext="单位：像素(px)"/>\
+														<textbox id="trailSize" type="number" preference="trailSize" style="width:180px" tooltiptext="单位：像素(px)"/>\
 													</row>\
 													<row align="center">\
 														<label value="轨迹颜色："/>\
-														<textbox id="trailColor" preference="trailColor" style="width:200px" tooltiptext="如：brown、#999、#FFFFFF 、rgba(153, 153, 153, 0) 等"/>\
+														<textbox id="trailColor" preference="trailColor" tooltiptext="如：brown、#999、#FFFFFF 、rgba(153, 153, 153, 0) 等"/>\
+													</row>\
+													<row align="center">\
+														<checkbox id="isStatusr" label="显示状态提示" preference="isStatus" oncommand="Change();"/>\
+													</row>\
+													<row align="center">\
+														<label value="状态提示时间："/>\
+														<textbox id="StatusTime" type="number" preference="StatusTime" tooltiptext="单位：毫秒"/>\
+													</row>\
+													<row align="center">\
+														<label value="鼠标手势触发按键："/>\
+														<radiogroup id="GesIngBtn" preference="GesIngBtn">\
+															<hbox>\
+																<radio label="左键" id="DragBtn_0" value="0"/>\
+																<radio label="中键" id="DragBtn_1" value="1"/>\
+																<radio label="右键" id="DragBtn_2" value="2"/>\
+															</hbox>\
+														</radiogroup>\
 													</row>\
 												</rows>\
 											</grid>\
-									</groupbox>\
-									<groupbox>\
-										<caption label="其他功能"/>\
-											<checkbox id="TextLink" label="双击打开文链接(TextLink)" preference="TextLink"/>\
-											<checkbox id="QRCreator" label="生成二维码(QRCreator)" preference="QRCreator"/>\
 									</groupbox>\
 								</tabpanel>\
 								<tabpanel orient="vertical" flex="1" style="width:500px">\
@@ -2615,6 +1757,9 @@
 
 	function status(str) {
 		XULBrowserWindow.statusTextField.label = '[FeiRuoMouse]' + str;
+		setTimeout(function() {
+			XULBrowserWindow.statusTextField.label = '';
+		}, FeiRuoMouse.StatusTime)
 	}
 
 	function alert(aString, aTitle) {
