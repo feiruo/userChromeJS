@@ -9,15 +9,15 @@ FeiRuoMouse
  - 配置文件请勿删除，里面QRCode内为二维码生成需要的数据库
  
  ![](1.png)
+ 
  ![](2.png)
+ 
  ![](3.png)
  
 选项说明书：
 --------------
 
 - 请先看图片。
-- 双击打开文字连接：参考[textLink](https://github.com/alice0775/userChrome.js/blob/master/textLink.uc.js)并修改支持 E10S window
-- 生成二维码：参考[QRCreator](https://github.com/lastdream2013/userChrome/blob/master/qrCreator.uc.js)并修改支持 E10S window。
 - 还原默认值：还原默认值。
 - 自定义命令：打开配置文件，对自定义事件命令进行编辑（增加，删除）。
  
