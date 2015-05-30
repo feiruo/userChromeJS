@@ -14,6 +14,8 @@
 // @homepageURL		https://github.com/feiruo/userChromeJS/tree/master/FeiRuoTabplus
 // @downloadURL		https://github.com/feiruo/userChromeJS/raw/master/FeiRuoTabplus/FeiRuoTabplus.uc.js
 // @note            Begin 	2015-04-01
+// @version      	0.5.1 	2015.05.20	23:00 	Fix bookmarkmenu。
+// @version      	0.5.1 	2015.05.20	23:00 	Fix dead object&GoHome。
 // @version      	0.5.0 	2015.05.17	14:00 	修复主页，增加查看图片图片，增加多文件连拖拽连续打开。
 // @version      	0.4.9 	2015.05.02	15:00 	兼容omnibar。
 // @version      	0.4.8 	2015.05.01	13:00 	修改撤销按钮机制。
@@ -73,16 +75,13 @@
 			delete this.file;
 			return this.file = aFile;
 		},
-		get Content() {
-			var cont;
-			if (!window.content) {
-				function listener(message) {
-					cont = message.objects.cont
-				}
-				Cc["@mozilla.org/globalmessagemanager;1"].getService(Ci.nsIMessageListenerManager).addMessageListener("FeiRuoTabplus:FeiRuoTabplus-e10s-content-message", listener);
-			}
-			delete this.Content;
-			return this.Content = window.content || cont || gBrowser.selectedBrowser._contentWindow || gBrowser.selectedBrowser.contentWindowAsCPOW;
+		get currentURI() {
+			var windowMediator = Cc["@mozilla.org/appshell/window-mediator;1"]
+				.getService(Ci.nsIWindowMediator);
+			var topWindowOfType = windowMediator.getMostRecentWindow("navigator:browser");
+			if (topWindowOfType)
+				return topWindowOfType.document.getElementById("content").currentURI;
+			return null;
 		},
 
 		init: function() {
@@ -205,10 +204,14 @@
 			UndoBtn.appendChild(popup)
 		},
 
-		UndoBtnClick: function(event) {
-			if (event.target != event.currentTarget)
+		UndoBtnClick: function(e) {
+			if (e.target != e.currentTarget)
 				return;
-			if (event.button == 2) {
+			e.stopPropagation();
+			e.preventDefault();
+			if (e.button == 0) {
+				if (e.originalTarget.className != "box-inherit toolbarbutton-menubutton-button")
+					return;
 				if (JSON.parse(Cc['@mozilla.org/browser/sessionstore;1'].getService(Ci.nsISessionStore).getClosedTabData(window)) != 0)
 					$('History:UndoCloseTab').doCommand();
 				else {
@@ -222,9 +225,10 @@
 						XULBrowserWindow.statusTextField.label = '[FeiRuoTabplus]：无法恢复!';
 					}
 				}
-				e.stopPropagation();
-				e.preventDefault();
-			}
+			} else if (e.button == 1)
+				return;
+			else if (e.button == 2)
+				$('FeiRuoTabplus_Undo_menupopup').showPopup();
 		},
 
 		onDestroy: function() {
@@ -339,8 +343,10 @@
 			if (!type || type === "ShowBorderChange")
 				this.Cutover("ShowBorderChange", this.getPrefs(0, "ShowBorderChange", false));
 
-			if (!type || type === "ShowBorder")
+			if (!type || type === "ShowBorder") {
 				this.ShowBorder = this.getPrefs(2, "ShowBorder", "0,7,7,7");
+				this.Cutover("ShowBorderChange", this.getPrefs(0, "ShowBorderChange", false));
+			}
 
 			if (!type || type === "NewTabExKey")
 				this.NewTabExKey = this.getPrefs(2, "NewTabExKey", "");
@@ -510,7 +516,7 @@
 				case "HomeNewTab":
 					eval("BrowserGoHome = " + this.Default_BrowserGoHome);
 					if (!val) return;
-					eval("BrowserGoHome = " + this.Default_BrowserGoHome.replace(/switch \(where\) {/, "where = (gBrowser.webProgress.isLoadingDocument" + ") ? 'tab' : 'current'; $&"));
+					eval("BrowserGoHome = " + this.Default_BrowserGoHome.replace(/switch \(where\) {/, "where = 'tab'; $&"));
 					break;
 				case "OpenFilesWhenDrop":
 					location == "chrome://browser/content/browser.xul" && gBrowser.mPanelContainer.removeEventListener("drop", FeiRuoTabplus.OpenFilesWhenDrop, false)
@@ -675,7 +681,8 @@
 						file.append("iexplore.exe");
 						var process = Cc["@mozilla.org/process/util;1"].createInstance(Ci.nsIProcess);
 						process.init(file);
-						process.run(false, [this.Content.location.href], 1);
+						var url = window.content ? content.location.href : gBrowser.selectedBrowser.contentDocumentAsCPOW.location.href;
+						process.run(false, [url], 1);
 					} catch (ex) {
 						alert("打开IE失败!\n" + ex);
 					}
@@ -765,8 +772,8 @@
 
 			var host0, host1;
 			host0 = this.getDomain(url);
-			if (this.Content.location.host)
-				host1 = this.Content.location.host;
+			if (this.currentURI.asciiHost)
+				host1 = this.currentURI.asciiHost;
 			if (host0 == host1)
 				IS = true;
 			if (!IS)
@@ -795,7 +802,7 @@
 				Exclude = this.SameHostEX;
 
 			if (!url)
-				url = window.content ? content.location.href : gBrowser.selectedBrowser.contentDocumentAsCPOW.location.href;
+				url = this.currentURI.asciiSpec;
 
 			if (!Exclude)
 				return false;
@@ -1323,6 +1330,7 @@
 		},
 
 		init: function() {
+			FeiRuoTabplus.updateFile(true);
 			if (!window.Services) Components.utils.import("resource://gre/modules/XPCOMUtils.jsm");
 			this.KeyClicked();
 			this.TreeResets();
