@@ -5,6 +5,11 @@ Need this:</br>
 https://github.com/alice0775/userChrome.js/blob/master/userChrome.js </br>
 Or this:</br>
 https://github.com/ywzhaiqi/userChromeJS/tree/master/userChromeJS_Mix.xpi
+#####QrCreator.uc.js
+修改于https://raw.github.com/lastdream2013/userChrome/master/qrCreator.uc.js
+支持E10S
+支持ywzhaiqi的userChromeJS_Mix实时启用禁用
+
 #####AwesomeBookmarkbar.uc.js
 ![](Img/3.png)
 
