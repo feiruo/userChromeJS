@@ -17,13 +17,15 @@
 // @downloadURL		https://github.com/feiruo/userChromeJS/raw/master/FeiRuoMouse/FeiRuoMouse.uc.js
 // @note            Begin 2015.04.23
 // @note            手势与拖拽。
+// @version      	0.0.9 	2015.06.20	15:00 	修改机制，需要从新编辑配置文件。
+// @version      	0.0.8 	2015.06.10	15:00 	修复切换标签时轨迹不消失问题。
 // @version      	0.0.7 	2015.05.30	18:00 	Add mouse button&&staus time&&Fix R<L R>L etc。
 // @version      	0.0.6 	2015.05.29	10:00 	delete TextLink&&QRCreator。
 // @version      	0.0.5 	2015.05.20	23:00 	Fix Ges disable on some page ex http://news.qq.com/a/20150521/002254.htm。
 // @version      	0.0.4 	2015.05.20	23:00 	Fix dead object。
-// @version         0.0.3 	2015.05.18 15:00	修复拖拽，自定义手势轨迹。
-// @version         0.0.2 	2015.05.17 15:00	TextLink&QRCreator&E10s。
-// @version         0.0.1 	2015.04.28 10:00	Build。
+// @version         0.0.3 	2015.05.18 	15:00	修复拖拽，自定义手势轨迹。
+// @version         0.0.2 	2015.05.17 	15:00	TextLink&QRCreator&E10s。
+// @version         0.0.1 	2015.04.28 	10:00	Build。
 // ==/UserScript==
 (function() {
 
@@ -33,8 +35,8 @@
 		utils: Cu,
 		results: Cr
 	} = Components;
-	if (!window.Services) Cu.import("resource://gre/modules/Services.jsm");
 
+	if (!window.Services) Cu.import("resource://gre/modules/Services.jsm");
 
 	if (window.FeiRuoMouse) {
 		window.FeiRuoMouse.onDestroy();
@@ -235,16 +237,19 @@
 				return;
 			}
 
-			if (!sandbox.CustomCommand)
-				return alert("无自定义命令！");
+			delete this.DragCustomCommand;
+			delete this.GesCustomCommand;
+			var DragCustomCommand = sandbox.DragCustomCommand || {};
+			var GesCustomCommand = sandbox.GesCustomCommand || {};
+			this.DragCustomCommand = {};
+			this.GesCustomCommand = {};
 
-			delete this.CustomCommand;
-			var CustomCommand = sandbox.CustomCommand || {};
-			this.CustomCommand = {};
-			for (var i in CustomCommand) {
-				this.CustomCommand[CustomCommand[i].label] = CustomCommand[i];
+			for (var i in DragCustomCommand) {
+				this.DragCustomCommand[DragCustomCommand[i].label] = DragCustomCommand[i];
 			}
-
+			for (var i in GesCustomCommand) {
+				this.GesCustomCommand[GesCustomCommand[i].label] = GesCustomCommand[i];
+			}
 			if (isAlert)
 				alert('自定义命令重载完成！');
 		},
@@ -419,10 +424,13 @@
 		Listen_AidtKey: function(event, dChain, type) {
 			var EventKey = this.ActionEventKey(event);
 			var obj;
-			if (!type)
+			if (!type) {
 				obj = this.GesturesRules[dChain];
-			else
+				type = "Ges";
+			} else {
 				obj = this["DragRules_" + type][dChain] || this["DragRules_Any" + type][EventKey];
+				type = "Drag";
+			}
 
 			if (!obj)
 				return this.ActionStaus(event, dChain);
@@ -431,16 +439,16 @@
 				return this.ActionStaus(event, dChain, obj.label + "(未启用)");
 
 			if (!obj.Key || (obj.TKey != "1" && EventKey == obj.Key) || (obj.TKey == "1" && EventKey != obj.Key))
-				FeiRuoMouse.Listen_Command(event, obj, dChain);
+				FeiRuoMouse.Listen_Command(type, event, obj, dChain);
 			else
 				this.ActionStaus(event, dChain);
 		},
 
-		Listen_Command: function(event, obj, dChain) {
+		Listen_Command: function(type, event, obj, dChain) {
 			event.stopPropagation();
 			event.preventDefault();
 			var command = obj.Command;
-			var cmd = this.CustomCommand[command];
+			var cmd = this[type + "CustomCommand"][command];
 			if (cmd) {
 				try {
 					var funstr = cmd.command.toString().replace(/^function.*{|}$/g, "");
@@ -528,10 +536,11 @@
 			};
 			var str = JSON.stringify(obj);
 			if (window.content)
-				this.CreateTrail(str, event.view);
+				this.GesTrails.CreateTrail(str, event.view);
 			else {
-				window.messageManager.loadFrameScript("data:application/x-javascript;charset=UTF-8,(" + escape(this.EraseTrail.toString()) + ")();", true);
-				gBrowser.selectedBrowser.messageManager.loadFrameScript("data:application/x-javascript;charset=UTF-8,(" + escape(this.CreateTrail.toString()) + ")('" + escape(str) + "');", true);
+				if (!gBrowser.selectedBrowser.contentWindowAsCPOW.FeiRuoMouse_GesTrails)
+					gBrowser.selectedBrowser.messageManager.loadFrameScript("data:application/x-javascript;charset=UTF-8," + escape("content.FeiRuoMouse_GesTrails=" + this.obj2str(this.GesTrails) + ";"), true);
+				gBrowser.selectedBrowser.messageManager.loadFrameScript("data:application/x-javascript;charset=UTF-8,if(content.FeiRuoMouse_GesTrails){content.FeiRuoMouse_GesTrails.CreateTrail('" + escape(str) + "');}", true);
 			}
 		},
 
@@ -560,11 +569,11 @@
 				var str = JSON.stringify(obj);
 
 				if (window.content)
-					this.DrawTrail(str);
-				else {
-					gBrowser.selectedBrowser.messageManager.loadFrameScript("data:application/x-javascript;charset=UTF-8,(" + escape(this.DrawTrail.toString()) + ")('" + escape(str) + "');", true);
-				}
+					this.GesTrails.DrawTrail(str);
+				else
+					gBrowser.selectedBrowser.messageManager.loadFrameScript("data:application/x-javascript;charset=UTF-8,if(content.FeiRuoMouse_GesTrails){content.FeiRuoMouse_GesTrails.DrawTrail('" + escape(str) + "');}", true);
 			}
+
 			if (direction != dChain.charAt(dChain.length - 1)) {
 				dChain += direction;
 				that._directionChain += direction;
@@ -580,122 +589,35 @@
 			that._directionChain = "";
 			if (!this.GesTrailEnabel) return;
 			if (window.content)
-				this.EraseTrail();
+				this.GesTrails.EraseTrail();
 			else
-				window.messageManager.loadFrameScript("data:application/x-javascript;charset=UTF-8,(" + escape(this.EraseTrail.toString()) + ")();", true);
-		},
-
-		CreateTrail: function(str, win) {
-			var obj = JSON.parse(str);
-			win = win || content;
-			if (!win) return;
-			var trailSize = obj.trailSize,
-				trailColor = obj.trailColor;
-			if (win.top.document instanceof Components.interfaces.nsIDOMHTMLDocument) win = win.top;
-			else if (win.document instanceof Components.interfaces.nsIDOMHTMLDocument === false) return;
-			var doc = content.document;
-			var insertionNode = doc.documentElement ? doc.documentElement : doc;
-			var win = doc.defaultView;
-			content.FeiRuoMouse_GesTrail_trailDot = null;
-			content.FeiRuoMouse_GesTrail_trailArea = null;
-			content.FeiRuoMouse_GesTrail_trailLastDot = null;
-			content.FeiRuoMouse_GesTrail_trailOffsetX = 0;
-			content.FeiRuoMouse_GesTrail_trailOffsetY = 0;
-			content.FeiRuoMouse_GesTrail_trailZoom = 1;
-			content.FeiRuoMouse_GesTrail_trailSize = trailSize;
-			content.FeiRuoMouse_GesTrail_trailColor = trailColor;
-			let xdTrailArea = content.document.querySelectorAll("[id^='FeiRuoMouse_Ges_']");
-			for (let i = 0; i < xdTrailArea.length; i++) {
-				xdTrailArea[i].parentNode.removeChild(xdTrailArea[i]);
-			}
-			delete xdTrailArea;
-			content.FeiRuoMouse_GesTrail_trailZoom = win.QueryInterface(Components.interfaces.nsIInterfaceRequestor).
-			getInterface(Components.interfaces.nsIDOMWindowUtils).screenPixelsPerCSSPixel;
-			content.FeiRuoMouse_GesTrail_trailOffsetX = (win.mozInnerScreenX - win.scrollX) * content.FeiRuoMouse_GesTrail_trailZoom;
-			content.FeiRuoMouse_GesTrail_trailOffsetY = (win.mozInnerScreenY - win.scrollY) * content.FeiRuoMouse_GesTrail_trailZoom;
-			content.FeiRuoMouse_GesTrail_trailArea = doc.createElementNS("http://www.w3.org/1999/xhtml", "xdTrailArea");
-			content.FeiRuoMouse_GesTrail_trailArea.id = "FeiRuoMouse_Ges_xdTrailArea";
-			insertionNode.appendChild(content.FeiRuoMouse_GesTrail_trailArea);
-			content.FeiRuoMouse_GesTrail_trailDot = doc.createElementNS("http://www.w3.org/1999/xhtml", "xdTrailDot");
-			content.FeiRuoMouse_GesTrail_trailDot.style.width = content.FeiRuoMouse_GesTrail_trailSize + "px";
-			content.FeiRuoMouse_GesTrail_trailDot.style.height = content.FeiRuoMouse_GesTrail_trailSize + "px";
-			content.FeiRuoMouse_GesTrail_trailDot.style.background = content.FeiRuoMouse_GesTrail_trailColor;
-			content.FeiRuoMouse_GesTrail_trailDot.style.border = "0px";
-			content.FeiRuoMouse_GesTrail_trailDot.style.position = "absolute";
-			content.FeiRuoMouse_GesTrail_trailDot.style.zIndex = 2147483647;
-		},
-
-		DrawTrail: function(str) {
-			var obj = JSON.parse(str);
-			var x1 = obj.x1,
-				y1 = obj.y1,
-				x2 = obj.x2,
-				y2 = obj.y2;
-			if (!content.FeiRuoMouse_GesTrail_trailArea) return;
-			var xMove = x2 - x1;
-			var yMove = y2 - y1;
-			var xDecrement = xMove < 0 ? 1 : -1;
-			var yDecrement = yMove < 0 ? 1 : -1;
-			x2 -= content.FeiRuoMouse_GesTrail_trailOffsetX;
-			y2 -= content.FeiRuoMouse_GesTrail_trailOffsetY;
-
-			function StrokeDot(x, y) {
-				if (content.FeiRuoMouse_GesTrail_trailArea.y == y && content.FeiRuoMouse_GesTrail_trailArea.h == content.FeiRuoMouse_GesTrail_trailSize) {
-					var newX = Math.min(content.FeiRuoMouse_GesTrail_trailArea.x, x);
-					var newW = Math.max(content.FeiRuoMouse_GesTrail_trailArea.x + content.FeiRuoMouse_GesTrail_trailArea.w, x + content.FeiRuoMouse_GesTrail_trailSize) - newX;
-					content.FeiRuoMouse_GesTrail_trailArea.x = newX;
-					content.FeiRuoMouse_GesTrail_trailArea.w = newW;
-					content.FeiRuoMouse_GesTrail_trailLastDot.style.left = newX.toString() + "px";
-					content.FeiRuoMouse_GesTrail_trailLastDot.style.width = newW.toString() + "px";
-					return;
-				} else if (content.FeiRuoMouse_GesTrail_trailArea.x == x && content.FeiRuoMouse_GesTrail_trailArea.w == content.FeiRuoMouse_GesTrail_trailSize) {
-					var newY = Math.min(content.FeiRuoMouse_GesTrail_trailArea.y, y);
-					var newH = Math.max(content.FeiRuoMouse_GesTrail_trailArea.y + content.FeiRuoMouse_GesTrail_trailArea.h, y + content.FeiRuoMouse_GesTrail_trailSize) - newY;
-					content.FeiRuoMouse_GesTrail_trailArea.y = newY;
-					content.FeiRuoMouse_GesTrail_trailArea.h = newH;
-					content.FeiRuoMouse_GesTrail_trailLastDot.style.top = newY.toString() + "px";
-					content.FeiRuoMouse_GesTrail_trailLastDot.style.height = newH.toString() + "px";
-					return;
-				}
-				if (content.FeiRuoMouse_GesTrail_trailZoom != 1) {
-					x = Math.floor(x / content.FeiRuoMouse_GesTrail_trailZoom);
-					y = Math.floor(y / content.FeiRuoMouse_GesTrail_trailZoom);
-				}
-				var dot = content.FeiRuoMouse_GesTrail_trailDot.cloneNode(true);
-				dot.style.left = x + "px";
-				dot.style.top = y + "px";
-				content.FeiRuoMouse_GesTrail_trailArea.x = x;
-				content.FeiRuoMouse_GesTrail_trailArea.y = y;
-				content.FeiRuoMouse_GesTrail_trailArea.w = content.FeiRuoMouse_GesTrail_trailSize;
-				content.FeiRuoMouse_GesTrail_trailArea.h = content.FeiRuoMouse_GesTrail_trailSize;
-				content.FeiRuoMouse_GesTrail_trailArea.appendChild(dot);
-				content.FeiRuoMouse_GesTrail_trailLastDot = dot;
-			}
-			if (Math.abs(xMove) >= Math.abs(yMove))
-				for (var i = xMove; i != 0; i += xDecrement)
-					StrokeDot(x2 - i, y2 - Math.round(yMove * i / xMove));
-			else
-				for (var i = yMove; i != 0; i += yDecrement)
-					StrokeDot(x2 - Math.round(xMove * i / yMove), y2 - i);
-		},
-
-		EraseTrail: function() {
-			if (content.FeiRuoMouse_GesTrail_trailArea && content.FeiRuoMouse_GesTrail_trailArea.parentNode) {
-				while (content.FeiRuoMouse_GesTrail_trailArea.lastChild)
-					content.FeiRuoMouse_GesTrail_trailArea.removeChild(content.FeiRuoMouse_GesTrail_trailArea.lastChild);
-				content.FeiRuoMouse_GesTrail_trailArea.parentNode.removeChild(content.FeiRuoMouse_GesTrail_trailArea);
-			}
-			let xdTrailArea = content.document.querySelectorAll("[id^='FeiRuoMouse_Ges_']");
-			for (let i = 0; i < xdTrailArea.length; i++) {
-				xdTrailArea[i].parentNode.removeChild(xdTrailArea[i]);
-			}
-			delete xdTrailArea;
-			content.FeiRuoMouse_GesTrail_trailDot = null;
-			content.FeiRuoMouse_GesTrail_trailArea = null;
-			content.FeiRuoMouse_GesTrail_trailLastDot = null;
+				window.messageManager.loadFrameScript("data:application/x-javascript;charset=UTF-8,if(content.FeiRuoMouse_GesTrails){content.FeiRuoMouse_GesTrails.EraseTrail();}", true);
 		},
 
 		/*****************************************************************************************/
+		obj2str: function(o) {
+			var r = [];
+			if (typeof o == 'string')
+				return '"' + o.replace(/([\'\"\\])/g, '\\$1').replace(/(\n)/g, '\\n').replace(/(\r)/g, '\\r').replace(/(\t)/g, '\\t') + '"';
+			if (typeof o == 'undefined')
+				return 'undefined';
+			if (typeof o == 'object') {
+				if (o === null)
+					return 'null';
+				else if (!o.sort) {
+					for (var i in o)
+						r.push(i + ':' + FeiRuoMouse.obj2str(o[i]))
+					r = '{' + r.join() + '}'
+				} else {
+					for (var i = 0; i < o.length; i++)
+						r.push(FeiRuoMouse.obj2str(o[i]))
+					r = '[' + r.join() + ']'
+				}
+				return r;
+			}
+			return o.toString();
+		},
+
 		getPrefs: function(type, name, val) {
 			switch (type) {
 				case 0:
@@ -711,23 +633,6 @@
 				case 2:
 					if (!this.Prefs.prefHasUserValue(name) || this.Prefs.getPrefType(name) != Ci.nsIPrefBranch.PREF_STRING)
 						this.Prefs.setCharPref(name, val ? val : "");
-					return this.Prefs.getCharPref(name);
-					break;
-			}
-		},
-
-		setPrefs: function(type, name, val) {
-			switch (type) {
-				case 0:
-					this.Prefs.setBoolPref(name, val ? val : false);
-					return this.Prefs.getBoolPref(name);
-					break;
-				case 1:
-					this.Prefs.setIntPref(name, val ? val : 0);
-					return this.Prefs.getIntPref(name);
-					break;
-				case 2:
-					this.Prefs.setCharPref(name, val ? val : "");
 					return this.Prefs.getCharPref(name);
 					break;
 			}
@@ -827,6 +732,106 @@
 				var OptionWin = this.OptionWin();
 				window.openDialog("data:application/vnd.mozilla.xul+xml;charset=UTF-8," + OptionWin, '', 'chrome,titlebar,toolbar,centerscreen,dialog=no');
 			}
+		},
+	};
+
+	FeiRuoMouse.GesTrails = {
+		trailDot: null,
+		trailArea: null,
+		trailLastDot: null,
+		trailOffsetX: 0,
+		trailOffsetY: 0,
+		trailZoom: 1,
+
+		CreateTrail: function FeiRuoMouse_CreateTrail(str, win) {
+			var obj = JSON.parse(str);
+			win = win || content;
+			if (!win) return;
+			if (win.top.document instanceof Components.interfaces.nsIDOMHTMLDocument) win = win.top;
+			else if (win.document instanceof Components.interfaces.nsIDOMHTMLDocument === false) return;
+			var doc = content.document;
+			var insertionNode = doc.documentElement ? doc.documentElement : doc;
+			var win = doc.defaultView;
+			this.trailSize = obj.trailSize;
+			this.trailZoom = win.QueryInterface(Components.interfaces.nsIInterfaceRequestor).
+			getInterface(Components.interfaces.nsIDOMWindowUtils).screenPixelsPerCSSPixel;
+			this.trailOffsetX = (win.mozInnerScreenX - win.scrollX) * this.trailZoom;
+			this.trailOffsetY = (win.mozInnerScreenY - win.scrollY) * this.trailZoom;
+			this.trailArea = doc.createElementNS("http://www.w3.org/1999/xhtml", "xdTrailArea");
+			insertionNode.appendChild(this.trailArea);
+			this.trailDot = doc.createElementNS("http://www.w3.org/1999/xhtml", "xdTrailDot");
+			this.trailDot.style.width = this.trailSize + "px";
+			this.trailDot.style.height = this.trailSize + "px";
+			this.trailDot.style.background = obj.trailColor;
+			this.trailDot.style.border = "0px";
+			this.trailDot.style.position = "absolute";
+			this.trailDot.style.zIndex = 2147483647;
+		},
+
+		DrawTrail: function FeiRuoMouse_DrawTrail(str) {
+			if (!this.trailArea)
+				return;
+			var obj = JSON.parse(str);
+			var x1 = obj.x1,
+				y1 = obj.y1,
+				x2 = obj.x2,
+				y2 = obj.y2;
+			var xMove = x2 - x1;
+			var yMove = y2 - y1;
+			var xDecrement = xMove < 0 ? 1 : -1;
+			var yDecrement = yMove < 0 ? 1 : -1;
+			x2 -= this.trailOffsetX;
+			y2 -= this.trailOffsetY;
+			if (Math.abs(xMove) >= Math.abs(yMove))
+				for (var i = xMove; i != 0; i += xDecrement)
+					this.StrokeDot(x2 - i, y2 - Math.round(yMove * i / xMove));
+			else
+				for (var i = yMove; i != 0; i += yDecrement)
+					this.StrokeDot(x2 - Math.round(xMove * i / yMove), y2 - i);
+		},
+
+		EraseTrail: function FeiRuoMouse_EraseTrail() {
+			if (this.trailArea && this.trailArea.parentNode) {
+				while (this.trailArea.lastChild)
+					this.trailArea.removeChild(this.trailArea.lastChild);
+				this.trailArea.parentNode.removeChild(this.trailArea);
+			}
+			this.trailDot = null;
+			this.trailArea = null;
+			this.trailLastDot = null;
+		},
+
+		StrokeDot: function FeiRuoMouse_StrokeDot(x, y) {
+			if (this.trailArea.y == y && this.trailArea.h == this.trailSize) {
+				var newX = Math.min(this.trailArea.x, x);
+				var newW = Math.max(this.trailArea.x + this.trailArea.w, x + this.trailSize) - newX;
+				this.trailArea.x = newX;
+				this.trailArea.w = newW;
+				this.trailLastDot.style.left = newX.toString() + "px";
+				this.trailLastDot.style.width = newW.toString() + "px";
+				return;
+			} else if (this.trailArea.x == x && this.trailArea.w == this.trailSize) {
+				var newY = Math.min(this.trailArea.y, y);
+				var newH = Math.max(this.trailArea.y + this.trailArea.h, y + this.trailSize) - newY;
+				this.trailArea.y = newY;
+				this.trailArea.h = newH;
+				this.trailLastDot.style.top = newY.toString() + "px";
+				this.trailLastDot.style.height = newH.toString() + "px";
+				return;
+			}
+			if (this.trailZoom != 1) {
+				x = Math.floor(x / this.trailZoom);
+				y = Math.floor(y / this.trailZoom);
+			}
+			var dot = this.trailDot.cloneNode(true);
+			dot.style.left = x + "px";
+			dot.style.top = y + "px";
+			this.trailArea.x = x;
+			this.trailArea.y = y;
+			this.trailArea.w = this.trailSize;
+			this.trailArea.h = this.trailSize;
+			this.trailArea.appendChild(dot);
+			this.trailLastDot = dot;
 		},
 	};
 
@@ -1624,22 +1629,25 @@
 				menu.removeChild(menu.lastChild);
 			}
 
-			var Custom = FeiRuoMouse.CustomCommand;
-			if (!Custom) return;
-
-			for (var i in Custom) {
-				if (Ges && Custom[i].ActionType.match("Gestures"))
-					menu.appendItem(Custom[i].label, Custom[i].label);
-
-				if (!Ges && Custom[i].ActionType.match("Drag")) {
-					if (_$D("Drag_Image").selected && Custom[i].Type.match("Image"))
-						menu.appendItem(Custom[i].label, Custom[i].label);
-					else if (_$D("Drag_Url").selected && Custom[i].Type.match("Url"))
-						menu.appendItem(Custom[i].label, Custom[i].label);
-					else if (_$D("Drag_Text").selected && Custom[i].Type.match("Text"))
-						menu.appendItem(Custom[i].label, Custom[i].label);
+			if (Ges && FeiRuoMouse.GesCustomCommand) {
+				var GesCustomCommand = FeiRuoMouse.GesCustomCommand;
+				for (var i in GesCustomCommand) {
+					menu.appendItem(GesCustomCommand[i].label, GesCustomCommand[i].label);
 				}
 			}
+
+			if (!Ges && FeiRuoMouse.DragCustomCommand) {
+				var DragCustomCommand = FeiRuoMouse.DragCustomCommand;
+				for (var i in DragCustomCommand) {
+					if (_$D("Drag_Image").selected && DragCustomCommand[i].Type.match("Image"))
+						menu.appendItem(DragCustomCommand[i].label, DragCustomCommand[i].label);
+					else if (_$D("Drag_Url").selected && DragCustomCommand[i].Type.match("Url"))
+						menu.appendItem(DragCustomCommand[i].label, DragCustomCommand[i].label);
+					else if (_$D("Drag_Text").selected && DragCustomCommand[i].Type.match("Text"))
+						menu.appendItem(DragCustomCommand[i].label, DragCustomCommand[i].label);
+				}
+			}
+
 			menu.selectedIndex = 0;
 		},
 	};

@@ -1,12 +1,14 @@
 FeiRuoMouse
 ============
+此为自用脚本，框架已有，如有需求请自行添加自定义命令或脚本
+
  - 支持e10s window。
  - 鼠标手势与拖拽管理。
- - 完全自定义鼠标操作（作者鼠标只有3键）。
+ - 完全自定义鼠标操作。
  - 完全自定义事件执行命令。
+ - 支持自定义脚本。
  - 选项即时生效。
  - 配置文件位置：【chrome\lib\\_FeiRuoMouse.js】
- - 配置文件请勿删除，里面QRCode内为二维码生成需要的数据库
  
  ![](1.png)
  
@@ -33,25 +35,21 @@ FeiRuoMouse
 
 - 1、请以obj形式添加；
 - 2、label：说明文字，读取标识，必须！
-- 3、ActionType：动作类型，Gestures表示在鼠标手势，Drag表示鼠标拖拽；
-- 4、Type：当ActionType有Drag(拖拽命令)时生效，拖拽的目标；
-- 5、command：自定义行为 请以 function(event){} 函数形式
+- 3、Type：拖拽的目标；
+- 4、command：自定义行为 请以 function(event){} 函数形式，自定义脚本直接置于函数内
 - 示例：
 
 		{
 		label: "转到页面顶部",	//命令的说明文字
-		ActionType: "Gestures",//表示鼠标手势命令
-		Type: "",//当ActionType有Drag(拖拽命令)时生效，拖拽的目标
-		command: function(event) {//此处为自定义命令，event为通过鼠标和辅助键等判断之后传回的，监听事件event
+		command: function(event) {//此处为自定义命令，event为通过鼠标和辅助键等判断之后传回的，监听事件event,自定义脚本直接置于函数内
 				var doc = event.target.ownerDocument;
 				var win = doc.defaultView;
 				goDoCommand('cmd_scrollTop');
 			}
 		},{
 		label: "当前标签打开图片",	//命令的说明文字
-		ActionType: "Drag",//鼠标拖拽命令
 		Type: "Image",//拖拽图片时的命令
-		command: function(event) {//此处为自定义命令，event为通过鼠标和辅助键等判断之后传回的，监听事件event
+		command: function(event) {//此处为自定义命令，event为通过鼠标和辅助键等判断之后传回的，监听事件event,自定义脚本直接置于函数内
 				loadURI(event.dataTransfer.getData("application/x-moz-file-promise-url"));
 			}
 		}
