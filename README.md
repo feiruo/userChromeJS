@@ -32,6 +32,13 @@ https://github.com/ywzhaiqi/userChromeJS/tree/master/userChromeJS_Mix.xpi
 - 书签编辑面板增加关键字、标签、侧边栏打开等；
 - 右键单击收藏按钮从收藏中删除当前页面。
 
+#####starClickMod40Up.uc.js
+- 仅支持40Up。
+- 全面修复。
+- 设置放入about:config中，即时生效。
+- userChromeJS.starClickMod.isAutoPopup;  是否自动弹出面板
+- userChromeJS.starClickMod.isLastFolder; 是否自动定位到上次使用的文件夹
+
 #####StarUrlicon.uc.js
 - 新版UI移动整个书签按钮到地址栏；
 - 添加右键 显示/隐藏 书签侧栏，中键删除当前页面书签；
