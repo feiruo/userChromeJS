@@ -17,6 +17,7 @@
 // @note         	点击地址栏显示书签工具栏。
 // @note         	地址栏任意按键，地址栏失去焦点后自动隐藏书签工具栏。
 // @note       		左键点击书签后自动隐藏书签工具栏。
+// @version      	0.3.2	2015.10.11 17:00 	地址栏只在输入框生效，“地址栏失去焦点”修改“页内点击”。
 // @version      	0.3.1	2015.04.17 10:00 	更多功能，表达能力略微提升.
 // @version      	0.3		2015.04.11 20:00 	绘制UI设置界面.
 // @version      	0.2.1 	去除鼠标移到地址栏自动显示书签工具栏
@@ -102,8 +103,8 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		loadSetting: function(type) {
 			if (!type || type === "LShow") {
 				this.LShow = this.getPrefs(0, "LShow");
-				if (type) return;
-				this.ShowToolbar(this.LShow);
+				if (!type)
+					this.ShowToolbar(this.LShow);
 			}
 
 			if (!type || type === "Hide_Time")
@@ -124,8 +125,10 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			if (!type || type === "UDblclick_H")
 				this.AddListener(this.getPrefs(0, "UDblclick_H"), 2, "dblclick", "UDblclick_H", "Hide");
 
-			if (!type || type === "UBlur_H")
-				this.AddListener(this.getPrefs(0, "UBlur_H"), 2, "blur", "UBlur_H", "Hide");
+			if (!type || type === "UBlur_H") {
+				//this.AddListener(this.getPrefs(0, "UBlur_H"), 2, "blur", "UBlur_H", "Hide");
+				this.AddListener(this.getPrefs(0, "UBlur_H"), 3, "click", "UBlur_H", "Hide");
+			}
 
 			if (!type || type === "UKey_H")
 				this.AddListener(this.getPrefs(0, "UKey_H"), 2, "keydown", "UKey_H", "keyHide");
@@ -152,10 +155,13 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		AddListener: function(enable, tag, action, name, command) {
 			if (tag === 0)
 				tag = $("PersonalToolbar");
-			if (tag === 1)
+			else if (tag === 1)
 				tag = $("placesCommands");
-			if (tag === 2)
+			else if (tag === 2)
 				tag = gURLBar;
+			else if (tag === 3)
+				tag = gBrowser.mPanelContainer;
+
 			tag.removeEventListener(action, AwesomeBookmarkbar["Listener_" + name], false);
 
 			if (!enable) return;
@@ -170,17 +176,16 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		},
 
 		Listener: function(e, command) {
-			var Tid = e.target.parentNode.id,
-				paid;
-			if (Tid == 'notification-popup-box' || Tid == 'identity-box' || Tid == 'urlbar-display-box' || Tid == 'urlbar-icons')
-				paid = true;
+			var exclu;
+			if (e.target.nodeName != 'textbox')
+				exclu = true;
 			switch (command) {
 				case "Show":
-					if (paid) return;
+					if (exclu || e.button != 0) return;
 					this.ShowToolbar(true);
 					break;
 				case "Hide":
-					if (paid) return;
+					//if (exclu || e.button != 0) return;
 					this.ShowToolbar(false);
 					break;
 				case "PHide":
@@ -296,7 +301,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 									<checkbox id="UClick_H" label="地址栏点击" preference="UClick_H"/>\
 									<checkbox id="UDblclick_H" label="地址栏双击" preference="UDblclick_H"/>\
 									<checkbox id="UKey_H" label="地址栏任意按键" preference="UKey_H"/>\
-									<checkbox id="UBlur_H" label="地址栏失去焦点(页面内点击)" preference="UBlur_H"/>\
+									<checkbox id="UBlur_H" label="页面内点击" preference="UBlur_H"/>\
 									<checkbox id="UMouseout_H" label="鼠标移出地址栏" preference="UMouseout_H"/>\
 									<checkbox id="PMouseout_H" label="鼠标移出书签工具栏" preference="PMouseout_H"/>\
 									<checkbox id="PClick_H" label="书签工具栏点击书签之后" preference="PClick_H"/>\
