@@ -1,0 +1,108 @@
+﻿<!doctype html public '-//W3C//DTD HTML 4.0 Transitional //EN'>
+<html>
+<head>
+<title>README</title>
+<meta charset='UTF-8' />
+<meta name='generator' content='EverEdit' />
+<link href='D:\Program Files\Editer\Everedit\mode\markdown\default.css' rel='stylesheet'></link>
+<link href='D:\Program Files\Editer\Everedit\mode\markdown\prettify.css' rel='stylesheet'></link>
+<script type='text/javascript' src='D:\Program Files\Editer\Everedit\mode\markdown\prettify.js'></script>
+<script type='text/javascript' src='D:\Program Files\Editer\Everedit\mode\markdown\jquery-1.10.2.min.js'></script>
+<script type='text/javascript' src='D:\Program Files\Editer\Everedit\mode\markdown\toc.js'></script>
+</head>
+<body>
+<div id='generated-toc'></div>
+<h1>FeiRuoNet.uc.js</h1>
+
+<ul>
+<li>网络交互信息定义，查看、自定义与网站之间的交互信息。。</li>
+<li>显示网站IP地址和所在国家国旗，支持IPV6，标示https安全等级，帮助识别网站真实性。</li>
+<li>支持本地数据库：QQWry.dat(中文)、Flagfox[ip4.cdb、ip6.cdb]（国家代码）（感谢Flagfox）。</li>
+<li>修改浏览器标识(UA)、Cookies、Referer，伪装IP，等所有Http头信息，可破解反盗链,破解限制等。</li>
+<li>Http头信修改息可完全自定义字段和值，支持自定义规则(正则test)。</li>
+<li>智能代理，没有规则列表，当遇到重置类型错误便尝试使用自定的代理，可以自定义延时(时间内打不开网站尝试便使用代理)。</li>
+<li>单独的全功能 GET/POST 功能，带面板。</li>
+<li>菜单模式，集成anoBtn(<a href="https://github.com/feiruo/userChromeJS/tree/master/anoBtn">https://github.com/feiruo/userChromeJS/tree/master/anoBtn</a>)除自定图标外所有功能。</li>
+<li>集成showFlagS(<a href="https://github.com/feiruo/userChromeJS/tree/master/showFlagS">https://github.com/feiruo/userChromeJS/tree/master/showFlagS</a>)所有功能并增强。</li>
+<li>左键点击图标查看详细信息，中键打开GET/POST界面，右键弹出菜单。</li>
+<li>更多功能需要【_FeiRuoNet.js】、【_FeiRuoNetMenu.js】、【FeiRuoNetLib.js】、【QQWry.dat】、【ip4.cdb】、【ip6.cdb】配置文件。</li>
+<li><p>配置文件位置位于：chrome\lib\ 文件夹下</p>
+
+<h1>注意事项</h1>
+
+<ol><li>脚本正则方式均为test()，test()继承正则表达式的lastIndex属性，表达式在匹配全局标志g的时候须注意！</li>
+<li>UA修改暂时无法在E10S实现JSFIX！</li>
+<li>配置文件内的规则方式均为正则匹配！</li>
+<li>对于菜单配置，本脚本参数增加:  %IP%：当域名IP地址   %BASEDOMAIN%：当前域名的主域名；</li>
+<li>留空表示不进行该行为。</li>
+<li>规则如果是str的会使用 new RegExp(str,&#8221;i&#8221;)。</li></ol></li>
+</ul>
+
+<h1>示例部分</h1>
+
+<h2>Http头信息修改规则</h2>
+
+<p>此处注意，不会覆盖原始请求，这里的只是添加，当原始请求已有是，使用规则内的替换</p>
+
+<pre><code>    var HeadRules = [ //Http Head Rules
+        "/^https?://([a-zA-Z]+)\\.?kankan.com.*$/": {
+            heads: val,
+            heads: val,
+        }
+    ];
+</code></pre>
+
+<h2>自定义查询API,只要是你想要显示的都可以</h2>
+
+<pre><code>    {
+        //是否启用
+        Enable: false,
+        //是否针对当前网站的不同端口也发送请求
+        DifPort: false, 
+        //脚本当次运行期间请求次数，0为每次请求。
+        Times: 0, 
+        //延迟，毫秒 默认1000
+        timeout: '1000', 
+        //请求的类型，默认 GET；例如：POST、GET、PUT及PROPFIND。大小写不敏感。
+        method: 'GET', 
+        //查询接口API，此处可用变量参数 %HOST%、%IP%、%URL%等（仅用于GET）具体请参照；https://github.com/ywzhaiqi/userChromeJS/tree/master/addmenuPlus
+        Api: "http://whois.pconline.com.cn/", 
+        //请求返回类型
+        responseType: null,     
+        //用户名       
+        bstrUser: null, 
+        //密码
+        bstrPassword: null, 
+        //发送的内容，字符串，仅method为POST时有效
+        SendString: null,
+        //onreadystatechange
+        onreadystatechange: null, 
+        //overrideMimeType
+        overrideMimeType: null, 
+        //回应头,数组,
+        getResponseHeader: ['Server', 'Content-Type'], 
+        // 请求头，object
+        setRequestHeader: { 
+            apikey: '1234564556465',
+            apikey1: '123456654789',
+        },
+        //截取函数,传入内容 docum 是XMLHttpRequest()的回应值。
+        Func: function(docum) {
+            var str
+            //Your codes
+            return str || null;
+        }
+    }
+</code></pre>
+
+<p><img src="FeiRuoNet01.png" alt="" title="" /></p>
+<script type='text/javascript'>
+$(document).ready(function(){
+  if($('code').length>0){
+    $('code').parent().addClass('prettyprint linenums');
+    prettyPrint();
+};
+});
+</script>
+</body>
+</html>
