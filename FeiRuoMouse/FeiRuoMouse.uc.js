@@ -124,7 +124,7 @@
 
 		loadSetting: function(type) {
 			if (!type || type === "DragCustom") {
-				this.DragCustom = unescape(this.getPrefs(2, "DragCustom", ""));
+				this.DragCustom = unescape(this.getPrefs(2, "DragCustom", "1|%u641C%u7D22%u76F8%u4F3C%u56FE%u7247|ANY|Image|Alt|;;1|%u641C%u7D22%u6846%u641C%u7D22%u94FE%u63A5%u6587%u5B57|ANY|Url||;;1|%u641C%u7D22%u6846%u641C%u7D22%u9009%u4E2D%u6587%u5B57%5B%u8BC6%u522BURL%u5E76%u6253%u5F00%5D|ANY|Text||"));
 				this.DragRules_Image = {};
 				this.DragRules_Url = {};
 				this.DragRules_Text = {};
@@ -136,7 +136,7 @@
 			}
 
 			if (!type || type === "GesCustom") {
-				this.GesCustom = unescape(this.getPrefs(2, "GesCustom", ""));
+				this.GesCustom = unescape(this.getPrefs(2, "GesCustom", "1|%u8F6C%u5230%u9875%u9762%u9876%u90E8|U|||;;1|%u8F6C%u5230%u9875%u9762%u5E95%u90E8|D|||;;1|%u540E%u9000/%u4E0A%u4E00%u9875|L|||;;1|%u524D%u8FDB/%u4E0B%u4E00%u9875|R|||;;1|%u5237%u65B0|DU|||;;1|%u5F3A%u5236%u5237%u65B0|DUD|||;;1|%u8F6C%u5230%u5DE6%u8FB9%u6807%u7B7E%u9875|UL|||;;1|%u8F6C%u5230%u53F3%u8FB9%u6807%u7B7E%u9875|UR|||;;1|%u5173%u95ED%u5F53%u524D%u6807%u7B7E%u9875|DR|||;;1|%u64A4%u9500%u5173%u95ED%u6807%u7B7E%u9875|DL|||;;1|%u6E05%u9664startupCache%u5E76%u91CD%u542F%u6D4F%u89C8%u5668|DLR|||;;1|%u6700%u5927%u5316/%u6062%u590D%u7A97%u53E3|ULR|||;;1|%u5173%u95ED%u5DE6%u4FA7%u6240%u6709%u6807%u7B7E%u9875|LUD|||;;1|%u5173%u95ED%u53F3%u4FA7%u6240%u6709%u6807%u7B7E%u9875|RUD|||;;1|%u91CD%u7F6E%u7F29%u653E|L<R|||;;1|%u91CD%u7F6E%u7F29%u653E|L>R|||;;1|GrabScroll4|RD|||;;1|WHT|LR|||;;1|%u7FFB%u8BD1|RL|||"));
 				this.GesturesRules = {};
 				this.loadRule("GesCustom", this.GesCustom);
 				this.Listen_Ges(true);
@@ -274,15 +274,17 @@
 		},
 
 		Listen_Drag: function(isAlert) {
-			var Events = ["dragstart", "drag", "dragover", "drop"];
+			var Events = ["dragstart", "drag", "dragover", "drop", "dragend", 'dragenter', 'dragleave'];
 			Events.forEach(function(type) {
 				gBrowser.mPanelContainer.removeEventListener(type, FeiRuoMouse.Listener_Drag, false);
+				//getBrowser().removeEventListener(type, FeiRuoMouse.Listener_Drag, false);
 			});
 
 			if (!isAlert) return;
 
 			Events.forEach(function(type) {
 				gBrowser.mPanelContainer.addEventListener(type, FeiRuoMouse.Listener_Drag, false);
+				//getBrowser().addEventListener(type, FeiRuoMouse.Listener_Drag, false);
 			});
 		},
 
@@ -290,14 +292,13 @@
 		Listener_Drag: function(event) {
 			var that = FeiRuoMouse.DragIng;
 			switch (event.type) {
-				case "dragstart":
+				case "drag":
+					//case "dragstart":
 					that.lastPoint = [event.screenX, event.screenY];
 					that.sourceNode = event.target;
 					that.directionChain = "";
 					event.target.localName == "img" && event.dataTransfer.setData("application/x-moz-file-promise-url", event.target.src);
-					break;
-				case "drag":
-					//that.dragFromInside = true;
+					that.dragFromInside = true;
 					break;
 				case "dragover":
 					if (!that.lastPoint) return;
@@ -315,6 +316,7 @@
 					}
 					that.lastPoint = [event.screenX, event.screenY];
 					break;
+				case "dragend":
 				case "drop":
 					if (that.lastPoint && event.target.localName != "textarea" && (!(event.target.localName == "input" && (event.target.type == "text" || event.target.type == "password"))) && event.target.contentEditable != "true") {
 						event.preventDefault();
@@ -658,7 +660,7 @@
 			}
 		},
 
-		Edit: function(aFile, aLineNumber) {
+		Edit: function(aFile) {
 			if (!aFile)
 				aFile = this.file;
 
@@ -673,28 +675,36 @@
 
 			var editor;
 			try {
-				editor = Services.prefs.getComplexValue("view_source.editor.path", Ci.nsILocalFile);
+				editor = gPrefService.getCharPref("view_source.editor.path");
 			} catch (e) {
 				alert("请先设置编辑器的路径!!!\nview_source.editor.path");
 			}
 
-			if (!editor || !editor.exists()) {
+			if (!editor) {
 				this.openScriptInScratchpad(window, aFile);
 				return;
 			}
-			var aURL = userChrome.getURLSpecFromFile(aFile);
-			var aDocument = null;
-			var aCallBack = null;
-			var aPageDescriptor = null;
-			if (/aLineNumber/.test(gViewSourceUtils.openInExternalEditor.toSource()))
-				gViewSourceUtils.openInExternalEditor(aURL, aPageDescriptor, aDocument, aLineNumber, aCallBack);
-			else
-				gViewSourceUtils.openInExternalEditor(aURL, aPageDescriptor, aDocument, aCallBack);
+
+			var UI = Components.classes['@mozilla.org/intl/scriptableunicodeconverter'].createInstance(Components.interfaces.nsIScriptableUnicodeConverter);
+
+			var platform = window.navigator.platform.toLowerCase();
+			if (platform.indexOf('win') > -1) {
+				UI.charset = 'GB2312';
+			} else {
+				UI.charset = 'UTF-8';
+			}
+
+			var path = UI.ConvertFromUnicode(aFile.path);
+
+			var appfile = Components.classes['@mozilla.org/file/local;1'].createInstance(Components.interfaces.nsILocalFile);
+			appfile.initWithPath(editor);
+			var process = Components.classes['@mozilla.org/process/util;1'].createInstance(Components.interfaces.nsIProcess);
+			process.init(appfile);
+			process.run(false, [path], 1, {});
 		},
 
 		openScriptInScratchpad: function(parentWindow, file) {
-			let spWin = (parentWindow.Scratchpad || Services.wm.getMostRecentWindow("navigator:browser").Scratchpad)
-				.openScratchpad();
+			let spWin = (parentWindow.Scratchpad || Services.wm.getMostRecentWindow("navigator:browser").Scratchpad).openScratchpad();
 
 			spWin.addEventListener("load", function spWinLoaded() {
 				spWin.removeEventListener("load", spWinLoaded, false);

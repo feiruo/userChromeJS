@@ -332,20 +332,20 @@
 			}
 
 			if (!type || type === "UndoBtn")
-				this.UndoBtn(this.getPrefs(0, "UndoBtn", false));
+				this.UndoBtn(this.getPrefs(0, "UndoBtn", true));
 
 			if (!type || type === "NewTabUrlbar")
-				this.Cutover("NewTabUrlbar", this.getPrefs(0, "NewTabUrlbar", false));
+				this.Cutover("NewTabUrlbar", this.getPrefs(0, "NewTabUrlbar", true));
 
 			if (!type || type === "NewTabUrlbar_SH")
 				this.NewTabUrlbar_SH = this.getPrefs(0, "NewTabUrlbar_SH", false);
 
 			if (!type || type === "ShowBorderChange")
-				this.Cutover("ShowBorderChange", this.getPrefs(0, "ShowBorderChange", false));
+				this.Cutover("ShowBorderChange", this.getPrefs(0, "ShowBorderChange", true));
 
 			if (!type || type === "ShowBorder") {
-				this.ShowBorder = this.getPrefs(2, "ShowBorder", "0,7,7,7");
-				this.Cutover("ShowBorderChange", this.getPrefs(0, "ShowBorderChange", false));
+				this.ShowBorder = this.getPrefs(2, "ShowBorder", "0,7,5,7");
+				this.Cutover("ShowBorderChange", this.getPrefs(0, "ShowBorderChange", true));
 			}
 
 			if (!type || type === "NewTabExKey")
@@ -368,13 +368,13 @@
 			}
 
 			if (!type || type === "ImageNewTab")
-				this.Cutover("ImageNewTab", this.getPrefs(0, "ImageNewTab", false));
+				this.Cutover("ImageNewTab", this.getPrefs(0, "ImageNewTab", true));
 
 			if (!type || type === "OpenFilesWhenDrop")
-				this.Cutover("OpenFilesWhenDrop", this.getPrefs(0, "OpenFilesWhenDrop", false));
+				this.Cutover("OpenFilesWhenDrop", this.getPrefs(0, "OpenFilesWhenDrop", true));
 
 			if (!type || type === "TabFocus")
-				this.Cutover("TabFocus", this.getPrefs(0, "TabFocus", false));
+				this.Cutover("TabFocus", this.getPrefs(0, "TabFocus", true));
 
 			if (!type || type === "NewTabExcludePage")
 				this.PrefStrTrim("NewTabExcludePage", ", about:blank, about:home, about:newtab, http://start.firefoxchina.cn/");
@@ -386,22 +386,22 @@
 				this.PrefStrTrim("SameHostEX", "www.nicovideo.jp,www.bilibili.com,www.acfun.tv,www.tucao.cc");
 
 			if (!type || type === "HomeNewTab")
-				this.Cutover("HomeNewTab", this.getPrefs(0, "HomeNewTab", false));
+				this.Cutover("HomeNewTab", this.getPrefs(0, "HomeNewTab", true));
 
 			if (!type || type === "TabFocus_Time")
 				this.TabFocus_Time = this.getPrefs(1, "TabFocus_Time", 250);
 
 			if (!type || type === "SideBarNewTab")
-				this.Cutover("SideBarNewTab", this.getPrefs(0, "SideBarNewTab", false));
+				this.Cutover("SideBarNewTab", this.getPrefs(0, "SideBarNewTab", true));
 
 			if (!type || type === "SideBarNewTab_SH")
 				this.SideBarNewTab_SH = this.getPrefs(0, "SideBarNewTab_SH", false);
 
 			if (!type || type === "CloseDownloadBankTab")
-				this.Cutover("CloseDownloadBankTab", this.getPrefs(0, "CloseDownloadBankTab", false));
+				this.Cutover("CloseDownloadBankTab", this.getPrefs(0, "CloseDownloadBankTab", true));
 
 			if (!type || type === "KeepBookmarksOnMiddleClick")
-				this.Cutover("KeepBookmarksOnMiddleClick", this.getPrefs(0, "KeepBookmarksOnMiddleClick", false));
+				this.Cutover("KeepBookmarksOnMiddleClick", this.getPrefs(0, "KeepBookmarksOnMiddleClick", true));
 		},
 
 		AddListener: function(enable, name, val, action, gbs) {
@@ -1311,7 +1311,7 @@
 			}
 		},
 
-		Edit: function(aFile, aLineNumber) {
+		Edit: function(aFile) {
 			if (!aFile)
 				aFile = this.file;
 
@@ -1326,28 +1326,36 @@
 
 			var editor;
 			try {
-				editor = Services.prefs.getComplexValue("view_source.editor.path", Ci.nsILocalFile);
+				editor = gPrefService.getCharPref("view_source.editor.path");
 			} catch (e) {
 				alert("请先设置编辑器的路径!!!\nview_source.editor.path");
 			}
 
-			if (!editor || !editor.exists()) {
+			if (!editor) {
 				this.openScriptInScratchpad(window, aFile);
 				return;
 			}
-			var aURL = userChrome.getURLSpecFromFile(aFile);
-			var aDocument = null;
-			var aCallBack = null;
-			var aPageDescriptor = null;
-			if (/aLineNumber/.test(gViewSourceUtils.openInExternalEditor.toSource()))
-				gViewSourceUtils.openInExternalEditor(aURL, aPageDescriptor, aDocument, aLineNumber, aCallBack);
-			else
-				gViewSourceUtils.openInExternalEditor(aURL, aPageDescriptor, aDocument, aCallBack);
+
+			var UI = Components.classes['@mozilla.org/intl/scriptableunicodeconverter'].createInstance(Components.interfaces.nsIScriptableUnicodeConverter);
+
+			var platform = window.navigator.platform.toLowerCase();
+			if (platform.indexOf('win') > -1) {
+				UI.charset = 'GB2312';
+			} else {
+				UI.charset = 'UTF-8';
+			}
+
+			var path = UI.ConvertFromUnicode(aFile.path);
+
+			var appfile = Components.classes['@mozilla.org/file/local;1'].createInstance(Components.interfaces.nsILocalFile);
+			appfile.initWithPath(editor);
+			var process = Components.classes['@mozilla.org/process/util;1'].createInstance(Components.interfaces.nsIProcess);
+			process.init(appfile);
+			process.run(false, [path], 1, {});
 		},
 
 		openScriptInScratchpad: function(parentWindow, file) {
-			let spWin = (parentWindow.Scratchpad || Services.wm.getMostRecentWindow("navigator:browser").Scratchpad)
-				.openScratchpad();
+			let spWin = (parentWindow.Scratchpad || Services.wm.getMostRecentWindow("navigator:browser").Scratchpad).openScratchpad();
 
 			spWin.addEventListener("load", function spWinLoaded() {
 				spWin.removeEventListener("load", spWinLoaded, false);
@@ -1362,6 +1370,7 @@
 				});
 			}, false);
 		},
+
 
 		loadFile: function(aFile) {
 			if (!aFile.exists() || !aFile.isFile()) return null;
