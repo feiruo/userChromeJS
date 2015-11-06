@@ -2,7 +2,7 @@
 // @name         	  	starClickMod.uc.js
 // @description   		多功能收藏按钮
 // @author        		feiruo
-// @compatibility		Firefox 40
+// @compatibility		Firefox 16
 // @charset				UTF-8
 // @include       		chrome://browser/content/browser.xul
 // @id 					[77DDE674]
@@ -13,8 +13,7 @@
 // @note      		  	参考star Click（http://g.mozest.com/viewthread.php?tid=41377）
 // @note      		 	为编辑面板增加更多功能
 // @note      		 	左键弹出书签添加编辑面板，中键打开书签侧栏，右键删除当前书签
-// @version    		    1.8.4 	全面修复，仅支持40Up。设置放入about:config中，即时生效。
-// @version    		    1.8.3 	40Up。
+// @version    		    1.8.3 	兼容40up,去除定位到最后一次使用的文件夹功能。
 // @version    		    1.8.2 	building 部分功能可以自定义。
 // @version    		    1.8.1 	去除Holly，删掉多余的动作（修改五角星位置等）。
 // @version     		1.8 	修正重启后可能按键失效的问题。
@@ -34,11 +33,8 @@ location == "chrome://browser/content/browser.xul" && (function() {
 	}
 
 	var starClick = {
-		Default_PlacesCommandHook_bookmarkCurrentPage: PlacesCommandHook.bookmarkCurrentPage.toString(),
-		get prefs() {
-			delete this.prefs;
-			return this.prefs = Services.prefs.getBranch("userChromeJS.starClickMod.");
-		},
+		isAutoPopup: true, //自动出编辑面板？
+		//isLast: true, //自动获取最后一次使用的文件夹？否则“未分类书签”；
 		get StarBtn() {
 			var version = Services.appinfo.version.split(".")[0];
 			if (version < 29)
@@ -55,70 +51,61 @@ location == "chrome://browser/content/browser.xul" && (function() {
 
 		init: function() {
 			this.AddListener(true);
-			this.Enable(true);
-			this.loadSetting();
-			this.prefs.addObserver('', this.PrefsObs, false);
 		},
 
 		onDestroy: function() {
 			this.AddListener(false);
-			this.Enable(false);
-			this.prefs.removeObserver('', this.PrefsObs, false);
-		},
-
-		PrefsObs: function(subject, topic, data) {
-			switch (topic) {
-				case 'nsPref:changed':
-					switch (data) {
-						case 'isAutoPopup':
-						case 'isLastFolder':
-							starClick.loadSetting(data);
-							break;
-					}
-					break;
-			}
-		},
-
-		loadSetting: function(type) {
-			if (!type || type === "isAutoPopup")
-				this.isAutoPopup = this.getPrefs(0, "isAutoPopup", true);
-
-			if (!type || type === "isLastFolder")
-				this.isLastFolder = this.getPrefs(0, "isLastFolder", true);
 		},
 
 		OpenPanel: function(isAlert) {
 			if (!isAlert) return;
-			setTimeout(function() {
-				gEditItemOverlay.toggleFolderTreeVisibility();
-				//gEditItemOverlay.toggleTagsSelector();
-			}, 50);
-			let folderTree = document.getElementById("editBMPanel_folderTreeRow");
-			folderTree.height = 300;
-			//let tagsSelector = document.getElementById("editBMPanel_tagsSelectorRow");
-			//tagsSelector.height = 75;
+			gEditItemOverlay.toggleFolderTreeVisibility();
 			document.getAnonymousNodes($('editBMPanel_tagsSelector'))[1].lastChild.style.display = 'inline-block';
+			$('editBMPanel_tagsSelector').style.cssText = 'max-height:50px !important; width:300px !important';
+			$('editBMPanel_folderTree').style.cssText = 'min-height:200px !important; max-width:300px !important';
+			$('editBookmarkPanel').style.maxHeight = '800px';
 		},
 
-		GetLastFolderId: function() {
-			var LAST_USED_ANNO = "bookmarkPropertiesDialog/folderLastUsed";
-			var annos = PlacesUtils.annotations;
-			var folderIds = annos.getItemsWithAnnotation(LAST_USED_ANNO);
-			var _recentFolders = [];
-			for (var i = 0; i < folderIds.length; i++) {
-				var lastUsed = annos.getItemAnnotation(folderIds[i], LAST_USED_ANNO);
-				_recentFolders.push({
-					folderId: folderIds[i],
-					lastUsed: lastUsed
-				});
-			}
-			_recentFolders.sort(function(a, b) {
-				if (b.lastUsed < a.lastUsed) return -1;
-				if (b.lastUsed > a.lastUsed) return 1;
-				return 0;
-			});
-			return _recentFolders.length > 0 ? _recentFolders[0].folderId : PlacesUtils.unfiledBookmarksFolderId;
-		},
+		//SetFolder: function(isAlert) {
+			//if (!isAlert) return;
+			//var LastId = this.GetLastFolderId();
+			//if (LastId === PlacesUtils.unfiledBookmarksFolderId) return;
+			//var FolderTree = gEditItemOverlay._folderMenuList.firstChild.childNodes;
+			//for (var i in FolderTree) {
+				//var Folder = FolderTree[i]
+				//if (!Folder.folderId) continue;
+				//if (Folder.folderId != LastId) continue;
+				//setTimeout(function() {
+					//Folder.click();
+					//Folder.setAttribute("selected", "true");
+					//gEditItemOverlay._folderMenuList.selectedIndex = i;
+					//gEditItemOverlay._folderMenuList.setAttribute("selectedIndex", i);
+					//let item = this._getFolderMenuItem(LastId);
+					//gEditItemOverlay._folderMenuList.selectedItem = item;
+				//}, 100);
+				//break;
+			//}
+		//},
+
+		//GetLastFolderId: function() {
+			//var LAST_USED_ANNO = "bookmarkPropertiesDialog/folderLastUsed";
+			//var annos = PlacesUtils.annotations;
+			//var folderIds = annos.getItemsWithAnnotation(LAST_USED_ANNO);
+			//var _recentFolders = [];
+			//for (var i = 0; i < folderIds.length; i++) {
+				//var lastUsed = annos.getItemAnnotation(folderIds[i], LAST_USED_ANNO);
+				//_recentFolders.push({
+					//folderId: folderIds[i],
+					//lastUsed: lastUsed
+				//});
+			//}
+			//_recentFolders.sort(function(a, b) {
+				//if (b.lastUsed < a.lastUsed) return -1;
+				//if (b.lastUsed > a.lastUsed) return 1;
+				//return 0;
+			//});
+			//return _recentFolders.length > 0 ? _recentFolders[0].folderId : PlacesUtils.unfiledBookmarksFolderId;
+		//},
 
 		AddListener: function(isAlert) {
 			this.StarBtn.removeEventListener("click", starClick.Click, false);
@@ -128,26 +115,15 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			this.StarBtn.addEventListener("click", starClick.Click, false);
 		},
 
-		Enable: function(isAlert) {
-			eval('PlacesCommandHook.bookmarkCurrentPage =' + this.Default_PlacesCommandHook_bookmarkCurrentPage);
-			if (!isAlert) return;
-			var hook = this.hook.toString();
-			eval('PlacesCommandHook.bookmarkCurrentPage =' + hook);
-		},
-
-		hook: function PCH_bookmarkCurrentPage(aShowEditUI, aParent) {
-			var isParent = starClick.GetLastFolderId(starClick.isLastFolder);
-			this.bookmarkPage(gBrowser.selectedBrowser, isParent ? isParent : aParent, starClick.isAutoPopup);
-			starClick.OpenPanel(starClick.isAutoPopup);
-		},
-
 		Click: function(event) {
 			if (event.button == 0) {
-
-			} else if (event.button == 1) {
+				PlacesCommandHook.bookmarkCurrentPage();
+				starClick.OpenPanel(starClick.isAutoPopup);
+				//starClick.SetFolder(starClick.isLast);
+			}
+			if (event.button == 1)
 				toggleSidebar('viewBookmarksSidebar');
-				event.stopPropagation();
-			} else if (event.button == 2) {
+			if (event.button == 2) {
 				var uri = gBrowser.selectedBrowser.currentURI;
 				var itemId = PlacesUtils.getMostRecentBookmarkForURI(uri);
 				if (itemId == -1) return;
@@ -157,28 +133,8 @@ location == "chrome://browser/content/browser.xul" && (function() {
 				} catch (ex) {
 					console.log(ex)
 				}
-				event.stopPropagation();
 			}
-		},
-
-		getPrefs: function(type, name, val) {
-			switch (type) {
-				case 0:
-					if (!this.prefs.prefHasUserValue(name) || this.prefs.getPrefType(name) != Ci.nsIPrefBranch.PREF_BOOL)
-						this.prefs.setBoolPref(name, val ? val : false);
-					return this.prefs.getBoolPref(name);
-					break;
-				case 1:
-					if (!this.prefs.prefHasUserValue(name) || this.prefs.getPrefType(name) != Ci.nsIPrefBranch.PREF_INT)
-						this.prefs.setIntPref(name, val ? val : 0);
-					return this.prefs.getIntPref(name);
-					break;
-				case 2:
-					if (!this.prefs.prefHasUserValue(name) || this.prefs.getPrefType(name) != Ci.nsIPrefBranch.PREF_STRING)
-						this.prefs.setCharPref(name, val ? val : "");
-					return this.prefs.getCharPref(name);
-					break;
-			}
+			event.stopPropagation();
 		},
 	};
 
