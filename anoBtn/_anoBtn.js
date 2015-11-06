@@ -19,29 +19,62 @@ var anobtnset = {
 };
 
 /**********************************************************************************
- *child:[  ]内为当前菜单的下级菜单配置,支持多级
+ *child:[  ]内为当前菜单的下一级菜单配置,支持多级
  *text 为运行参数，如果无需参数，直接删除text属性
- *exec 为打开路径，可以是任意文件和文件夹，支持相对路径，相对于配置文件夹；
- *oncommand 可以用function(){}；
- *小书签可以用oncommand:function(){
-	gBrowser.loadURI("javascript:内容")
- }；
- *-------------------------------
- *除了以上属性外，可以自定义添加其他属性，如果快捷键accesskey等
+ *这里是菜单配置:
+ *配置与addmenu一样，但仅支持本脚本菜单位置，具体请参照；https://github.com/ywzhaiqi/userChromeJS/tree/master/addmenuPlus
  *-------------------------------
  *{}, 为分隔条
  *-------------------------------
- *如果设置了id属性，会尝试获取此id并移动，如果在浏览器中没有找到此id，则创建此id
+ *目录枚举添加请注意：
+ *1、斜杠"/"或"\"开头为相对配置文件夹，注意：Linux路径区分大小写！！！！
+ *2、根据文件名全名字符(包括扩展名)排除或筛选;
+ *3、关系为：先排除再枚举。
+ *4、注意：配对模式为 test循环模式正则！！！注意正则全局"g"的使用！！test()继承正则表达式的lastIndex属性，表达式在匹配全局标志g的时候须注意。
+ *5、留空表示不进行该行为。
+ *6、在文件夹上左键点击为打开文件夹
  *************************************************************************************/
-//下面添加菜单
-var anomenu = [{
-		label: "我的电脑",
-		text: "::{20D04FE0-3AEA-1069-A2D8-08002B30309D}",
-		exec: "C:\\Windows\\explorer.exe",
-	}, {
+var anomenu = [ //下面添加菜单
+	{
 		label: '外部程序',
+		//枚举文件夹内的所有文件，当做可执行文件加入菜单，斜杠"/"或"\"开头为相对配置文件夹，注意：Linux路径区分大小写！！！！
+		MapFolder: '/chrome/tools',
+		//枚举的文件，需要注意:此处不使用"g"全局模式，可以匹配所有文件,
+		Filter: /\.(exe|lnk|bat|xls|xlsx|txt|doc|docx|jpg|wps)$/i,
+		//排除文件
+		Exclude: /\.(dat|reg|sample|config|db|log|dll|json|zip|rar|ini)$|7za\.exe|UpdataS\.bat|wget\.exe/i,
+		//是否枚举子目录内的文件，值代表子目录深度，多少级的子目录，0为根目录（即不枚举子目录）
+		Directories: 2,
+		//枚举目录,仅当Dirs>1时生效。
+		FilterDirs: "", //枚举目录
+		//枚举目录,仅当Dirs>1时生效。留空表示不进行该行为。
+		ExcludeDirs: /tmp|temp|ConFile|msdll/i,
+		//菜单图标
 		image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAAAbklEQVQ4je3TXwqAIAzAYe+VsP32pvc/QuQx7KmIAm39eYkGwz3IB24zhCdDRBIwmVn1JDCJSFqhK8gWW6HeZVWN+3Opzayehnr5HqSq8eyAmk/zTvuHPgV59ggYDtDNT1u2UAbKBWgEsrclzZgBLQgC98zNgUMAAAAASUVORK5CYII=",
-		child: [{
+		child: [ //没有目录级数限制，文件夹枚举和原有菜单移动在子菜单也适用
+			{
+				label: "IE打开",
+				image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABSklEQVQ4jZXTv2sUQRwF8E88UYlg5WEhiqWIhREbIWVqOwkRUh6oqU/E/0KREBBUsJBwVmn9gXokXFJJCiN4pWKnp4lYnJ4W+x0Yhj1yLjwWZua977z3dpnsaaKF1xjgFzZweRzhEM5hAbfRDdIL3Ij1+1itI5/HQ3zBH/wNjPAO13E0hrRL8hw+ZKQ6DPEobF0qJ7/fh5zjLk4l8kE8KA58w+PwfAtv8Tvb/475JHAWn7LNPdzEMRzGEZxBpxiylgSuFuo/0cN6hi52Isx0bjcJtP/DewlNvCkW+3HdZwU6NdAKz3nnmzgZtzsQmMLxSD7hBLzCS2xnAiM8VVU7HWFeiSz6+BjvO/AVS5H6sLDyWVXfFn7U2JwRiV+LSU8mDG6AxdRAD/fQiECXo55x5H6QG0lgNhJu4yJOq/6255nQSPWhreBCBAr+AcklnGDMJaPHAAAAAElFTkSuQmCC",
+				tooltiptext: "左键：IE打开当前页\r\n中键：打开 Internet Explorer\r\n右键：IE隐私打开当前页",
+				//显示条件
+				condition: "nolink",
+				//自添加属性
+				onclick: function(e) {
+					var Path = "C:\\Program Files\\Internet Explorer\\iexplore.exe";
+					switch (e.button) {
+						case 0:
+							addMenu.exec(Path, addMenu.convertText("%u"));
+							break;
+						case 1:
+							addMenu.exec(Path, "");
+							break;
+						case 2:
+							e.preventDefault();
+							addMenu.exec(Path, " -private " + addMenu.convertText("%u"));
+							break;
+					}
+				}
+			}, {
 				label: "测试配置1",
 				text: "-no-remote -profile ProfileTest",
 				exec: Services.dirsvc.get("ProfD", Ci.nsILocalFile).path + "\\..\\firefox.exe",
@@ -62,6 +95,10 @@ var anomenu = [{
 				exec: "C:\\Program Files\\Internet Explorer\\iexplore.exe"
 			},
 		]
+	}, {
+		label: "我的电脑",
+		text: "::{20D04FE0-3AEA-1069-A2D8-08002B30309D}",
+		exec: "C:\\Windows\\explorer.exe",
 	}, {
 		label: "常用功能",
 		image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAgUlEQVQ4jdVTwQ2AIAx0A0ZwFD/3Ilc6EqMxkiPow9SACphoTGxyj9K7a9rQYTgEGaKILlcgQzzyiwDgamLDSdQTdA1fMJBpgz1aXkPJO43SXFKLlxdEdBbROavt+TcGj0d4bPDzHdQOBoDLD817PxYEUtPd70tqqnTom5CaADjTrW77Ai0wH7nFAAAAAElFTkSuQmCC",
