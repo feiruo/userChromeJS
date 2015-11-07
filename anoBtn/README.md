@@ -38,3 +38,5 @@ anoBtn.uc.js
  			//枚举目录,仅当Dirs>1时生效。留空表示不筛选
  			FilterDirs: "",
  		},
+
+![图片](anoBtn.png)
