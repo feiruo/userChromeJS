@@ -12,7 +12,11 @@ FeiRuoNet.uc.js
  - 左键点击图复制IP，中键刷新，右键弹出菜单。
  - 更多功能需要【_FeiRuoNet.js】、【_FeiRuoNetMenu.js】、【FeiRuoNetLib.js】、【QQWry.dat】、【ip4.cdb】、【ip6.cdb】配置文件。
  - 配置文件位置位于：chrome\lib\ 文件夹下
- 
+
+![](FeiRuoNet01.png)
+![](FeiRuoNet02.png)
+
+	
  #注意事项
  1. 脚本正则方式均为test()，test()继承正则表达式的lastIndex属性，表达式在匹配全局标志g的时候须注意！
  2. UA修改暂时无法在E10S实现JSFIX！
@@ -74,5 +78,3 @@ FeiRuoNet.uc.js
 			}
 		}
 
-![](FeiRuoNet01.png)
-![](FeiRuoNet02.png)
