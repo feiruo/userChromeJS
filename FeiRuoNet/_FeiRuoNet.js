@@ -27,12 +27,6 @@ var ServerInfo = [ //在图标提示显示的 服务器信息
 		words: "X-Powered-By"
 	}
 ];
-var HeadRules = [//Http Head Rules
-"^https?://(pcs\\.baidu\\.com|baidupcs\\.com).*$": {
-	heads: val,
-	heads,
-	val,
-}];
 /******************************************************************************************
  *这里是UA自动切换规则列表。
  *支持正则匹配。
@@ -421,7 +415,7 @@ var Interfaces = [ //网站IP信息查询源
 				var obj = {}; //※必须，返回结果必须为object类型，此处为声明。
 				if (myip) s_local = s_local + '\n' + '--------------------------------' + '\n' + '我的IP：' + myip; //可以显示自己的IP，可以关闭“查询本地信息”以节省资源
 				if (myAddr) s_local = s_local + '\n' + '我的地址：' + myAddr; //加上自己的地址，可以关闭“查询本地信息”以节省资源
-				obj.SiteInfo = s_local || null; //※必须，此处为返回结果中你需要显示的信息;当前项仅为图标查询源的时候可以非必须。
+				obj.IPAddrInfo = s_local || null; //※必须，此处为返回结果中你需要显示的信息;当前项仅为图标查询源的时候可以非必须。
 				//以下两项非必须，在此项目不作为国旗图标查询源的时候可以不用
 				obj.CountryCode = null; //此处为返回结果的国家CODE。
 				obj.CountryName = null; //此处为返回结果的国家名称【中文，需要lib数据库支持】。
@@ -437,7 +431,7 @@ var Interfaces = [ //网站IP信息查询源
 				var docum = docum.replace(/\n/ig, "");
 
 				var obj = {};
-				obj.SiteInfo = docum || null;
+				obj.IPAddrInfo = docum || null;
 				obj.CountryCode = null;
 				obj.CountryName = null;
 				return obj || null;
@@ -460,7 +454,7 @@ var Interfaces = [ //网站IP信息查询源
 					myip_addr = myip_addr.substring(0, myip_addr.indexOf("\r\n\t\t"));
 
 				var obj = {};
-				obj.SiteInfo = myip_addr || null;
+				obj.IPAddrInfo = myip_addr || null;
 				obj.CountryCode = null;
 				obj.CountryName = null;
 				return obj || null;
@@ -479,7 +473,7 @@ var Interfaces = [ //网站IP信息查询源
 						var addr = doc.country + doc.province + doc.city + doc.district;
 
 					var obj = {};
-					obj.SiteInfo = addr || null;
+					obj.IPAddrInfo = addr || null;
 					obj.CountryCode = null;
 					obj.CountryName = doc.country || null;
 					return obj || null;
@@ -495,7 +489,7 @@ var Interfaces = [ //网站IP信息查询源
 				s_local = s_local.replace(/ +CZ88.NET ?/g, "");
 
 				var obj = {};
-				obj.SiteInfo = s_local || null;
+				obj.IPAddrInfo = s_local || null;
 				obj.CountryCode = null;
 				obj.CountryName = null;
 				return obj || null;
@@ -515,7 +509,7 @@ var Interfaces = [ //网站IP信息查询源
 					addr = addr + '\n' + doc.data.region + doc.data.city + doc.data.county + doc.data.isp;
 
 				var obj = {};
-				obj.SiteInfo = addr || null;
+				obj.IPAddrInfo = addr || null;
 				obj.CountryCode = country_id || null;
 				obj.CountryName = doc.data.country || null;
 				return obj || null;
