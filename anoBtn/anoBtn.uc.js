@@ -14,6 +14,7 @@
 // @downloadURL		https://github.com/feiruo/userChromeJS/raw/master/anoBtn/anoBtn.uc.js
 // @note			支持菜单和脚本设置重载
 // @note			需要 _anoBtn.js 配置文件
+// @version			1.3.7 	2015.11.05 	12:00	修复枚举目录不存在导致的错误，修正原菜单移动方式,修正编辑。
 // @version			1.3.6 	2015.11.05 	12:00	增加目录枚举，菜单参数与自由性与addmenu一样，仅限制位置于本菜单。
 // @version			1.3.5 	2015.04.25 	10:00	为可移动菜单。
 // @version			1.3.4 	2015.03.27 	09:00	调整代码。
@@ -106,7 +107,7 @@
 			this.Rebuild();
 			setTimeout(function() {
 				anoBtn.Rebuild();
-			}, 100); //again for webDeveloperMenu
+			}, 1000); //again for webDeveloperMenu
 			this.style = addStyle(CSS);
 			window.addEventListener("unload", function() {
 				anoBtn.onDestroy();
@@ -154,7 +155,7 @@
 			this.anobtnset = MenuDate.anobtnset;
 			this.RebuildBtn(true);
 			this.RebuildPopup(true);
-			if (isAlert) this.alert('配置已经重新载入');
+			if (isAlert) alert('配置已经重新载入');
 		},
 
 		/*****************************************************************************************/
@@ -305,12 +306,11 @@
 			if (obj.MapFolder)
 				return this.BuildMenu(this.EnumerateFolder(obj));
 
-			if (obj.child)
-				return this.BuildMenu(obj);
 			let menuitem;
 			if (obj.id && (menuitem = $(obj.id))) {
 				let dupMenuitem;
-				let isDupMenu = (obj.clone != false);
+				// let isDupMenu = (obj.clone != false);
+				let isDupMenu = true;
 				if (isDupMenu)
 					dupMenuitem = menuitem.cloneNode(true);
 				else
@@ -336,6 +336,10 @@
 				let noMove = !isDupMenu;
 				return dupMenuitem;
 			}
+
+			if (obj.child)
+				return this.BuildMenu(obj);
+
 			if (obj.label === "separator" || (!obj.label && !obj.image && !obj.text && !obj.keyword && !obj.url && !obj.oncommand && !obj.command))
 				menuitem = document.createElement("menuseparator");
 			else if (obj.oncommand || obj.command) {
@@ -384,13 +388,13 @@
 					obj.exec = this.handleRelativePath(obj.exec);
 			}
 
-			if (opt.isTopMenuitem && obj.onshowing) {
-				this.CustomShowings.push({
-					item: menuitem,
-					fnSource: obj.onshowing.toSource()
-				});
-				delete obj.onshowing;
-			}
+			// if (opt.isTopMenuitem && obj.onshowing) {
+			// 	this.CustomShowings.push({
+			// 		item: menuitem,
+			// 		fnSource: obj.onshowing.toSource()
+			// 	});
+			// 	delete obj.onshowing;
+			// }
 
 			for (let [key, val] in Iterator(obj)) {
 				if (key === "command" || key === "MapFolder" || key === "Filter" || key === "Sort" || key === "ExcludeDir") continue;
@@ -426,7 +430,7 @@
 			var path = this.handleRelativePath(obj.MapFolder);
 			var dir = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
 			dir.initWithPath(path);
-			if (!dir.isDirectory())
+			if (!dir.exists() || !dir.isDirectory())
 				return obj;
 			var Entries = dir.directoryEntries;
 			var Exclude = obj.Exclude ? ((typeof obj.Exclude == "string") ? (new RegExp(obj.Exclude)) : obj.Exclude) : null;
@@ -819,10 +823,6 @@
 		},
 
 		/*****************************************************************************************/
-		alert: function(aString, aTitle) {
-			Cc['@mozilla.org/alerts-service;1'].getService(Ci.nsIAlertsService).showAlertNotification("", aTitle || "Another Button", aString, false, "", null);
-		},
-
 		EditFile: function(aFile) {
 			if (!aFile)
 				aFile = this.File;
@@ -836,18 +836,20 @@
 			} else return;
 
 			if (!aFile || !aFile.exists() || !aFile.isFile())
-				return this.alert("文件不存在:\n" + aFile.path);
+				return alert("文件不存在:\n" + aFile.path);
 
 			var editor;
 			try {
 				editor = gPrefService.getCharPref("view_source.editor.path");
 			} catch (e) {
-				console.log("编辑器路径读取错误  >>  " + e);
+				log("编辑器路径读取错误  >>  " + e);
+				alert("请先设置编辑器的路径!!!\nview_source.editor.path");
+				toOpenWindowByType('pref:pref', 'about:config?filter=view_source.editor.path');
 			}
 
 			if (!editor) {
 				this.OpenScriptInScratchpad(window, aFile);
-				this.alert("请先设置编辑器的路径!!!\nview_source.editor.path");
+				alert("请先设置编辑器的路径!!!\nview_source.editor.path");
 				return;
 			}
 
@@ -857,14 +859,21 @@
 				UI.charset = 'GB2312';
 			else
 				UI.charset = 'UTF-8';
-
-			var path = UI.ConvertFromUnicode(aFile.path);
-
-			var appfile = Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsILocalFile);
-			appfile.initWithPath(editor);
+			// UI.charset = window.navigator.platform.toLowerCase().indexOf("win") >= 0 ? "gbk" : "UTF-8";
 			var process = Cc['@mozilla.org/process/util;1'].createInstance(Ci.nsIProcess);
-			process.init(appfile);
-			process.run(false, [path], 1, {});
+
+			try {
+				var path = UI.ConvertFromUnicode(aFile.path);
+				// process.init(editor);
+				// process.run(false, [path], [path].length);
+				var appfile = Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsILocalFile);
+				appfile.initWithPath(editor);
+				process.init(appfile);
+				process.run(false, [path], 1, {});
+			} catch (e) {
+				alert("编辑器不正确！")
+				this.OpenScriptInScratchpad(window, aFile);
+			}
 		},
 
 		Copy: function(str) {
@@ -907,7 +916,7 @@
 				var errmsg = "Rebuild Error:【" + aFile.leafName + "】文件不存在";
 				console.log(errmsg);
 				if (isAlert)
-					this.alert(errmsg);
+					alert(errmsg);
 				return null;
 			}
 			var sandbox = new Cu.Sandbox(new XPCNativeWrapper(window));
@@ -926,7 +935,7 @@
 				var errmsg = 'Error: ' + e + "\n请重新检查【" + aFile.leafName + "】文件第 " + line + " 行";
 				console.log(errmsg);
 				if (isAlert)
-					this.alert(errmsg);
+					alert(errmsg);
 			}
 			return sandbox || null;
 		},
@@ -1014,6 +1023,14 @@
 		};
 		return exports;
 	})();
+
+	function log(str) {
+		console.log("[Another Button Debug] ", arguments);
+	}
+
+	function alert(aString, aTitle) {
+		Cc['@mozilla.org/alerts-service;1'].getService(Ci.nsIAlertsService).showAlertNotification("", aTitle || "Another Button", aString, false, "", null);
+	}
 
 	function $(id) {
 		return document.getElementById(id);
