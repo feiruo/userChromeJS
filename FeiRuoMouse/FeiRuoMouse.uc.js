@@ -17,6 +17,7 @@
 // @downloadURL		https://github.com/feiruo/userChromeJS/raw/master/FeiRuoMouse/FeiRuoMouse.uc.js
 // @note            Begin 2015.04.23
 // @note            手势与拖拽。
+// @version      	0.1.0 	2016.02.23	17:00 	修复手势轨迹问题，完善拖拽，向上支持,修正编辑。
 // @version      	0.0.9 	2015.06.20	15:00 	修改机制，需要从新编辑配置文件。
 // @version      	0.0.8 	2015.06.10	15:00 	修复切换标签时轨迹不消失问题。
 // @version      	0.0.7 	2015.05.30	18:00 	Add mouse button&&staus time&&Fix R<L R>L etc。
@@ -45,7 +46,16 @@
 
 	var FeiRuoMouse = {
 		DragIng: {},
-		GesIng: {},
+		GesIng: {
+			lastX: 0,
+			lastY: 0,
+			sourceNode: "",
+			directionChain: "",
+			isMouseDownL: false,
+			isMouseDownR: false,
+			hideFireContext: false,
+			shouldFireContext: false,
+		},
 		get Prefs() {
 			delete this.Prefs;
 			return this.Prefs = Services.prefs.getBranch("userChromeJS.FeiRuoMouse.");
@@ -124,7 +134,7 @@
 
 		loadSetting: function(type) {
 			if (!type || type === "DragCustom") {
-				this.DragCustom = unescape(this.getPrefs(2, "DragCustom", "1|%u641C%u7D22%u76F8%u4F3C%u56FE%u7247|ANY|Image|Alt|;;1|%u641C%u7D22%u6846%u641C%u7D22%u94FE%u63A5%u6587%u5B57|ANY|Url||;;1|%u641C%u7D22%u6846%u641C%u7D22%u9009%u4E2D%u6587%u5B57%5B%u8BC6%u522BURL%u5E76%u6253%u5F00%5D|ANY|Text||"));
+				this.DragCustom = unescape(this.getPrefs(2, "DragCustom", ""));
 				this.DragRules_Image = {};
 				this.DragRules_Url = {};
 				this.DragRules_Text = {};
@@ -136,7 +146,7 @@
 			}
 
 			if (!type || type === "GesCustom") {
-				this.GesCustom = unescape(this.getPrefs(2, "GesCustom", "1|%u8F6C%u5230%u9875%u9762%u9876%u90E8|U|||;;1|%u8F6C%u5230%u9875%u9762%u5E95%u90E8|D|||;;1|%u540E%u9000/%u4E0A%u4E00%u9875|L|||;;1|%u524D%u8FDB/%u4E0B%u4E00%u9875|R|||;;1|%u5237%u65B0|DU|||;;1|%u5F3A%u5236%u5237%u65B0|DUD|||;;1|%u8F6C%u5230%u5DE6%u8FB9%u6807%u7B7E%u9875|UL|||;;1|%u8F6C%u5230%u53F3%u8FB9%u6807%u7B7E%u9875|UR|||;;1|%u5173%u95ED%u5F53%u524D%u6807%u7B7E%u9875|DR|||;;1|%u64A4%u9500%u5173%u95ED%u6807%u7B7E%u9875|DL|||;;1|%u6E05%u9664startupCache%u5E76%u91CD%u542F%u6D4F%u89C8%u5668|DLR|||;;1|%u6700%u5927%u5316/%u6062%u590D%u7A97%u53E3|ULR|||;;1|%u5173%u95ED%u5DE6%u4FA7%u6240%u6709%u6807%u7B7E%u9875|LUD|||;;1|%u5173%u95ED%u53F3%u4FA7%u6240%u6709%u6807%u7B7E%u9875|RUD|||;;1|%u91CD%u7F6E%u7F29%u653E|L<R|||;;1|%u91CD%u7F6E%u7F29%u653E|L>R|||;;1|GrabScroll4|RD|||;;1|WHT|LR|||;;1|%u7FFB%u8BD1|RL|||"));
+				this.GesCustom = unescape(this.getPrefs(2, "GesCustom", ""));
 				this.GesturesRules = {};
 				this.loadRule("GesCustom", this.GesCustom);
 				this.Listen_Ges(true);
@@ -256,81 +266,70 @@
 
 		/*****************************************************************************************/
 		Listen_Ges: function(isAlert) {
-			gBrowser.mPanelContainer.removeEventListener("mousedown", FeiRuoMouse.Listener_Ges, true);
-			gBrowser.mPanelContainer.ownerDocument.defaultView.document.documentElement.removeEventListener("mousemove", FeiRuoMouse.Listener_Ges, true);
-			gBrowser.mPanelContainer.ownerDocument.defaultView.document.documentElement.removeEventListener("mouseup", FeiRuoMouse.Listener_Ges, true);
-			gBrowser.mPanelContainer.removeEventListener("contextmenu", FeiRuoMouse.Listener_Ges, true);
-			gBrowser.mPanelContainer.removeEventListener("draggesture", FeiRuoMouse.Listener_Ges, true);
-			gBrowser.mPanelContainer.removeEventListener("DOMMouseScroll", FeiRuoMouse.Listener_Ges, true);
-
+			var Events = ["mousedown", "mousemove", "mouseup", "contextmenu", "DOMMouseScroll", "draggesture"];
+			try {
+				Events.forEach(function(type) {
+					gBrowser.mPanelContainer.removeEventListener(type, FeiRuoMouse.Listener_Ges, true);
+					//getBrowser().removeEventListener(type, FeiRuoMouse.Listener_Ges, false);
+				});
+			} catch (ex) {
+				Cu.reportError(ex);
+				throw ex;
+			}
 			if (!isAlert) return;
-
-			gBrowser.mPanelContainer.addEventListener("mousedown", FeiRuoMouse.Listener_Ges, true);
-			gBrowser.mPanelContainer.ownerDocument.defaultView.document.documentElement.addEventListener("mousemove", FeiRuoMouse.Listener_Ges, true);
-			gBrowser.mPanelContainer.ownerDocument.defaultView.document.documentElement.addEventListener("mouseup", FeiRuoMouse.Listener_Ges, true);
-			gBrowser.mPanelContainer.addEventListener("contextmenu", FeiRuoMouse.Listener_Ges, true);
-			gBrowser.mPanelContainer.addEventListener("draggesture", FeiRuoMouse.Listener_Ges, true);
-			gBrowser.mPanelContainer.addEventListener("DOMMouseScroll", FeiRuoMouse.Listener_Ges, true);
+			try {
+				Events.forEach(function(type) {
+					gBrowser.mPanelContainer.addEventListener(type, FeiRuoMouse.Listener_Ges, true);
+					//getBrowser().addEventListener(type, FeiRuoMouse.Listener_Ges, false);
+				});
+			} catch (ex) {
+				Cu.reportError(ex);
+				throw ex;
+			}
 		},
 
 		Listen_Drag: function(isAlert) {
-			var Events = ["dragstart", "drag", "dragover", "drop", "dragend", 'dragenter', 'dragleave'];
-			Events.forEach(function(type) {
-				gBrowser.mPanelContainer.removeEventListener(type, FeiRuoMouse.Listener_Drag, false);
-				//getBrowser().removeEventListener(type, FeiRuoMouse.Listener_Drag, false);
-			});
-
+			var Events = ["dragstart", "dragenter", "dragover", "dragleave", "drag", 'drop', 'dragend'];
+			try {
+				Events.forEach(function(type) {
+					// gBrowser.mPanelContainer.removeEventListener(type, FeiRuoMouse.Listener_Drag, false);
+					gBrowser.removeEventListener(type, FeiRuoMouse.Listener_Drag, true);
+				});
+			} catch (ex) {
+				Cu.reportError(ex);
+				throw ex;
+			}
 			if (!isAlert) return;
-
-			Events.forEach(function(type) {
-				gBrowser.mPanelContainer.addEventListener(type, FeiRuoMouse.Listener_Drag, false);
-				//getBrowser().addEventListener(type, FeiRuoMouse.Listener_Drag, false);
-			});
+			try {
+				Events.forEach(function(type) {
+					// gBrowser.mPanelContainer.addEventListener(type, FeiRuoMouse.Listener_Drag, false);
+					gBrowser.addEventListener(type, FeiRuoMouse.Listener_Drag, true);
+				});
+			} catch (ex) {
+				Cu.reportError(ex);
+				throw ex;
+			}
 		},
 
 		/*****************************************************************************************/
 		Listener_Drag: function(event) {
-			var that = FeiRuoMouse.DragIng;
 			switch (event.type) {
-				case "drag":
-					//case "dragstart":
-					that.lastPoint = [event.screenX, event.screenY];
-					that.sourceNode = event.target;
-					that.directionChain = "";
-					event.target.localName == "img" && event.dataTransfer.setData("application/x-moz-file-promise-url", event.target.src);
-					that.dragFromInside = true;
+				case "dragstart":
+					FeiRuoMouse.DragProgress(event, "Start");
+					break;
+				case "dragenter":
 					break;
 				case "dragover":
-					if (!that.lastPoint) return;
-					Cc["@mozilla.org/widget/dragservice;1"].getService(Ci.nsIDragService).getCurrentSession().canDrop = true;
-					var [subX, subY] = [event.screenX - that.lastPoint[0], event.screenY - that.lastPoint[1]];
-					var [distX, distY] = [(subX > 0 ? subX : (-subX)), (subY > 0 ? subY : (-subY))];
-					var direction;
-					if (distX < 10 && distY < 10) return;
-					if (distX > distY) direction = subX < 0 ? "L" : "R";
-					else direction = subY < 0 ? "U" : "D";
-					if (direction != that.directionChain.charAt(that.directionChain.length - 1)) {
-						that.directionChain += direction;
-						that.Drag = that.directionChain;
-						FeiRuoMouse.ActionStaus(event, that.Drag);
-					}
-					that.lastPoint = [event.screenX, event.screenY];
+					FeiRuoMouse.DragProgress(event, "Progress");
 					break;
-				case "dragend":
+				case "dragleave":
+					!window.content && FeiRuoMouse.DragProgress(event, "End");
+					break;
+				case "drag":
+					break;
 				case "drop":
-					if (that.lastPoint && event.target.localName != "textarea" && (!(event.target.localName == "input" && (event.target.type == "text" || event.target.type == "password"))) && event.target.contentEditable != "true") {
-						event.preventDefault();
-						event.stopPropagation();
-						var type;
-						if (event.dataTransfer.types.contains("application/x-moz-file-promise-url"))
-							type = "Image";
-						else if (event.dataTransfer.types.contains("text/x-moz-url"))
-							type = "Url";
-						else
-							type = "Text";
-						that.lastPoint = "";
-						FeiRuoMouse.Listen_AidtKey(event, that.Drag, type);
-					}
+				case "dragend":
+					window.content && FeiRuoMouse.DragProgress(event, "End");
 					break;
 			}
 		},
@@ -341,12 +340,14 @@
 				case "mousedown":
 					if (gInPrintPreviewMode) return;
 					if (event.target instanceof HTMLCanvasElement && event.target.parentNode instanceof Ci.nsIDOMXULElement) return;
+					// if (/object|embed/i.test(event.target.localName)) return;
+					// if (/scrollbarbutton|slider|thumb/i.test(event.originalTarget.localName)) return;
 					if (event.button == FeiRuoMouse.GesIngBtn) {
 						event.preventDefault();
 						event.stopPropagation();
 						that.isGesIngBtn = true;
 						that._hideFireContext = false;
-						FeiRuoMouse.StartGesture(event);
+						[that._lastX, that._lastY, that._directionChain] = [event.screenX, event.screenY, ""];
 					}
 					if (event.button == 2)
 						that._isMouseDownR = true;
@@ -376,9 +377,13 @@
 					}
 					break;
 				case "mouseup":
+					if (that.xdTrailArea) {
+						that.xdTrailArea.parentNode.removeChild(that.xdTrailArea);
+						that.xdTrailArea = null;
+						that.xdTrailAreaContext = null;
+					}
 					if (that.isGesIngBtn && event.button == FeiRuoMouse.GesIngBtn) {
-						if (that._directionChain)
-							that._shouldFireContext = false;
+						if (that._directionChain) that._shouldFireContext = false;
 						that.isGesIngBtn = false;
 						that._directionChain && FeiRuoMouse.StopGesture(event);
 						if (that._shouldFireContext && !that._hideFireContext) {
@@ -423,6 +428,120 @@
 		},
 
 		/*****************************************************************************************/
+		DragProgress: function(event, type) {
+			var that = this.DragIng;
+			switch (type) {
+				case "Start":
+					that.lastPoint = [event.screenX, event.screenY];
+					that.sourceNode = event.target;
+					that.directionChain = "";
+					event.target.localName == "img" && event.dataTransfer.setData("application/x-moz-file-promise-url", event.target.src);
+					that.dragFromInside = true;
+					break;
+				case "Progress":
+					if (!that.lastPoint) return;
+					Cc["@mozilla.org/widget/dragservice;1"].getService(Ci.nsIDragService).getCurrentSession().canDrop = true;
+					var [subX, subY] = [event.screenX - that.lastPoint[0], event.screenY - that.lastPoint[1]];
+					var [distX, distY] = [(subX > 0 ? subX : (-subX)), (subY > 0 ? subY : (-subY))];
+					var direction;
+					if (distX < 10 && distY < 10) return;
+					if (distX > distY)
+						direction = subX < 0 ? "L" : "R";
+					else
+						direction = subY < 0 ? "U" : "D";
+
+					if (direction != that.directionChain.charAt(that.directionChain.length - 1)) {
+						that.directionChain += direction;
+						that.Drag = that.directionChain;
+						this.ActionStaus(event, that.directionChain);
+					}
+					that.lastPoint = [event.screenX, event.screenY];
+					break;
+				case "End":
+					if (that.lastPoint && event.target.localName != "textarea" && (!(event.target.localName == "input" && (event.target.type == "text" || event.target.type == "password"))) && event.target.contentEditable != "true") {
+						event.preventDefault();
+						event.stopPropagation();
+						that.lastPoint = "";
+						var type;
+						if (event.dataTransfer.types.contains("application/x-moz-file-promise-url"))
+							type = "Image";
+						else if (event.dataTransfer.types.contains("text/x-moz-url"))
+							type = "Url";
+						else
+							type = "Text";
+						this.Listen_AidtKey(event, that.directionChain, type);
+					}
+					break;
+			}
+		},
+
+		_displayContextMenu: function(event) {
+			var evt = event.originalTarget.ownerDocument.createEvent("MouseEvents");
+			evt.initMouseEvent("contextmenu", true, true, event.originalTarget.defaultView, 0, event.screenX, event.screenY, event.clientX, event.clientY, false, false, false, false, 2, null);
+			event.originalTarget.dispatchEvent(evt);
+		},
+
+		ProgressGesture: function(event) {
+			var that = FeiRuoMouse.GesIng;
+			var [subX, subY] = [event.screenX - that._lastX, event.screenY - that._lastY];
+			var [distX, distY] = [(subX > 0 ? subX : (-subX)), (subY > 0 ? subY : (-subY))];
+			var direction;
+			if (distX < 10 && distY < 10) return;
+			if (distX > distY) direction = subX < 0 ? "L" : "R";
+			else direction = subY < 0 ? "U" : "D";
+
+			var dChain = that._directionChain;
+			if (this.GesTrailEnabel) {
+				var browser = gBrowser.selectedBrowser;
+				if (!that.xdTrailArea) {
+					that.xdTrailArea = document.createElement("hbox");
+					var canvas = document.createElementNS("http://www.w3.org/1999/xhtml", "canvas");
+					canvas.setAttribute("width", window.screen.width);
+					canvas.setAttribute("height", window.screen.height);
+					that.xdTrailAreaContext = canvas.getContext("2d");
+					that.xdTrailArea.style.cssText = "display: -moz-box !important;" + "box-sizing: border-box !important;" + "pointer-events: none !important;" + "width:100% !important;" + "height:100% !important;" + "overflow:hidden !important;" + "opacity:.9 !important;";
+					that.xdTrailArea.appendChild(canvas);
+					browser.parentNode.insertBefore(that.xdTrailArea, browser.nextSibling);
+				}
+				if (that.xdTrailAreaContext) {
+					that.xdTrailAreaContext.strokeStyle = this.trailColor; //颜色
+					that.xdTrailAreaContext.lineJoin = "round";
+					that.xdTrailAreaContext.lineWidth = this.trailSize; //粗细
+					that.xdTrailAreaContext.beginPath();
+					that.xdTrailAreaContext.moveTo(that._lastX - browser.boxObject.screenX, that._lastY - browser.boxObject.screenY);
+					that.xdTrailAreaContext.lineTo(event.screenX - browser.boxObject.screenX, event.screenY - browser.boxObject.screenY);
+					that.xdTrailAreaContext.closePath();
+					that.xdTrailAreaContext.stroke();
+
+				}
+			}
+
+			if (direction != dChain.charAt(dChain.length - 1)) {
+				dChain += direction;
+				that._directionChain += direction;
+				this.ActionStaus(event, dChain);
+				//if (that.directionChain.length <=4) {} else {}限制手势转折次数
+			}
+			that._lastX = event.screenX;
+			that._lastY = event.screenY;
+		},
+
+		StopGesture: function(event) {
+			var that = FeiRuoMouse.GesIng;
+			this.Listen_AidtKey(event, that._directionChain);
+			// that._shouldFireContext = false;
+			// that._hideFireContext = false;
+			that._directionChain = "";
+			that.xdTrailArea = null; // 修复与nextpage的冲突，当nextpage启用预读时只能被MouseDragGestures调用一次，不能接着再用
+			event.preventDefault();
+			event.stopPropagation();
+			that._isMouseDownL = false;
+			//this.isMouseDownM = false;
+			that._isMouseDownR = false; // 取消鼠标按键
+			that._hideFireContext = true;
+		},
+
+		/*****************************************************************************************/
 		Listen_AidtKey: function(event, dChain, type) {
 			var EventKey = this.ActionEventKey(event);
 			var obj;
@@ -433,7 +552,6 @@
 				obj = this["DragRules_" + type][dChain] || this["DragRules_Any" + type][EventKey];
 				type = "Drag";
 			}
-
 			if (!obj)
 				return this.ActionStaus(event, dChain);
 
@@ -454,7 +572,8 @@
 			if (cmd) {
 				try {
 					var funstr = cmd.command.toString().replace(/^function.*{|}$/g, "");
-					(new Function("event", funstr))(event);
+					// (new Function("event", funstr))(event);
+					(Function("event", funstr))(event);
 				} catch (ex) {
 					log(command + "(执行错误：" + ex + ")")
 					status(command + "(执行错误：" + ex + ")");
@@ -517,83 +636,6 @@
 				type.cn = "文字";
 			}
 			return type;
-		},
-
-		/*****************************************************************************************/
-		_displayContextMenu: function(event) {
-			var evt = event.originalTarget.ownerDocument.createEvent("MouseEvents");
-			evt.initMouseEvent("contextmenu", true, true, event.originalTarget.defaultView, 0, event.screenX, event.screenY, event.clientX, event.clientY, false, false, false, false, 2, null);
-			event.originalTarget.dispatchEvent(evt);
-		},
-
-		StartGesture: function(event) {
-			var that = FeiRuoMouse.GesIng;
-			that._lastX = event.screenX;
-			that._lastY = event.screenY;
-			that._directionChain = "";
-			if (!this.GesTrailEnabel) return;
-			var obj = {
-				trailSize: this.trailSize || 2,
-				trailColor: this.trailColor || "brown",
-			};
-			var str = JSON.stringify(obj);
-			if (window.content)
-				this.GesTrails.CreateTrail(str, event.view);
-			else {
-				if (!gBrowser.selectedBrowser.contentWindowAsCPOW.FeiRuoMouse_GesTrails)
-					gBrowser.selectedBrowser.messageManager.loadFrameScript("data:application/x-javascript;charset=UTF-8," + escape("content.FeiRuoMouse_GesTrails=" + this.obj2str(this.GesTrails) + ";"), true);
-				gBrowser.selectedBrowser.messageManager.loadFrameScript("data:application/x-javascript;charset=UTF-8,if(content.FeiRuoMouse_GesTrails){content.FeiRuoMouse_GesTrails.CreateTrail('" + escape(str) + "');}", true);
-			}
-		},
-
-		ProgressGesture: function(event) {
-			var that = FeiRuoMouse.GesIng;
-			var x = event.screenX,
-				y = event.screenY;
-			var lastX = that._lastX,
-				lastY = that._lastY;
-			var subX = x - lastX,
-				subY = y - lastY;
-			var distX = (subX > 0 ? subX : (-subX)),
-				distY = (subY > 0 ? subY : (-subY));
-			var direction;
-			if (distX < 10 && distY < 10) return;
-			if (distX > distY) direction = subX < 0 ? "L" : "R";
-			else direction = subY < 0 ? "U" : "D";
-			var dChain = that._directionChain;
-			if (this.GesTrailEnabel) {
-				var obj = {
-					x1: that._lastX,
-					y1: that._lastY,
-					x2: x,
-					y2: y
-				};
-				var str = JSON.stringify(obj);
-
-				if (window.content)
-					this.GesTrails.DrawTrail(str);
-				else
-					gBrowser.selectedBrowser.messageManager.loadFrameScript("data:application/x-javascript;charset=UTF-8,if(content.FeiRuoMouse_GesTrails){content.FeiRuoMouse_GesTrails.DrawTrail('" + escape(str) + "');}", true);
-			}
-
-			if (direction != dChain.charAt(dChain.length - 1)) {
-				dChain += direction;
-				that._directionChain += direction;
-				this.ActionStaus(event, dChain);
-			}
-			that._lastX = x;
-			that._lastY = y;
-		},
-
-		StopGesture: function(event) {
-			var that = FeiRuoMouse.GesIng;
-			this.Listen_AidtKey(event, that._directionChain);
-			that._directionChain = "";
-			if (!this.GesTrailEnabel) return;
-			if (window.content)
-				this.GesTrails.EraseTrail();
-			else
-				window.messageManager.loadFrameScript("data:application/x-javascript;charset=UTF-8,if(content.FeiRuoMouse_GesTrails){content.FeiRuoMouse_GesTrails.EraseTrail();}", true);
 		},
 
 		/*****************************************************************************************/
@@ -666,7 +708,6 @@
 
 			if (typeof(aFile) == "string") {
 				var file = Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsILocalFile);
-				var process = Cc['@mozilla.org/process/util;1'].createInstance(Ci.nsIProcess);
 				aFile = file.initWithPath(aFile);
 			}
 
@@ -677,30 +718,38 @@
 			try {
 				editor = gPrefService.getCharPref("view_source.editor.path");
 			} catch (e) {
+				log("编辑器路径读取错误  >>  " + e);
 				alert("请先设置编辑器的路径!!!\nview_source.editor.path");
+				toOpenWindowByType('pref:pref', 'about:config?filter=view_source.editor.path');
 			}
 
 			if (!editor) {
 				this.openScriptInScratchpad(window, aFile);
+				alert("请先设置编辑器的路径!!!\nview_source.editor.path");
 				return;
 			}
 
-			var UI = Components.classes['@mozilla.org/intl/scriptableunicodeconverter'].createInstance(Components.interfaces.nsIScriptableUnicodeConverter);
-
+			var UI = Cc['@mozilla.org/intl/scriptableunicodeconverter'].createInstance(Ci.nsIScriptableUnicodeConverter);
 			var platform = window.navigator.platform.toLowerCase();
-			if (platform.indexOf('win') > -1) {
+			if (platform.indexOf('win') > -1)
 				UI.charset = 'GB2312';
-			} else {
+			else
 				UI.charset = 'UTF-8';
+			// UI.charset = window.navigator.platform.toLowerCase().indexOf("win") >= 0 ? "gbk" : "UTF-8";
+			var process = Cc['@mozilla.org/process/util;1'].createInstance(Ci.nsIProcess);
+
+			try {
+				var path = UI.ConvertFromUnicode(aFile.path);
+				// process.init(editor);
+				// process.run(false, [path], [path].length);
+				var appfile = Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsILocalFile);
+				appfile.initWithPath(editor);
+				process.init(appfile);
+				process.run(false, [path], 1, {});
+			} catch (e) {
+				alert("编辑器不正确！")
+				this.openScriptInScratchpad(window, aFile);
 			}
-
-			var path = UI.ConvertFromUnicode(aFile.path);
-
-			var appfile = Components.classes['@mozilla.org/file/local;1'].createInstance(Components.interfaces.nsILocalFile);
-			appfile.initWithPath(editor);
-			var process = Components.classes['@mozilla.org/process/util;1'].createInstance(Components.interfaces.nsIProcess);
-			process.init(appfile);
-			process.run(false, [path], 1, {});
 		},
 
 		openScriptInScratchpad: function(parentWindow, file) {
@@ -745,106 +794,6 @@
 		},
 	};
 
-	FeiRuoMouse.GesTrails = {
-		trailDot: null,
-		trailArea: null,
-		trailLastDot: null,
-		trailOffsetX: 0,
-		trailOffsetY: 0,
-		trailZoom: 1,
-
-		CreateTrail: function FeiRuoMouse_CreateTrail(str, win) {
-			var obj = JSON.parse(str);
-			win = win || content;
-			if (!win) return;
-			if (win.top.document instanceof Components.interfaces.nsIDOMHTMLDocument) win = win.top;
-			else if (win.document instanceof Components.interfaces.nsIDOMHTMLDocument === false) return;
-			var doc = content.document;
-			var insertionNode = doc.documentElement ? doc.documentElement : doc;
-			var win = doc.defaultView;
-			this.trailSize = obj.trailSize;
-			this.trailZoom = win.QueryInterface(Components.interfaces.nsIInterfaceRequestor).
-			getInterface(Components.interfaces.nsIDOMWindowUtils).screenPixelsPerCSSPixel;
-			this.trailOffsetX = (win.mozInnerScreenX - win.scrollX) * this.trailZoom;
-			this.trailOffsetY = (win.mozInnerScreenY - win.scrollY) * this.trailZoom;
-			this.trailArea = doc.createElementNS("http://www.w3.org/1999/xhtml", "xdTrailArea");
-			insertionNode.appendChild(this.trailArea);
-			this.trailDot = doc.createElementNS("http://www.w3.org/1999/xhtml", "xdTrailDot");
-			this.trailDot.style.width = this.trailSize + "px";
-			this.trailDot.style.height = this.trailSize + "px";
-			this.trailDot.style.background = obj.trailColor;
-			this.trailDot.style.border = "0px";
-			this.trailDot.style.position = "absolute";
-			this.trailDot.style.zIndex = 2147483647;
-		},
-
-		DrawTrail: function FeiRuoMouse_DrawTrail(str) {
-			if (!this.trailArea)
-				return;
-			var obj = JSON.parse(str);
-			var x1 = obj.x1,
-				y1 = obj.y1,
-				x2 = obj.x2,
-				y2 = obj.y2;
-			var xMove = x2 - x1;
-			var yMove = y2 - y1;
-			var xDecrement = xMove < 0 ? 1 : -1;
-			var yDecrement = yMove < 0 ? 1 : -1;
-			x2 -= this.trailOffsetX;
-			y2 -= this.trailOffsetY;
-			if (Math.abs(xMove) >= Math.abs(yMove))
-				for (var i = xMove; i != 0; i += xDecrement)
-					this.StrokeDot(x2 - i, y2 - Math.round(yMove * i / xMove));
-			else
-				for (var i = yMove; i != 0; i += yDecrement)
-					this.StrokeDot(x2 - Math.round(xMove * i / yMove), y2 - i);
-		},
-
-		EraseTrail: function FeiRuoMouse_EraseTrail() {
-			if (this.trailArea && this.trailArea.parentNode) {
-				while (this.trailArea.lastChild)
-					this.trailArea.removeChild(this.trailArea.lastChild);
-				this.trailArea.parentNode.removeChild(this.trailArea);
-			}
-			this.trailDot = null;
-			this.trailArea = null;
-			this.trailLastDot = null;
-		},
-
-		StrokeDot: function FeiRuoMouse_StrokeDot(x, y) {
-			if (this.trailArea.y == y && this.trailArea.h == this.trailSize) {
-				var newX = Math.min(this.trailArea.x, x);
-				var newW = Math.max(this.trailArea.x + this.trailArea.w, x + this.trailSize) - newX;
-				this.trailArea.x = newX;
-				this.trailArea.w = newW;
-				this.trailLastDot.style.left = newX.toString() + "px";
-				this.trailLastDot.style.width = newW.toString() + "px";
-				return;
-			} else if (this.trailArea.x == x && this.trailArea.w == this.trailSize) {
-				var newY = Math.min(this.trailArea.y, y);
-				var newH = Math.max(this.trailArea.y + this.trailArea.h, y + this.trailSize) - newY;
-				this.trailArea.y = newY;
-				this.trailArea.h = newH;
-				this.trailLastDot.style.top = newY.toString() + "px";
-				this.trailLastDot.style.height = newH.toString() + "px";
-				return;
-			}
-			if (this.trailZoom != 1) {
-				x = Math.floor(x / this.trailZoom);
-				y = Math.floor(y / this.trailZoom);
-			}
-			var dot = this.trailDot.cloneNode(true);
-			dot.style.left = x + "px";
-			dot.style.top = y + "px";
-			this.trailArea.x = x;
-			this.trailArea.y = y;
-			this.trailArea.w = this.trailSize;
-			this.trailArea.h = this.trailSize;
-			this.trailArea.appendChild(dot);
-			this.trailLastDot = dot;
-		},
-	};
-
 	FeiRuoMouse.DragScript = {
 		Image: function(e) {
 			return e.dataTransfer.getData("application/x-moz-file-promise-url")
@@ -865,7 +814,7 @@
 		SeeAsURL: function(url) {
 			var DomainName = /(\w+(\-+\w+)*\.)+\w{2,7}/i;
 			var HasSpace = /\S\s+\S/;
-			var KnowNameOrSlash = /^(www|bbs|forum|blog)|\//i;
+			var KnowNameOrSlash = /^(about|chrome|www|bbs|forum|blog)|\//i;
 			var KnowTopDomain1 = /\.(com|net|org|gov|edu|info|mobi|mil|asia)$/i;
 			var KnowTopDomain2 = /\.(de|uk|eu|nl|it|cn|be|us|br|jp|ch|fr|at|se|es|cz|pt|ca|ru|hk|tw|pl|me|tv|cc)$/i;
 			var IsIpAddress = /^([1-2]?\d?\d\.){3}[1-2]?\d?\d/;
