@@ -17,6 +17,7 @@
 // @downloadURL		https://github.com/feiruo/userChromeJS/raw/master/FeiRuoMouse/FeiRuoMouse.uc.js
 // @note            Begin 2015.04.23
 // @note            手势与拖拽。
+// @version      	0.1.1 	2016.03.04	14:00 	修复手势L>R，L<R轨迹不消失问题，添加窗口拖拽功能。
 // @version      	0.1.0 	2016.02.23	17:00 	修复手势轨迹问题，完善拖拽，向上支持,修正编辑。
 // @version      	0.0.9 	2015.06.20	15:00 	修改机制，需要从新编辑配置文件。
 // @version      	0.0.8 	2015.06.10	15:00 	修复切换标签时轨迹不消失问题。
@@ -46,6 +47,12 @@
 
 	var FeiRuoMouse = {
 		DragIng: {},
+		Moving: {
+			isDragging: false,
+			oldx: "",
+			oldy: "",
+			drgChk: 0
+		},
 		GesIng: {
 			lastX: 0,
 			lastY: 0,
@@ -54,7 +61,7 @@
 			isMouseDownL: false,
 			isMouseDownR: false,
 			hideFireContext: false,
-			shouldFireContext: false,
+			shouldFireContext: false
 		},
 		get Prefs() {
 			delete this.Prefs;
@@ -70,6 +77,23 @@
 			} catch (e) {}
 			delete this.file;
 			return this.file = aFile;
+		},
+		get Content() {
+			var cont;
+			if (!window.content) {
+				function listener(message) {
+					cont = message.objects.cont
+				}
+				gBrowser.selectedBrowser.messageManager.loadFrameScript("data:application/x-javascript;charset=UTF-8," + escape('sendAsyncMessage("FeiRuoMouse:FeiRuoMouse-e10s-content-message", {}, {cont: content,})'), true);
+				gBrowser.selectedBrowser.messageManager.addMessageListener("FeiRuoMouse:FeiRuoMouse-e10s-content-message", listener);
+			}
+			try {
+				cont = cont;
+			} catch (e) {
+				cont = gBrowser.selectedBrowser.contentWindowAsCPOW;
+			}
+			delete this.Content;
+			return this.Content = window.content || cont || gBrowser.selectedBrowser._contentWindow;
 		},
 
 		init: function() {
@@ -93,9 +117,9 @@
 		},
 
 		onDestroy: function() {
+			this.Listen_Move(false);
 			this.Listen_Ges(false);
 			this.Listen_Drag(false);
-			this.TextToLink = false;
 			if (this.getWindow(0)) this.getWindow(0).close();
 			if (this.getWindow(1)) this.getWindow(1).close();
 			this.Prefs.removeObserver('', this.Prefobs, false);
@@ -118,14 +142,18 @@
 		Prefobs: function(subject, topic, data) {
 			if (topic == 'nsPref:changed') {
 				switch (data) {
+					case 'EnableDrag':
+					case 'EnableGes':
+					case 'EnableMove':
 					case 'DragCustom':
 					case 'GesCustom':
 					case 'GesTrailEnabel':
 					case 'trailSize':
 					case 'trailColor':
+					case 'GesIngBtn':
+					case 'MoveBtn':
 					case 'isStatus':
 					case 'StatusTime':
-					case 'GesIngBtn':
 						FeiRuoMouse.loadSetting(data);
 						break;
 				}
@@ -151,6 +179,18 @@
 				this.loadRule("GesCustom", this.GesCustom);
 				this.Listen_Ges(true);
 			}
+
+			if (!type || type === "EnableDrag")
+				this.Listen_Drag(this.getPrefs(0, "EnableDrag", true));
+
+			if (!type || type === "EnableGes")
+				this.Listen_Ges(this.getPrefs(0, "EnableGes", true));
+
+			if (!type || type === "EnableMove")
+				this.Listen_Move(this.getPrefs(0, "EnableMove", true));
+
+			if (!type || type === "MoveBtn")
+				this.MoveBtn = this.getPrefs(1, "MoveBtn", 1);
 
 			if (!type || type === "GesIngBtn")
 				this.GesIngBtn = this.getPrefs(1, "GesIngBtn", 2);
@@ -265,11 +305,32 @@
 		},
 
 		/*****************************************************************************************/
+		Listen_Move: function(isAlert) {
+			var Events = ["mousedown", "click", "mousemove", "mouseup", "dblclick", "contextmenu"];
+			try {
+				Events.forEach(function(type) {
+					window.removeEventListener(type, FeiRuoMouse.Listener_Move, (type == 'contextmenu' || type == 'dblclick'));
+				});
+			} catch (ex) {
+				Cu.reportError(ex);
+				throw ex;
+			}
+			if (!isAlert) return;
+			try {
+				Events.forEach(function(type) {
+					window.addEventListener(type, FeiRuoMouse.Listener_Move, (type == 'contextmenu' || type == 'dblclick'));
+				});
+			} catch (ex) {
+				Cu.reportError(ex);
+				throw ex;
+			}
+		},
+
 		Listen_Ges: function(isAlert) {
 			var Events = ["mousedown", "mousemove", "mouseup", "contextmenu", "DOMMouseScroll", "draggesture"];
 			try {
 				Events.forEach(function(type) {
-					gBrowser.mPanelContainer.removeEventListener(type, FeiRuoMouse.Listener_Ges, true);
+					gBrowser.mPanelContainer.removeEventListener(type, FeiRuoMouse.Listener_Ges, (type == 'contextmenu'));
 					//getBrowser().removeEventListener(type, FeiRuoMouse.Listener_Ges, false);
 				});
 			} catch (ex) {
@@ -279,7 +340,8 @@
 			if (!isAlert) return;
 			try {
 				Events.forEach(function(type) {
-					gBrowser.mPanelContainer.addEventListener(type, FeiRuoMouse.Listener_Ges, true);
+					gBrowser.mPanelContainer.addEventListener(type, FeiRuoMouse.Listener_Ges, (type == 'contextmenu'));
+					// gBrowser.mPanelContainer.addEventListener(type, FeiRuoMouse.Listener_Ges, true);
 					//getBrowser().addEventListener(type, FeiRuoMouse.Listener_Ges, false);
 				});
 			} catch (ex) {
@@ -312,6 +374,67 @@
 		},
 
 		/*****************************************************************************************/
+		Listener_Move: function(event) {
+			var that = FeiRuoMouse.Moving;
+			var btn = FeiRuoMouse.MoveBtn;
+			switch (event.type) {
+				case "mousedown":
+					if (event.button == btn) {
+						var toolbarObj = null;
+						var testObj = event.target;
+						var search = true;
+						var tar = event.target;
+						var toolbox = null;
+						that.isDragging = true;
+						that.oldx = event.screenX;
+						that.oldy = event.screenY;
+					}
+					break;
+				case "click":
+					if (event.button == btn) {
+						that.isDragging = false;
+					}
+					return false;
+					break;
+				case "mousemove":
+					if (that.isDragging) {
+						var nx = event.screenX;
+						var ny = event.screenY;
+						var dx = nx - that.oldx;
+						var dy = ny - that.oldy;
+						that.oldx = nx;
+						that.oldy = ny;
+						that.drgChk++;
+						if (FeiRuoMouse.HasWindowMoved()) {
+							window.moveBy(dx, dy);
+						}
+					}
+					break;
+				case "mouseup":
+					if (event.button == btn) {
+						that.isDragging = false;
+					}
+					break;
+				case "dblclick":
+					if (event.button == btn && event.ctrlKey) {
+						event.preventDefault();
+						if (window.windowState == 1) {
+							window.restore();
+						} else {
+							window.maximize();
+						}
+					}
+					return false;
+					break;
+				case "contextmenu":
+					if (FeiRuoMouse.HasWindowMoved() || event.ctrlKey) {
+						event.preventDefault();
+						that.drgChk = 0;
+					}
+					break;
+			}
+		},
+
 		Listener_Drag: function(event) {
 			switch (event.type) {
 				case "dragstart":
@@ -388,7 +511,7 @@
 						that._directionChain && FeiRuoMouse.StopGesture(event);
 						if (that._shouldFireContext && !that._hideFireContext) {
 							that._shouldFireContext = false;
-							FeiRuoMouse._displayContextMenu(event);
+							FeiRuoMouse.DisplayContextMenu(event);
 						}
 					}
 					if (that._isMouseDownR && event.button == 2)
@@ -428,6 +551,13 @@
 		},
 
 		/*****************************************************************************************/
+		HasWindowMoved: function() {
+			if (FeiRuoMouse.Moving.drgChk > 10) {
+				return true;
+			}
+			return false;
+		},
+
 		DragProgress: function(event, type) {
 			var that = this.DragIng;
 			switch (type) {
@@ -475,7 +605,7 @@
 			}
 		},
 
-		_displayContextMenu: function(event) {
+		DisplayContextMenu: function(event) {
 			var evt = event.originalTarget.ownerDocument.createEvent("MouseEvents");
 			evt.initMouseEvent("contextmenu", true, true, event.originalTarget.defaultView, 0, event.screenX, event.screenY, event.clientX, event.clientY, false, false, false, false, 2, null);
 			event.originalTarget.dispatchEvent(evt);
@@ -528,16 +658,18 @@
 
 		StopGesture: function(event) {
 			var that = FeiRuoMouse.GesIng;
+			if (that.xdTrailArea) {
+				that.xdTrailArea.parentNode.removeChild(that.xdTrailArea);
+				that.xdTrailArea = null;
+				that.xdTrailAreaContext = null;
+			}
 			this.Listen_AidtKey(event, that._directionChain);
-			// that._shouldFireContext = false;
-			// that._hideFireContext = false;
 			that._directionChain = "";
-			that.xdTrailArea = null; // 修复与nextpage的冲突，当nextpage启用预读时只能被MouseDragGestures调用一次，不能接着再用
+			that.xdTrailArea = null;
 			event.preventDefault();
 			event.stopPropagation();
 			that._isMouseDownL = false;
-			//this.isMouseDownM = false;
-			that._isMouseDownR = false; // 取消鼠标按键
+			that._isMouseDownR = false;
 			that._hideFireContext = true;
 		},
 
@@ -872,8 +1004,14 @@
 		},
 
 		ChangeStatus: function() {
-			_$("trailColor").disabled = _$("trailSize").disabled = !(_$("GesTrailEnabelr").checked);
-			_$("StatusTime").disabled = !(_$("isStatusr").checked);
+			_$("trailSize").disabled = !(_$("EnableGesr").checked);;
+			_$("GesIngBtn").disabled = !(_$("EnableGesr").checked);
+			_$("isStatusr").disabled = !(_$("EnableGesr").checked);
+			_$("GesTrailEnabelr").disabled = !(_$("EnableGesr").checked);
+			_$("trailColor").disabled = !(_$("GesTrailEnabelr").checked && !_$("GesTrailEnabelr").disabled);
+			_$("trailSize").disabled = !(_$("GesTrailEnabelr").checked && !_$("GesTrailEnabelr").disabled);
+			_$("StatusTime").disabled = !(_$("isStatusr").checked && !_$("isStatusr").disabled);
+			_$("MoveBtn").disabled = !(_$("EnableMover").checked);
 		},
 
 		Resets: function() {
@@ -881,8 +1019,12 @@
 			this.TreeResets("TreeList1");
 			_$("trailColor").value = "brown";
 			_$("GesIngBtn").value = 2;
-			_$("GesTrailr").value = true;
+			_$("GesTrailEnabel").value = true;
 			_$("isStatus").value = true;
+			_$("EnableGesr").value = true;
+			_$("EnableDragr").value = true;
+			_$("EnableMover").value = true;
+			_$("MoveBtn").value = 1;
 			_$("StatusTime").value = 3000;
 			_$("trailSize").value = 2;
 			this.ChangeStatus();
@@ -893,7 +1035,11 @@
 			FeiRuoMouse.Prefs.setIntPref("trailSize", _$("trailSize").value);
 			FeiRuoMouse.Prefs.setIntPref("GesIngBtn", _$("GesIngBtn").value);
 			FeiRuoMouse.Prefs.setIntPref("StatusTime", _$("StatusTime").value);
+			FeiRuoMouse.Prefs.setIntPref("MoveBtn", _$("MoveBtn").value);
 			FeiRuoMouse.Prefs.setBoolPref("isStatus", _$("isStatusr").checked);
+			FeiRuoMouse.Prefs.setBoolPref("EnableGes", _$("EnableGesr").checked);
+			FeiRuoMouse.Prefs.setBoolPref("EnableDrag", _$("EnableDragr").checked);
+			FeiRuoMouse.Prefs.setBoolPref("EnableMove", _$("EnableMover").checked);
 			FeiRuoMouse.Prefs.setBoolPref("GesTrailEnabel", _$("GesTrailEnabelr").checked);
 			this.TreeSave("TreeList0", "DragCustom");
 			this.TreeSave("TreeList1", "GesCustom");
@@ -1327,9 +1473,13 @@
 					windowtype="FeiRuoMouse:Preferences">\
 					<prefpane id="main" flex="1">\
 						<preferences>\
+							<preference id="EnableGes" type="bool" name="userChromeJS.FeiRuoMouse.EnableGes"/>\
+							<preference id="EnableDrag" type="bool" name="userChromeJS.FeiRuoMouse.EnableDrag"/>\
+							<preference id="EnableMove" type="bool" name="userChromeJS.FeiRuoMouse.EnableMove"/>\
 							<preference id="isStatus" type="bool" name="userChromeJS.FeiRuoMouse.isStatus"/>\
 							<preference id="GesTrailEnabel" type="bool" name="userChromeJS.FeiRuoMouse.GesTrailEnabel"/>\
 							<preference id="GesIngBtn" type="int" name="userChromeJS.FeiRuoMouse.GesIngBtn"/>\
+							<preference id="MoveBtn" type="int" name="userChromeJS.FeiRuoMouse.MoveBtn"/>\
 							<preference id="StatusTime" type="int" name="userChromeJS.FeiRuoMouse.StatusTime"/>\
 							<preference id="trailSize" type="int" name="userChromeJS.FeiRuoMouse.trailSize"/>\
 							<preference id="trailColor" type="string" name="userChromeJS.FeiRuoMouse.trailColor"/>\
@@ -1347,7 +1497,36 @@
 							<tabpanels flex="1">\
 								<tabpanel orient="vertical" flex="1">\
 									<groupbox>\
-										<caption label="鼠标手势自定义"/>\
+										<caption label="功能开关"/>\
+											<grid>\
+												<rows>\
+													<row align="center">\
+														<checkbox id="EnableDragr" label="拖拽手势" preference="EnableDrag" oncommand="Change();"/>\
+														<checkbox id="EnableGesr" label="鼠标手势" preference="EnableGes" oncommand="Change();"/>\
+														<checkbox id="EnableMover" label="窗口拖拽" preference="EnableMove" oncommand="Change();"/>\
+													</row>\
+												</rows>\
+											</grid>\
+									</groupbox>\
+									<groupbox>\
+										<caption label="窗口拖拽自定义设置"/>\
+											<grid>\
+												<rows>\
+													<row align="center" id="MoveWinSet">\
+														<label value="窗口拖拽触发按键："/>\
+														<radiogroup id="MoveBtn" preference="MoveBtn">\
+															<hbox>\
+																<radio label="左键" id="MoveBtn_0" value="0"/>\
+																<radio label="中键" id="MoveBtn_1" value="1"/>\
+																<radio label="右键" id="MoveBtn_2" value="2"/>\
+															</hbox>\
+														</radiogroup>\
+													</row>\
+												</rows>\
+											</grid>\
+									</groupbox>\
+									<groupbox>\
+										<caption label="鼠标手势自定义设置"/>\
 											<grid>\
 												<rows>\
 													<row align="center">\
@@ -1372,9 +1551,9 @@
 														<label value="鼠标手势触发按键："/>\
 														<radiogroup id="GesIngBtn" preference="GesIngBtn">\
 															<hbox>\
-																<radio label="左键" id="DragBtn_0" value="0"/>\
-																<radio label="中键" id="DragBtn_1" value="1"/>\
-																<radio label="右键" id="DragBtn_2" value="2"/>\
+																<radio label="左键" id="GesBtn_0" value="0"/>\
+																<radio label="中键" id="GesBtn_1" value="1"/>\
+																<radio label="右键" id="GesBtn_2" value="2"/>\
 															</hbox>\
 														</radiogroup>\
 													</row>\
@@ -1695,11 +1874,11 @@
 
 	/*****************************************************************************************/
 	function _$D(id) {
-		return FeiRuoMouse.getWindow(1).document.getElementById(id);
+		return FeiRuoMouse.getWindow(1).document.getElementById(id) || {};
 	}
 
 	function _$(id) {
-		return FeiRuoMouse.getWindow(0).document.getElementById(id);
+		return FeiRuoMouse.getWindow(0).document.getElementById(id) || {};
 	}
 
 	function _$C(name, attr) {
