@@ -99,14 +99,14 @@ var Menus = [ //菜单设置
 					var Path = "C:\\Program Files\\Internet Explorer\\iexplore.exe";
 					switch (e.button) {
 						case 0:
-							addMenu.exec(Path, addMenu.convertText("%u"));
+							FeiRuoNet_Menu.exec(Path, FeiRuoNet_Menu.convertText("%u"));
 							break;
 						case 1:
-							addMenu.exec(Path, "");
+							FeiRuoNet_Menu.exec(Path, "");
 							break;
 						case 2:
 							e.preventDefault();
-							addMenu.exec(Path, " -private " + addMenu.convertText("%u"));
+							FeiRuoNet_Menu.exec(Path, " -private " + FeiRuoNet_Menu.convertText("%u"));
 							break;
 					}
 				}
@@ -138,12 +138,12 @@ var Menus = [ //菜单设置
 				ExcludeDirs: /tmp|temp|msdll/i, //排除目录
 				label: "PingIP(aizhan)",
 				tooltiptext: 'http://ping.aizhan.com/', //提示文字
-				oncommand: "FeiRuoNet.OpenAction(this.tooltipText, 'site','host', null,'btn02')", //执行命令
+				oncommand: "FeiRuoNet_Menu.OpenAction(this.tooltipText, 'site','%HOST%', null,'btn02')", //执行命令
 				image: "http://www.aizhan.com/favicon.ico", //图标
 			}, {
 				label: "PingIP(17ce)",
 				tooltiptext: 'http://www.17ce.com/site/ping',
-				oncommand: "FeiRuoNet.OpenAction(,this.tooltipText, 'url','host', 'su')",
+				oncommand: "FeiRuoNet_Menu.OpenAction(this.tooltipText, 'url','%HOST%', 'su')",
 				image: "http://www.17ce.com/smedia/images/favicon.ico"
 			}, {
 				label: "PingIP(chinaz)",
@@ -187,7 +187,7 @@ var Menus = [ //菜单设置
 				tooltiptext: 'http://who.cndns.com/',
 				image: "http://www.cndns.com/favicon.ico",
 				oncommand: function() {
-					FeiRuoNet.OpenAction(this.tooltipText, 'textDomain', "%BASEDOMAIN%", 'linkWhois')
+					FeiRuoNet_Menu.OpenAction(this.tooltipText, 'textDomain', "%BASEDOMAIN%", 'linkWhois')
 				}
 			}, {
 				label: "Whois(aizhan)",
@@ -225,7 +225,7 @@ var Menus = [ //菜单设置
 				tooltiptext: 'https://www.virustotal.com/#url',
 				image: "https://www.virustotal.com/static/img/favicon.ico",
 				oncommand: function() {
-					FeiRuoNet.OpenAction(this.tooltipText, 'url', gBrowser.selectedBrowser.currentURI.spec, 'btn-scan-url')
+					FeiRuoNet_Menu.OpenAction(this.tooltipText, 'url', gBrowser.selectedBrowser.currentURI.spec, 'btn-scan-url')
 				}
 			}, {
 				label: "WOT Scorecard",

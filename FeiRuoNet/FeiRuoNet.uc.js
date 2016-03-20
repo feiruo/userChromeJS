@@ -244,6 +244,29 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 			}
 		},
 
+		SetUserAgent: function(val) {
+			if (val == 0) {
+				if (gPrefService.getPrefType("general.useragent.override") == 0 && gPrefService.getPrefType("general.platform.override") == 0)
+					return;
+				gPrefService.clearUserPref("general.useragent.override");
+				gPrefService.clearUserPref("general.platform.override");
+				FeiRuoNet_Services.UAPerfAppVersion = false;
+			} else {
+				gPrefService.setCharPref("general.useragent.override", FeiRuoNet.UAList[val].ua);
+				FeiRuoNet_Services.UAPerfAppVersion = FeiRuoNet_Services.UaAppVersion(val);
+
+				var platform = FeiRuoNet_Services.getPlatformString(FeiRuoNet.UAList[val].ua);
+				if (platform && platform != "")
+					gPrefService.setCharPref("general.platform.override", platform);
+				else
+					gPrefService.clearUserPref("general.platform.override");
+			}
+			FeiRuoNet.ShowStatus("浏览器标识(UserAgent)已切换至 [" + FeiRuoNet.UAList[val].label + "]");
+			FeiRuoNet_Services.UAMenuitemStates(val);
+			FeiRuoNet_Services.Default_UAIdx = val;
+			return;
+		},
+
 		/*****************************************************************************************/
 		Rebuild: function(isAlert) {
 			var MenuData = this.LoadFile(this.MenuFile, isAlert);
@@ -315,7 +338,7 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 							id: "FeiRuoNet_UserAgent_" + i,
 							image: UAList[i].image || this.Unknown_UAImage,
 							tooltiptext: UAList[i].ua || "",
-							oncommand: "FeiRuoNet_Services.SetUserAgent('" + i + "');"
+							oncommand: "FeiRuoNet.SetUserAgent('" + i + "');"
 						}));
 						menuitem.setAttribute("style", 'font-weight: normal;');
 						menuitem.style.color = 'black';
@@ -363,7 +386,7 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 			this.Popup.appendChild($C("menuitem", {
 				id: "FeiRuoNet_Rebuild",
 				label: "刷新信息",
-				oncommand: "FeiRuoNet.onLocationChange(true);"
+				oncommand: "FeiRuoNet_Services.onLocationChange(true);"
 			}));
 			var UserAgentMenu = $C("menu", {
 				id: "FeiRuoNet_UserAgent_Config",
@@ -564,7 +587,6 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 			return sandbox || null;
 		},
 
-
 		StrToFile: function(file, data) {
 			var suConverter = Cc["@mozilla.org/intl/scriptableunicodeconverter"].createInstance(Ci.nsIScriptableUnicodeConverter);
 			suConverter.charset = 'UTF-8';
@@ -575,7 +597,6 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 			foStream.write(data, data.length);
 			foStream.close();
 		},
-
 
 		XRequest: function(obj) {
 			return new Promise(function(resolve, reject) {
@@ -689,9 +710,10 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 		},
 
 		Copy: function(str) {
-			if (!str) str = FeiRuoNet_Flag.QueryHash[FeiRuoNet.CurrentURI.host].IP; //this.icon.tooltipText;
+			str = str || this.icon.tooltipText || FeiRuoNet_Flag.QueryHash[FeiRuoNet.CurrentURI.host].IP;
+			if (!str) return;
 			Cc['@mozilla.org/widget/clipboardhelper;1'].createInstance(Ci.nsIClipboardHelper).copyString(str);
-			StatusLable = "已复制: " + str;
+			FeiRuoNet.ShowStatus = "已复制: " + str;
 		},
 
 		OpenScriptInScratchpad: function(parentWindow, file) {
@@ -709,6 +731,13 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 					}
 				});
 			}, false);
+		},
+
+		ShowStatus: function(str, time) {
+			XULBrowserWindow.statusTextField.label = '[FeiRuoNet]' + str;
+			setTimeout(function() {
+				XULBrowserWindow.statusTextField.label = '';
+			}, time || 1500)
 		},
 
 		OpenPref: function(i) {
@@ -1058,29 +1087,6 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 			for (var i in this.UARules) {
 				if ((new RegExp(i, "i")).test(url)) return this.UARules[i];
 			}
-			return;
-		},
-
-		SetUserAgent: function(val) {
-			if (val == 0) {
-				if (gPrefService.getPrefType("general.useragent.override") == 0 && gPrefService.getPrefType("general.platform.override") == 0)
-					return;
-				gPrefService.clearUserPref("general.useragent.override");
-				gPrefService.clearUserPref("general.platform.override");
-				this.UAPerfAppVersion = false;
-			} else {
-				gPrefService.setCharPref("general.useragent.override", FeiRuoNet.UAList[val].ua);
-				this.UAPerfAppVersion = this.UaAppVersion(val);
-
-				var platform = this.getPlatformString(FeiRuoNet.UAList[val].ua);
-				if (platform && platform != "")
-					gPrefService.setCharPref("general.platform.override", platform);
-				else
-					gPrefService.clearUserPref("general.platform.override");
-			}
-			StatusLable("浏览器标识(UserAgent)已切换至 [" + FeiRuoNet.UAList[val].label + "]");
-			this.UAMenuitemStates(val);
-			this.Default_UAIdx = val;
 			return;
 		},
 
@@ -1698,7 +1704,7 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 
 	window.FeiRuoNet_Menu = {
 		get FocusedWindow() {
-			return gContextMenu && gContextMenu.target ? gContextMenu.target.ownerDocument.defaultView : FeiRuoNet.Content;
+			return (gContextMenu && gContextMenu.target) ? (gContextMenu.target.ownerDocument.defaultView) : (FeiRuoNet.Content);
 		},
 
 		Initialization: function() {
@@ -2888,8 +2894,8 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 			FeiRuoNet.Prefs.setBoolPref("UAChangerState", _$("UAChangerState").value);
 			this.TreeSave();
 		},
-		
-		openNewTab:function(url){
+
+		openNewTab: function(url) {
 			openNewTabWith(url);
 		},
 
@@ -3018,13 +3024,6 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 	}
 
 	function U(text) 1 < 'あ'.length ? decodeURIComponent(escape(text)) : text;
-
-	function StatusLable(str, time) {
-		XULBrowserWindow.statusTextField.label = '[FeiRuoNet]' + str;
-		setTimeout(function() {
-			XULBrowserWindow.statusTextField.label = '';
-		}, time || 1500)
-	}
 
 	function alert(aString, aTitle) {
 		Cc['@mozilla.org/alerts-service;1'].getService(Ci.nsIAlertsService)
