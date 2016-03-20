@@ -262,7 +262,6 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 					gPrefService.clearUserPref("general.platform.override");
 			}
 			FeiRuoNet.ShowStatus("浏览器标识(UserAgent)已切换至 [" + FeiRuoNet.UAList[val].label + "]");
-			FeiRuoNet_Services.UAMenuitemStates(val);
 			FeiRuoNet_Services.Default_UAIdx = val;
 			return;
 		},
@@ -322,38 +321,34 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 			var UANameIdxHash = [],
 				UAList = this.UAList,
 				menu = $("FeiRuoNet_UserAgent_Popup"),
-				InList = false,
 				menuitem;
 			if (UAList.length >= 2) {
 				for (let i = 0; i < UAList.length; i++) {
 					UANameIdxHash[UAList[i].label] = i;
 					if (UAList[i].label === "separator" || (!UAList[i].label && !UAList[i].id && !UAList[i].ua)) {
-						menuitem = menu.appendChild($C("menuseparator", {
+						menuitem = $C("menuseparator", {
 							id: "FeiRuoNet_UserAgent_" + i,
 							class: "FeiRuoNet_UserAgent_menuseparator",
-						}));
+						});
 					} else {
-						menuitem = menu.appendChild($C("menuitem", {
+						menuitem = $C("menuitem", {
 							label: UAList[i].label || ("UA_" + i),
 							id: "FeiRuoNet_UserAgent_" + i,
 							image: UAList[i].image || this.Unknown_UAImage,
 							tooltiptext: UAList[i].ua || "",
 							oncommand: "FeiRuoNet.SetUserAgent('" + i + "');"
-						}));
-						menuitem.setAttribute("style", 'font-weight: normal;');
-						menuitem.style.color = 'black';
+						});
 						var cls = menuitem.classList;
 						cls.add("FeiRuoNet_UserAgent_item");
 						cls.add("menuitem-iconic");
 
-						if (UAList[i].ua == this.IsUsingUA || UAList[i].ua == "") {
+						if (UAList[i].ua == this.IsUsingUA || (UAList[i].ua == "" && !UAList[i].ua == !this.IsUsingUA)) {
 							FeiRuoNet_Services.UAPerfAppVersion = FeiRuoNet_Services.UaAppVersion(i);
 							FeiRuoNet_Services.Default_UAIdx = i;
-							InList = true;
-							cls.add("FeiRuoNet_UsingUA");
 						}
 					}
 					menu.appendChild(menuitem);
+					menuitem = null;
 				}
 				FeiRuoNet_Services.UARules = {};
 				for (var j in this.UASites) {
@@ -364,13 +359,13 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 				this.UAChangerState = false;
 				$("FeiRuoNet_UserAgent_Config").hidden = true;
 			}
-			if (!InList) this.UAMenuitemStates();
 		},
 
 		/*****************************************************************************************/
 		CreatePopup: function(enable) {
 			var Popup = $("FeiRuoNet_Popup");
 			if (Popup) Popup.parentNode.removeChild(Popup);
+			this.Popup = null;
 			delete Popup;
 			if (!enable) return;
 			this.Popup = $C("menupopup", {
@@ -415,7 +410,31 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 			this.style = addStyle(CSS);
 		},
 
-		PopupShowing: function(event) {},
+		PopupShowing: function(event) {
+			if (event.target != FeiRuoNet.Popup || event.target != event.currentTarget) return;
+
+			var UAItem = $("FeiRuoNet_UserAgent_Config");
+			UAItem.hidden = !FeiRuoNet.UAChangerState;
+			if (FeiRuoNet_Services.UARules) {
+				$$(".FeiRuoNet_UsingUA").forEach(function(e) {
+					e.classList.remove('FeiRuoNet_UsingUA')
+				});
+				var UAList = FeiRuoNet.UAList;
+				for (var i = 0; i < UAList.length; i++) {
+					if (UAList[i].ua == this.IsUsingUA || (UAList[i].ua == "" && !UAList[i].ua == !this.IsUsingUA)) {
+						$("FeiRuoNet_UserAgent_" + i).classList.add("FeiRuoNet_UsingUA");
+						UAItem.setAttribute("label", UAList[i].label);
+						UAItem.setAttribute("image", UAList[i].image);
+						UAItem.style.padding = "0px 2px";
+						break;
+					} else {
+						UAItem.setAttribute("label", "未知UserAgent");
+						UAItem.setAttribute("tooltiptext", FeiRuoNet.IsUsingUA);
+						UAItem.setAttribute("image", FeiRuoNet.Unknown_UAImage);
+					}
+				}
+			}
+		},
 
 		LoadSetting: function(type) {
 			if (!type || type === "Icon_Pos")
@@ -561,7 +580,7 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 			fstream.close();
 			if (!data) {
 				var errmsg = "Rebuild Error:【" + aFile.leafName + "】文件不存在";
-				console.log(errmsg);
+				log(errmsg);
 				if (isAlert)
 					alert(errmsg);
 				return null;
@@ -580,7 +599,7 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 			} catch (e) {
 				let line = e.lineNumber - lineFinder.lineNumber - 1;
 				var errmsg = 'Error: ' + e + "\n请重新检查【" + aFile.leafName + "】文件第 " + line + " 行";
-				console.log(errmsg);
+				log(errmsg);
 				if (isAlert)
 					alert(errmsg);
 			}
@@ -675,7 +694,7 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 			try {
 				editor = gPrefService.getCharPref("view_source.editor.path");
 			} catch (e) {
-				console.log("编辑器路径读取错误  >>  " + e);
+				log("编辑器路径读取错误  >>  " + e);
 				alert("请先设置编辑器的路径!!!\nview_source.editor.path");
 				toOpenWindowByType('pref:pref', 'about:config?filter=view_source.editor.path');
 			}
@@ -878,6 +897,7 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 	};
 
 	window.FeiRuoNet_Services = {
+		UAPerfAppVersion: false,
 		progressListener: {
 			QueryInterface: XPCOMUtils.generateQI(["nsIWebProgressListener", "nsISupportsWeakReference"]),
 			onLocationChange: function(aProgress, aRequest, aURI, aFlags) {
@@ -1025,15 +1045,8 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 		},
 
 		onLocationChange: function(aProgress, aRequest, aURI, aFlags) {
-			$("FeiRuoNet_UserAgent_Config").hidden = !FeiRuoNet.UAChangerState;
 			if (typeof aProgress == 'boolean' && !!aProgress)
 				FeiRuoNet.forceRefresh = true;
-
-			if (this.UARules) {
-				var isUAChange;
-				isUAChange = this.UAIndex(FeiRuoNet.CurrentURI.spec);
-				this.UAMenuitemStates(isUAChange ? isUAChange : this.Default_UAIdx);
-			}
 			FeiRuoNet_Flag.LocationChange(FeiRuoNet.CurrentURI);
 		},
 
@@ -1150,26 +1163,6 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 				else appVersion = false;
 			}
 			return appVersion;
-		},
-
-		UAMenuitemStates: function(idx) {
-			let UAitmss = document.querySelectorAll("menuitem[id^='FeiRuoNet_UserAgent_']");
-			for (let i = 0; i < UAitmss.length; i++) {
-				UAitmss[i].classList.remove("FeiRuoNet_UsingUA");
-			}
-			if (typeof idx != 'undefined') {
-				$("FeiRuoNet_UserAgent_" + idx).classList.add("FeiRuoNet_UsingUA");
-				$("FeiRuoNet_UserAgent_Config").setAttribute("label", FeiRuoNet.UAList[idx].label);
-				$("FeiRuoNet_UserAgent_Config").setAttribute("image", FeiRuoNet.UAList[idx].image);
-				$("FeiRuoNet_UserAgent_Config").style.padding = "0px 2px";
-				return;
-			} else {
-				if (FeiRuoNet.UAList[i].ua == FeiRuoNet.IsUsingUA || FeiRuoNet.UAList[i].ua == "")
-					return this.UAMenuitemStates(0);
-				$("FeiRuoNet_UserAgent_Config").setAttribute("label", "未知UserAgent");
-				$("FeiRuoNet_UserAgent_Config").setAttribute("tooltiptext", FeiRuoNet.IsUsingUA);
-				$("FeiRuoNet_UserAgent_Config").setAttribute("image", FeiRuoNet.Unknown_UAImage);
-			}
 		},
 
 		getPlatformString: function(userAgent) {
@@ -1292,7 +1285,7 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 			try {
 				this.DnsService.asyncResolve(hostname, 0, DnsListener, this.EventQueue);
 			} catch (e) {
-				console.log(e)
+				log(e)
 			}
 			this.ChangeIcon();
 		},
@@ -1480,7 +1473,7 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 					this.UpdateTooltipText(host);
 				}
 			}, error => {
-				console.log(error)
+				log(error)
 			});
 		},
 
@@ -2100,7 +2093,7 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 				}
 				setIconCallback(url);
 			}, e => {
-				console.log(e)
+				log(e)
 			}).catch(e => {});
 		},
 
@@ -2146,7 +2139,7 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 			try {
 				uri = Services.io.newURI(url, null, null);
 			} catch (e) {
-				return console.log(U("URL 不正确: ") + url);
+				return log(U("URL 不正确: ") + url);
 			}
 			if (uri.scheme === "javascript")
 				loadURI(url);
@@ -2184,7 +2177,7 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 					file.launch();
 				}
 			} catch (e) {
-				console.log(e);
+				log(e);
 			}
 		},
 
@@ -2521,7 +2514,7 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 				if (request.status === 200)
 					this.loadCompressedIPDBdata(this.IPv4DB, request.response);
 			}, error => {
-				console.log(error)
+				log(error)
 			});
 			this.IPv6DB = {
 				type: "IPv6",
@@ -2535,7 +2528,7 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 				if (request.status === 200)
 					this.loadCompressedIPDBdata(this.IPv6DB, request.response);
 			}, error => {
-				console.log(error)
+				log(error)
 			});
 		},
 
@@ -2866,11 +2859,9 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 
 		Resets: function() {
 			this.BuildInfoApiPopup();
-			_$("warning").hidden = _$("note").hidden = _$("tip").hidden = true;
 
 			_$("BAK_FLAG_PATH").value = FeiRuoNet.DBAK_FLAG_PATH;
 			_$("CustomQueue").value = 0;
-			_$("DefaultProxy1").selectedIndex = 0;
 			_$("Icon_Pos").value = 0;
 			_$("ApiIdx1").selectedIndex = 0;
 			_$("Inquiry_Delay").value = 1000;
@@ -2884,7 +2875,6 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 		Save: function() {
 			FeiRuoNet.Prefs.setCharPref("BAK_FLAG_PATH", _$("BAK_FLAG_PATH").value);
 			FeiRuoNet.Prefs.setIntPref("CustomQueue", _$("CustomQueue").value);
-			FeiRuoNet.Prefs.setIntPref("DefaultProxy", _$("DefaultProxy1").value);
 			FeiRuoNet.Prefs.setIntPref("Icon_Pos", _$("Icon_Pos").value);
 			FeiRuoNet.Prefs.setIntPref("ApiIdx", _$("ApiIdx1").value);
 			FeiRuoNet.Prefs.setIntPref("Inquiry_Delay", _$("Inquiry_Delay").value);
@@ -2892,7 +2882,6 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 			FeiRuoNet.Prefs.setBoolPref("UrlbarSafetyLevel", _$("UrlbarSafetyLevel").value);
 			FeiRuoNet.Prefs.setBoolPref("RefChanger", _$("RefChanger").value);
 			FeiRuoNet.Prefs.setBoolPref("UAChangerState", _$("UAChangerState").value);
-			this.TreeSave();
 		},
 
 		openNewTab: function(url) {
@@ -2997,7 +2986,7 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 			try {
 				layoutWidget(window.document, widget, isFirstRun);
 			} catch (error) {
-				console.log(error);
+				log(error);
 			}
 		};
 
@@ -3006,7 +2995,7 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 				let widget = window.document.getElementById(widgetId);
 				widget.parentNode.removeChild(widget);
 			} catch (error) {
-				console.log(error);
+				log(error);
 			}
 		};
 
