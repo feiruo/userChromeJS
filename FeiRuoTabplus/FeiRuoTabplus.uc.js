@@ -169,8 +169,11 @@
 		UndoBtnHistoryCommand: function(aEvent) {
 			let placesNode = aEvent.target._placesNode;
 			if (placesNode) {
-				if (!PrivateBrowsingUtils.isWindowPrivate(window))
-					PlacesUIUtils.markPageAsTyped(placesNode.uri);
+				if (!PrivateBrowsingUtils.isWindowPrivate(window)) {
+					try {
+						PlacesUIUtils.markPageAsTyped(placesNode.uri);
+					} catch (ex) {}
+				}
 				openUILink(placesNode.uri, aEvent, {
 					ignoreAlt: true
 				});
@@ -1328,30 +1331,38 @@
 			try {
 				editor = gPrefService.getCharPref("view_source.editor.path");
 			} catch (e) {
+				log("编辑器路径读取错误  >>  " + e);
 				alert("请先设置编辑器的路径!!!\nview_source.editor.path");
+				toOpenWindowByType('pref:pref', 'about:config?filter=view_source.editor.path');
 			}
 
 			if (!editor) {
 				this.openScriptInScratchpad(window, aFile);
+				alert("请先设置编辑器的路径!!!\nview_source.editor.path");
 				return;
 			}
 
-			var UI = Components.classes['@mozilla.org/intl/scriptableunicodeconverter'].createInstance(Components.interfaces.nsIScriptableUnicodeConverter);
-
+			var UI = Cc['@mozilla.org/intl/scriptableunicodeconverter'].createInstance(Ci.nsIScriptableUnicodeConverter);
 			var platform = window.navigator.platform.toLowerCase();
-			if (platform.indexOf('win') > -1) {
+			if (platform.indexOf('win') > -1)
 				UI.charset = 'GB2312';
-			} else {
+			else
 				UI.charset = 'UTF-8';
+			// UI.charset = window.navigator.platform.toLowerCase().indexOf("win") >= 0 ? "gbk" : "UTF-8";
+			var process = Cc['@mozilla.org/process/util;1'].createInstance(Ci.nsIProcess);
+
+			try {
+				var path = UI.ConvertFromUnicode(aFile.path);
+				// process.init(editor);
+				// process.run(false, [path], [path].length);
+				var appfile = Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsILocalFile);
+				appfile.initWithPath(editor);
+				process.init(appfile);
+				process.run(false, [path], 1, {});
+			} catch (e) {
+				alert("编辑器不正确！")
+				this.openScriptInScratchpad(window, aFile);
 			}
-
-			var path = UI.ConvertFromUnicode(aFile.path);
-
-			var appfile = Components.classes['@mozilla.org/file/local;1'].createInstance(Components.interfaces.nsILocalFile);
-			appfile.initWithPath(editor);
-			var process = Components.classes['@mozilla.org/process/util;1'].createInstance(Components.interfaces.nsIProcess);
-			process.init(appfile);
-			process.run(false, [path], 1, {});
 		},
 
 		openScriptInScratchpad: function(parentWindow, file) {
@@ -1370,7 +1381,6 @@
 				});
 			}, false);
 		},
-
 
 		loadFile: function(aFile) {
 			if (!aFile.exists() || !aFile.isFile()) return null;
@@ -1438,7 +1448,7 @@
 							<preference id="loadBookmarksInBackground" name="browser.tabs.loadBookmarksInBackground" type="bool"/>\
 							<preference id="open_newwindow" name="browser.link.open_newwindow" type="int"/>\
 							<preference id="open_newwindow.restriction" name="browser.link.open_newwindow.restriction" type="int"/>\
-							<preference id="searchloadInBackground" name="browser.search.context.loadInBackgroundn" type="bool"/>\
+							<preference id="searchloadInBackground" name="browser.search.context.loadInBackground" type="bool"/>\
 							<preference id="tabsloadInBackground" name="browser.tabs.loadInBackground" type="bool"/>\
 						</preferences>\
 						<script>\
@@ -2150,7 +2160,7 @@
 			Services.prefs.setBoolPref("browser.tabs.loadBookmarksInBackground", _$("loadBookmarksInBackground").value);
 			Services.prefs.setIntPref("browser.link.open_newwindow", _$("open_newwindow").value);
 			Services.prefs.setIntPref("browser.link.open_newwindow.restriction", _$("open_newwindow.restriction").value);
-			Services.prefs.setBoolPref("browser.search.context.loadInBackgroundn", _$("searchloadInBackground").value);
+			Services.prefs.setBoolPref("browser.search.context.loadInBackground", _$("searchloadInBackground").value);
 			Services.prefs.setBoolPref("browser.tabs.loadInBackground", _$("tabsloadInBackground").value);
 
 			var ShowBorderChange = FeiRuoTabplus.getPrefs(0, "ShowBorderChange", false)
