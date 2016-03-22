@@ -14,6 +14,7 @@
 // @homepageURL		https://github.com/feiruo/userChromeJS/tree/master/FeiRuoTabplus
 // @downloadURL		https://github.com/feiruo/userChromeJS/raw/master/FeiRuoTabplus/FeiRuoTabplus.uc.js
 // @note            Begin 	2015-04-01
+// @version      	0.5.3 	2016.03.22	21:00 	Fix loadInBackgroundn & Function;
 // @version      	0.5.2 	2015.05.20	23:00 	Fix bookmarkmenu。
 // @version      	0.5.1 	2015.05.20	23:00 	Fix dead object&GoHome。
 // @version      	0.5.0 	2015.05.17	14:00 	修复主页，增加查看图片图片，增加多文件连拖拽连续打开。
@@ -708,8 +709,10 @@
 					}
 					break;
 				case 'CCommand':
-					if (CN)
-						FeiRuoTabplus.CustomCommand[CN].Command(e);
+					if (CN) {
+						var funstr = FeiRuoTabplus.CustomCommand[CN].Command.toString().replace(/^function.*{|}$/g, "");
+						(Function("e", funstr))(e);
+					}
 					break;
 			}
 		},
