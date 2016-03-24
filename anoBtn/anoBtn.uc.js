@@ -14,7 +14,10 @@
 // @downloadURL		https://github.com/feiruo/userChromeJS/raw/master/anoBtn/anoBtn.uc.js
 // @note			支持菜单和脚本设置重载
 // @note			需要 _anoBtn.js 配置文件
+<<<<<<< HEAD
 // @version			1.3.9 	2016.03.24 	17:30	Fix clone。
+=======
+>>>>>>> origin/master
 // @version			1.3.8 	2016.03.24 	14:30	Fix Urlbar-icons & popup。
 // @version			1.3.7 	2015.11.05 	12:00	修复枚举目录不存在导致的错误，修正原菜单移动方式,修正编辑。
 // @version			1.3.6 	2015.11.05 	12:00	增加目录枚举，菜单参数与自由性与addmenu一样，仅限制位置于本菜单。
