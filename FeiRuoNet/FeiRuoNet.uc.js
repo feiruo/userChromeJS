@@ -23,6 +23,7 @@
 // @note            左键点击图标查看详细信息，中键打开GET/POST界面，右键弹出菜单。
 // @note            更多功能需要【_FeiRuoNet.js】、【_FeiRuoNetMenu.js】、【FeiRuoNetLib.js】、【QQWry.dat】、【ip4.cdb】、【ip6.cdb】配置文件。
 // @note            仅供个人测试、研究，不得用于商业或非法用途，作者不承担因使用此脚本对自己和他人造成任何形式的损失或伤害之任何责任。
+// @version         0.0.4     2016.03.24 19:00    去除代理，fix bugs。
 // @version         0.0.3     2016.03.15 15:00    完善头部、代理逻辑，取消使用CPOW。
 // @version         0.0.2     2016.02.28 17:00    修复反盗链,修正查询，修正编辑。
 // @version         0.0.1     2015.10.20 17:00    Building。
@@ -410,26 +411,43 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 			this.style = addStyle(CSS);
 		},
 
+		UAMenuSrc: function(idx, UAItem) {
+			if ((idx != 0 && !idx) || !UAItem) return false;
+			$("FeiRuoNet_UserAgent_" + idx).classList.add("FeiRuoNet_UsingUA");
+			UAItem.setAttribute("label", FeiRuoNet.UAList[idx].label);
+			UAItem.setAttribute("image", FeiRuoNet.UAList[idx].image);
+			return true;
+		},
+
 		PopupShowing: function(event) {
 			if (event.target != FeiRuoNet.Popup || event.target != event.currentTarget) return;
-
+			var URI = FeiRuoNet.CurrentURI;
+			var URL = URI.spec;
+			var UAItem = $("FeiRuoNet_UserAgent_Config");
 			var UAItem = $("FeiRuoNet_UserAgent_Config");
 			UAItem.hidden = !FeiRuoNet.UAChangerState;
 			if (FeiRuoNet_Services.UARules) {
 				$$(".FeiRuoNet_UsingUA").forEach(function(e) {
 					e.classList.remove('FeiRuoNet_UsingUA')
 				});
-				var UAList = FeiRuoNet.UAList;
-				for (var i = 0; i < UAList.length; i++) {
-					if (UAList[i].ua == this.IsUsingUA || (UAList[i].ua == "" && !UAList[i].ua == !this.IsUsingUA)) {
-						$("FeiRuoNet_UserAgent_" + i).classList.add("FeiRuoNet_UsingUA");
-						UAItem.setAttribute("label", UAList[i].label);
-						UAItem.setAttribute("image", UAList[i].image);
-						UAItem.style.padding = "0px 2px";
+				var idx;
+				for (var j in FeiRuoNet_Services.UARules) {
+					if ((new RegExp(j)).test(URL)) {
+						idx = FeiRuoNet_Services.UARules[j]
+					}
+				}
+				if (!FeiRuoNet.UAMenuSrc(idx, UAItem)) {
+					var UAList = FeiRuoNet.UAList,
+						IsUsingUA = FeiRuoNet.IsUsingUA;
+					for (var i = 0; i < UAList.length; i++) {
+						if (UAList[i].ua != "" && UAList[i].ua != IsUsingUA) continue;
+						if (UAList[i].ua == "" && !UAList[i].ua != !IsUsingUA) continue;
+						idx = i;
 						break;
-					} else {
+					}
+					if (!FeiRuoNet.UAMenuSrc(idx, UAItem)) {
 						UAItem.setAttribute("label", "未知UserAgent");
-						UAItem.setAttribute("tooltiptext", FeiRuoNet.IsUsingUA);
+						UAItem.setAttribute("tooltiptext", IsUsingUA);
 						UAItem.setAttribute("image", FeiRuoNet.Unknown_UAImage);
 					}
 				}

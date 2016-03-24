@@ -5,8 +5,6 @@ FeiRuoNet.uc.js
  - 支持本地数据库：QQWry.dat(中文)、Flagfox[ip4.cdb、ip6.cdb]（国家代码）（感谢Flagfox）。
  - 修改浏览器标识(UA)、Cookies、Referer，伪装IP，等所有Http头信息，可破解反盗链,破解限制等。
  - Http头信修改息可完全自定义字段和值，支持自定义规则(正则test)。
- - 智能代理，没有规则列表，当遇到重置类型错误便尝试使用自定的代理。
- - 当当前代理设置不可用时自动切换下一个代理设置。
  - 菜单模式，集成anoBtn(https://github.com/feiruo/userChromeJS/tree/master/anoBtn)除自定图标外所有功能。
  - 集成showFlagS(https://github.com/feiruo/userChromeJS/tree/master/showFlagS)所有功能并增强。
  - 左键点击图复制IP，中键刷新，右键弹出菜单。
