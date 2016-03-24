@@ -8,12 +8,13 @@
 // @inspect         window.anoBtn
 // @startup         window.anoBtn.init();
 // @shutdown        window.anoBtn.onDestroy();
-// @config 			window.anoBtn.EditFile(anoBtn.file);
+// @config 			window.anoBtn.EditFile(anoBtn.File);
 // @reviewURL		http://bbs.kafan.cn/thread-1657589-1-1.html
 // @homepageURL		https://github.com/feiruo/userChromeJS/tree/master/anoBtn
 // @downloadURL		https://github.com/feiruo/userChromeJS/raw/master/anoBtn/anoBtn.uc.js
 // @note			支持菜单和脚本设置重载
 // @note			需要 _anoBtn.js 配置文件
+// @version			1.3.8 	2016.03.24 	14:30	Fix Urlbar-icons & popup。
 // @version			1.3.7 	2015.11.05 	12:00	修复枚举目录不存在导致的错误，修正原菜单移动方式,修正编辑。
 // @version			1.3.6 	2015.11.05 	12:00	增加目录枚举，菜单参数与自由性与addmenu一样，仅限制位置于本菜单。
 // @version			1.3.5 	2015.04.25 	10:00	为可移动菜单。
@@ -137,13 +138,24 @@
 			if (event.target != event.currentTarget) return;
 			event.stopPropagation();
 			event.preventDefault();
-			if (event.target.id == 'anoBtn_set') {
-				if (event.button == 0)
-					return this.Rebuild(true);
-				else if (event.button == 2)
-					return this.EditFile();
-			} else if (event.target.id == 'anoBtn_Icon')
-				return $("anoBtn_Popup").showPopup();
+			switch (event.target.id) {
+				case 'anoBtn_set':
+					switch (event.button) {
+						case 0:
+							anoBtn.Rebuild(true);
+							break;
+						case 1:
+							break;
+						case 2:
+							anoBtn.EditFile();
+							break;
+					}
+					break;
+				case 'anoBtn_Icon':
+					// $("anoBtn_Popup").openPopup(event.target);
+					$("anoBtn_Popup").showPopup();
+					break;
+			}
 			return;
 		},
 
@@ -172,29 +184,23 @@
 			if ($('anoBtn_set')) $('anoBtn_set').setAttribute('image', iconImage);
 
 			var IconType = this.IconSstatusBarPanel ? 'statusbarpanel' : 'image';
+			this.icon = $C('toolbarbutton', {
+				id: 'anoBtn_Icon',
+				class: 'toolbarbutton-1 chromeclass-toolbar-additional',
+				popup: 'anoBtn_Popup',
+				context: 'anoBtn_Popup',
+				type: 'menu',
+				removable: true,
+				image: iconImage,
+				src: iconImage,
+				onclick: "anoBtn.BtnClick(event);",
+			});
 
 			if (this.anobtnset.Icon_Pos === 0) {
-				this.icon = $C('toolbarbutton', {
-					class: 'toolbarbutton-1 chromeclass-toolbar-additional',
-					type: 'menu',
-					removable: true,
-					image: iconImage,
-					id: "FeiRuoNet_icon",
-				});
 				ToolbarManager.addWidget(window, this.icon, true);
 			} else if (this.anobtnset.Icon_Pos === 1) {
-				this.icon = $C(IconType, {
-					src: iconImage,
-				});
 				$('urlbar-icons').appendChild(this.icon);
 			} else if (this.anobtnset.Icon_Pos === 2) {
-				this.icon = $C('toolbarbutton', {
-					class: 'toolbarbutton-1 chromeclass-toolbar-additional',
-					type: 'menu',
-					removable: true,
-					image: iconImage,
-					id: "FeiRuoNet_icon",
-				});
 				if (orientation == 'before')
 					intags.parentNode.insertBefore(this.icon, intags);
 				else if (orientation == 'after') {
@@ -207,12 +213,8 @@
 				}
 			}
 
-			this.icon.setAttribute('id', 'anoBtn_Icon');
-			this.icon.setAttribute('context', 'anoBtn_Popup');
-			this.icon.setAttribute('onclick', 'if (event.button != 2) anoBtn.BtnClick(event);');
-
 			if (this.anobtnset.IconSstatusBarPanel)
-				this.icon.setAttribute('class', 'statusbarpanel-iconic');
+				this.icon.classList.add('class', 'statusbarpanel-iconic');
 
 			return true;
 		},
