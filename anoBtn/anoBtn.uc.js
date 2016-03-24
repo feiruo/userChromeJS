@@ -8,12 +8,14 @@
 // @inspect         window.anoBtn
 // @startup         window.anoBtn.init();
 // @shutdown        window.anoBtn.onDestroy();
-// @config 			window.anoBtn.EditFile(anoBtn.file);
+// @config 			window.anoBtn.EditFile(anoBtn.File);
 // @reviewURL		http://bbs.kafan.cn/thread-1657589-1-1.html
 // @homepageURL		https://github.com/feiruo/userChromeJS/tree/master/anoBtn
 // @downloadURL		https://github.com/feiruo/userChromeJS/raw/master/anoBtn/anoBtn.uc.js
 // @note			支持菜单和脚本设置重载
 // @note			需要 _anoBtn.js 配置文件
+// @version			1.3.9 	2016.03.24 	17:30	Fix clone。
+// @version			1.3.8 	2016.03.24 	14:30	Fix Urlbar-icons & popup。
 // @version			1.3.7 	2015.11.05 	12:00	修复枚举目录不存在导致的错误，修正原菜单移动方式,修正编辑。
 // @version			1.3.6 	2015.11.05 	12:00	增加目录枚举，菜单参数与自由性与addmenu一样，仅限制位置于本菜单。
 // @version			1.3.5 	2015.04.25 	10:00	为可移动菜单。
@@ -123,33 +125,44 @@
 			Services.obs.notifyObservers(null, "startupcache-invalidate", "");
 		},
 
-		RemoveByID: function() {
-			if (this.anomenu) {
-				for (var i = 0; i < this.anomenu.length; i++) {
-					var obj = this.anomenu[i];
-					if (obj.id && !obj.clone)
-						$("main-menubar").insertBefore($(obj.id), $("main-menubar").childNodes[7]);
+		RemoveByID: function(anomenu) {
+			if (!anomenu) return;
+			anomenu.forEach(item => {
+				if (item.child) this.RemoveByID(item.child);
+				else if (item.id && $(item.id) && (item.clone == false)) {
+					$("main-menubar").appendChild($(item.id));
 				}
-			}
+			})
 		},
 
 		BtnClick: function(event) {
 			if (event.target != event.currentTarget) return;
 			event.stopPropagation();
 			event.preventDefault();
-			if (event.target.id == 'anoBtn_set') {
-				if (event.button == 0)
-					return this.Rebuild(true);
-				else if (event.button == 2)
-					return this.EditFile();
-			} else if (event.target.id == 'anoBtn_Icon')
-				return $("anoBtn_Popup").showPopup();
+			switch (event.target.id) {
+				case 'anoBtn_set':
+					switch (event.button) {
+						case 0:
+							anoBtn.Rebuild(true);
+							break;
+						case 1:
+							break;
+						case 2:
+							anoBtn.EditFile();
+							break;
+					}
+					break;
+				case 'anoBtn_Icon':
+					// $("anoBtn_Popup").openPopup(event.target);
+					$("anoBtn_Popup").showPopup();
+					break;
+			}
 			return;
 		},
 
 		Rebuild: function(isAlert) {
 			var MenuDate = this.LoadFile(this.File);
-			//this.RemoveByID();
+			this.RemoveByID(this.anomenu);
 			if (!MenuDate) return;
 			this.anomenu = MenuDate.anomenu;
 			this.anobtnset = MenuDate.anobtnset;
@@ -172,29 +185,23 @@
 			if ($('anoBtn_set')) $('anoBtn_set').setAttribute('image', iconImage);
 
 			var IconType = this.IconSstatusBarPanel ? 'statusbarpanel' : 'image';
+			this.icon = $C('toolbarbutton', {
+				id: 'anoBtn_Icon',
+				class: 'toolbarbutton-1 chromeclass-toolbar-additional',
+				popup: 'anoBtn_Popup',
+				context: 'anoBtn_Popup',
+				type: 'menu',
+				removable: true,
+				image: iconImage,
+				src: iconImage,
+				onclick: "anoBtn.BtnClick(event);",
+			});
 
 			if (this.anobtnset.Icon_Pos === 0) {
-				this.icon = $C('toolbarbutton', {
-					class: 'toolbarbutton-1 chromeclass-toolbar-additional',
-					type: 'menu',
-					removable: true,
-					image: iconImage,
-					id: "FeiRuoNet_icon",
-				});
 				ToolbarManager.addWidget(window, this.icon, true);
 			} else if (this.anobtnset.Icon_Pos === 1) {
-				this.icon = $C(IconType, {
-					src: iconImage,
-				});
 				$('urlbar-icons').appendChild(this.icon);
 			} else if (this.anobtnset.Icon_Pos === 2) {
-				this.icon = $C('toolbarbutton', {
-					class: 'toolbarbutton-1 chromeclass-toolbar-additional',
-					type: 'menu',
-					removable: true,
-					image: iconImage,
-					id: "FeiRuoNet_icon",
-				});
 				if (orientation == 'before')
 					intags.parentNode.insertBefore(this.icon, intags);
 				else if (orientation == 'after') {
@@ -207,12 +214,8 @@
 				}
 			}
 
-			this.icon.setAttribute('id', 'anoBtn_Icon');
-			this.icon.setAttribute('context', 'anoBtn_Popup');
-			this.icon.setAttribute('onclick', 'if (event.button != 2) anoBtn.BtnClick(event);');
-
 			if (this.anobtnset.IconSstatusBarPanel)
-				this.icon.setAttribute('class', 'statusbarpanel-iconic');
+				this.icon.classList.add('class', 'statusbarpanel-iconic');
 
 			return true;
 		},
@@ -227,21 +230,32 @@
 			} catch (e) {};
 			var Popup = $("anoBtn_Popup");
 			if (Popup) Popup.parentNode.removeChild(Popup);
+			this.Popup = null;
 			delete Popup;
 			if (!isAlert) return;
-			var menu = this.anomenu;
-			var Popup = $C("menupopup", {
+			this.Popup = $C("menupopup", {
 				id: "anoBtn_Popup",
 				position: this.anobtnset.position,
+				// onpopupshowing: "anoBtn.PopupShowing(event);"
 			});
-
-			for (let [, obj] in Iterator(menu)) {
+			for (let [, obj] in Iterator(this.anomenu)) {
 				if (!obj) continue;
-				Popup.appendChild(this.BuildMenuitem(obj, {
+				this.Popup.appendChild(this.BuildMenuitem(obj));
+			}
+			this.icon.appendChild(this.Popup);
+		},
+
+		PopupShowing: function(event) {
+			if (event.target != anoBtn.Popup || event.target != event.currentTarget) return;
+			Array.prototype.slice.call((document).querySelectorAll(".anoBtn_CustomMenu,.anoBtn_MenuNote,anoBtn_FFMenu,anoBtn_CustomMenu_menuseparator")).forEach(itm => {
+				itm.parentNode.removeChild(itm);
+			})
+			for (let [, obj] in Iterator(anoBtn.anomenu)) {
+				if (!obj) continue;
+				anoBtn.Popup.appendChild(anoBtn.BuildMenuitem(obj, {
 					isTopMenuitem: true
 				}));
 			}
-			this.icon.appendChild(Popup);
 		},
 
 		BuildMenu: function(menuObj, i) {
@@ -302,19 +316,18 @@
 		},
 
 		BuildMenuitem: function(obj, opt) {
-			opt || (opt = {});
 			if (obj.MapFolder)
 				return this.BuildMenu(this.EnumerateFolder(obj));
 
 			let menuitem;
 			if (obj.id && (menuitem = $(obj.id))) {
 				let dupMenuitem;
-				// let isDupMenu = (obj.clone != false);
-				let isDupMenu = true;
-				if (isDupMenu)
+				let isDupMenu = (obj.clone != false);
+				if (isDupMenu) {
 					dupMenuitem = menuitem.cloneNode(true);
-				else
+				} else {
 					dupMenuitem = menuitem;
+				}
 
 				for (let [key, val] in Iterator(obj)) {
 					if (typeof val == "function")
@@ -330,8 +343,8 @@
 
 				if (!cls.contains('anoBtn_CustomMenu'))
 					cls.add('anoBtn_CustomMenu');
-				if (!isDupMenu && !cls.contains('anoBtn_MenuNot'))
-					cls.add('anoBtn_MenuNot');
+				if (!isDupMenu && !cls.contains('anoBtn_MenuNote'))
+					cls.add('anoBtn_MenuNote');
 
 				let noMove = !isDupMenu;
 				return dupMenuitem;
@@ -346,6 +359,7 @@
 				let org = obj.command ? document.getElementById(obj.command) : null;
 				if (org && org.localName === "menuseparator") {
 					menuitem = document.createElement("menuseparator");
+					menuitem.setAttribute('class', 'anoBtn_CustomMenu_menuseparator');
 				} else {
 					menuitem = document.createElement("menuitem");
 					if (obj.command)
@@ -387,14 +401,6 @@
 				if (obj.exec)
 					obj.exec = this.handleRelativePath(obj.exec);
 			}
-
-			// if (opt.isTopMenuitem && obj.onshowing) {
-			// 	this.CustomShowings.push({
-			// 		item: menuitem,
-			// 		fnSource: obj.onshowing.toSource()
-			// 	});
-			// 	delete obj.onshowing;
-			// }
 
 			for (let [key, val] in Iterator(obj)) {
 				if (key === "command" || key === "MapFolder" || key === "Filter" || key === "Sort" || key === "ExcludeDir") continue;
