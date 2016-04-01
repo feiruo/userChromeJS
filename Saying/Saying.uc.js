@@ -10,6 +10,7 @@
 // @startup			window.Saying.init();
 // @shutdown		window.Saying.onDestroy();
 // @optionsURL		about:config?filter=Saying.
+// @config          window.Saying.OpenPref();
 // @reviewURL		http://bbs.kafan.cn/thread-1654067-1-1.html
 // @homepageURL		https://github.com/feiruo/userChromeJS/tree/master/Saying
 // @downloadURL		https://github.com/feiruo/userChromeJS/raw/master/Saying/Saying.uc.js
@@ -324,6 +325,7 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 				id: "Saying_SetPref",
 				label: "脚本设置",
 				class: "Saying menuitem-iconic Saying_TypeItem",
+				tooltiptext: "左键：打开设置窗口\n中键：重载配置\n右键：编辑配置文件",
 				image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABYElEQVQ4jY3TO0/VQRAF8F9yTUB6QMCCZ6KJBq4JNIQKCkoopAWMsabhC1ho5SOYaO2j0AQ+gYKPS/BeaDD0kPhJLP7nbzZA0ElOsjvnzOzOziyX2yjO8Ds4i++/bRgdzAUdjFwVMIkNDASP8QuDwXF8Nb+RGHAdb3GC72jhIxZxLViMbx/fon2XWKv4inHcx6OaQH8A3eFWot3DmmT8jImipF48y21aeI6+gp9IzA+Ywmu0k7mBF9jBDKaxjZfhxqN9k1hULepgLI90gHvFic34BqJtR6tM0D6XYKrgJ/FT1ZFa+3cu7mALR6mtkf2n3KKZ9auihMPs79aPuIvbxYn9SbIfbOFGwd/CF1XbPVC1ZARL2XdFOIihrLuwjuVod/EQevBeNXmt1P8BC6ohamA+moNojqPpqa/UxCZuBk8iKkf5abihaMsuXbBh1UvPBm3/+EznbRSnqm9c49Lv/AcsoU6W+qo3pgAAAABJRU5ErkJggg==",
 				onclick: "Saying.OpenPref(event);"
 			});
@@ -622,7 +624,7 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 				request.open(obj.method || 'GET', obj.url, obj.async || true, obj.bstrUser || null, obj.bstrPassword || null);
 				if (obj.responseType) //返回类型
 					request.responseType = obj.responseType;
-				request.timeout = obj.timeout || 3500; //延迟时间，毫秒
+				request.timeout = obj.timeout || Saying.Local_Delay; //延迟时间，毫秒
 				request.ontimeout = onerror;
 				if (obj.onreadystatechange)
 					request.onreadystatechange = obj.onreadystatechange; //存储函数（或函数名），每当 readyState 属性改变时，就会调用该函数。
@@ -660,6 +662,67 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 			this.ShowStatus = "已复制: " + str;
 		},
 
+		EditFile: function(aFile) {
+			if (!aFile) aFile = this.ConfFile;
+
+			if (!aFile || !aFile.exists() || !aFile.isFile())
+				return alert("文件不存在:\n" + aFile.path);
+
+			var editor;
+			try {
+				editor = gPrefService.getCharPref("view_source.editor.path");
+			} catch (e) {
+				log("编辑器路径读取错误  >>  " + e);
+				alert("请先设置编辑器的路径!!!\nview_source.editor.path");
+				toOpenWindowByType('pref:pref', 'about:config?filter=view_source.editor.path');
+			}
+
+			if (!editor) {
+				this.OpenScriptInScratchpad(window, aFile);
+				alert("请先设置编辑器的路径!!!\nview_source.editor.path");
+				return;
+			}
+
+			var UI = Cc['@mozilla.org/intl/scriptableunicodeconverter'].createInstance(Ci.nsIScriptableUnicodeConverter);
+			var platform = window.navigator.platform.toLowerCase();
+			if (platform.indexOf('win') > -1)
+				UI.charset = 'GB2312';
+			else
+				UI.charset = 'UTF-8';
+			// UI.charset = window.navigator.platform.toLowerCase().indexOf("win") >= 0 ? "gbk" : "UTF-8";
+			var process = Cc['@mozilla.org/process/util;1'].createInstance(Ci.nsIProcess);
+
+			try {
+				var path = UI.ConvertFromUnicode(aFile.path);
+				// process.init(editor);
+				// process.run(false, [path], [path].length);
+				var appfile = Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsILocalFile);
+				appfile.initWithPath(editor);
+				process.init(appfile);
+				process.run(false, [path], 1, {});
+			} catch (e) {
+				alert("编辑器不正确！")
+				this.OpenScriptInScratchpad(window, aFile);
+			}
+		},
+
+		OpenScriptInScratchpad: function(parentWindow, file) {
+			let spWin = (parentWindow.Scratchpad || Services.wm.getMostRecentWindow("navigator:browser").Scratchpad).openScratchpad();
+
+			spWin.addEventListener("load", function spWinLoaded() {
+				spWin.removeEventListener("load", spWinLoaded, false);
+
+				let Scratchpad = spWin.Scratchpad;
+				Scratchpad.setFilename(file.path);
+				Scratchpad.addObserver({
+					onReady: function() {
+						Scratchpad.removeObserver(this);
+						Scratchpad.importFromFile.call(Scratchpad, file);
+					}
+				});
+			}, false);
+		},
+
 		ShowStatus: function(str, time) {
 			XULBrowserWindow.statusTextField.label = '[Saying]' + str;
 			setTimeout(function() {
@@ -668,9 +731,13 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 		},
 
 		OpenPref: function(event) {
-			if (event.target != event.currentTarget) return;
-			event.stopPropagation();
-			event.preventDefault();
+			if (!event) event = {
+				'button': 0
+			};
+			else {
+				event.stopPropagation();
+				event.preventDefault();
+			}
 			switch (event.button) {
 				case 0:
 					var win = Cc["@mozilla.org/appshell/window-mediator;1"].getService(Ci.nsIWindowMediator).getMostRecentWindow("Saying:Preferences");
@@ -681,9 +748,10 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 					}
 					break;
 				case 1:
+					this.Rebuild(true);
 					break;
 				case 2:
-					this.Rebuild(true);
+					this.EditFile();
 					break;
 			}
 		},
@@ -710,33 +778,29 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 						<vbox>\
 							<groupbox>\
 							<caption label="显示类型" align="center"/>\
-							<grid>\
-							<columns>\
-									<column/>\
-									<column/>\
-							</columns>\
-							<rows>\
-								<radiogroup id="ShowType" preference="ShowType">\
-									<radio label="地址栏文字" id="ShowTypeU" value="0" oncommand="opener.Saying.OptionScript.Change();"/>\
-									<row align="center">\
-										<label value="文字长度："/>\
-										<textbox id="SayingLong" type="number" preference="SayingLong" tooltiptext="地址栏文字长度（个数，包括标点符号），0则全部显示"/>\
-									</row>\
-									<radio label="自动弹出" id="AutoTip" value="1" oncommand="opener.Saying.OptionScript.Change();"/>\
-									<row align="center">\
-										<label value="显示时间："/>\
-										<textbox id="AutoTipTime" type="number" preference="AutoTipTime"  tooltiptext="自动弹出文字文字的显示时间，毫秒"/>\
-									</row>\
-								</radiogroup>\
-							</rows>\
-							</grid>\
+								<grid>\
+									<rows>\
+										<radiogroup id="ShowType" preference="ShowType">\
+											<radio label="地址栏文字" id="ShowTypeU" value="0" oncommand="opener.Saying.OptionScript.Change();"/>\
+											<row align="center">\
+												<label value="文字长度："/>\
+												<textbox id="SayingLong" type="number" preference="SayingLong" tooltiptext="地址栏文字长度（个数，包括标点符号），0则全部显示"/>\
+											</row>\
+											<radio label="自动弹出" id="AutoTip" value="1" oncommand="opener.Saying.OptionScript.Change();"/>\
+											<row align="center">\
+												<label value="显示时间："/>\
+												<textbox id="AutoTipTime" type="number" preference="AutoTipTime"  tooltiptext="自动弹出文字文字的显示时间，毫秒"/>\
+											</row>\
+										</radiogroup>\
+									</rows>\
+								</grid>\
 							</groupbox>\
 							<groupbox>\
 								<caption/>\
 									<checkbox id="Onliner" label="在线查询，可能会影响脚本效率！" preference="Online" oncommand="opener.Saying.OptionScript.Change();"/>\
 									<row align="center" class="indent">\
 										<label value="查询延时：" tooltiptext="网络获取延时，超过这个设定时间还未获得就使用本地数据，单位“毫秒”！"/>\
-										<textbox id="Local_Delay" type="number" preference="Local_Delay" style="width:125px" tooltiptext="请注意，如果网络不流畅或者查询API出现问题，延迟过大可能会使脚本无响应！"/>\
+										<textbox id="Local_Delay" type="number" preference="Local_Delay" style="width:150px" tooltiptext="请注意，如果网络不流畅或者查询API出现问题，延迟过大可能会使脚本无响应！"/>\
 									</row>\
 							</groupbox>\
 						</vbox>\
