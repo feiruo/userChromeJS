@@ -591,20 +591,20 @@
 		},
 
 		Listener: function(e, tag, btn, command, tkey, keys, CN) {
-			if (btn == "MouseScrollUp") {
-				if (tag === "Tab" && e.target.localName == "tab" && e.detail < 0)
+			if (btn == 'MouseScrollUp' && e.detail < 0) {
+				if (tag === "Tab" && e.target.localName == "tab")
 					FeiRuoTabplus.Listen_AidtKey(e, command, tkey, keys, CN);
-				if (tag === "TabBar" && e.target.localName != "tab" && e.detail < 0)
+				if (tag === 'TabBar' && e.target.localName != "tab")
 					FeiRuoTabplus.Listen_AidtKey(e, command, tkey, keys, CN);
-			} else if (btn == "MouseScrollDown") {
-				if (tag === "Tab" && e.target.localName == "tab" && e.detail > 0)
+			} else if (btn == 'MouseScrollDown' && e.detail > 0) {
+				if (tag === "Tab" && e.target.localName == "tab")
 					FeiRuoTabplus.Listen_AidtKey(e, command, tkey, keys, CN);
-				if (tag === "TabBar" && e.target.localName != "tab" && e.detail > 0)
+				if (tag === 'TabBar' && e.target.localName != "tab")
 					FeiRuoTabplus.Listen_AidtKey(e, command, tkey, keys, CN);
 			} else {
 				if (tag === "Tab" && e.target.localName == "tab" && e.button == btn)
 					FeiRuoTabplus.Listen_AidtKey(e, command, tkey, keys, CN);
-				if (tag === "TabBar" && e.target.localName != "tab" && e.button == btn)
+				if (tag === 'TabBar' && e.target.localName != "tab" && e.button == btn)
 					FeiRuoTabplus.Listen_AidtKey(e, command, tkey, keys, CN);
 			}
 		},
@@ -658,6 +658,7 @@
 		Listen_Command: function(e, command, CN) {
 			e.stopPropagation();
 			e.preventDefault();
+			ShowStatus(command);
 			switch (command) {
 				case 'AddTab':
 					BrowserOpenTab();
@@ -684,12 +685,12 @@
 					break;
 				case 'LoadWithIE':
 					try {
-						var file = Components.classes["@mozilla.org/file/directory_service;1"].getService(Components.interfaces.nsIProperties).get("ProgF", Components.interfaces.nsILocalFile);
+						var file = Cc["@mozilla.org/file/directory_service;1"].getService(Ci.nsIProperties).get("ProgF", Ci.nsILocalFile);
 						file.append("Internet Explorer");
 						file.append("iexplore.exe");
 						var process = Cc["@mozilla.org/process/util;1"].createInstance(Ci.nsIProcess);
 						process.init(file);
-						var url = window.content ? content.location.href : gBrowser.selectedBrowser.contentDocumentAsCPOW.location.href;
+						var url = gBrowser.selectedBrowser.currentURI.spec;
 						process.run(false, [url], 1);
 					} catch (ex) {
 						alert("打开IE失败!\n" + ex);
@@ -1408,10 +1409,8 @@
 				window.openDialog("data:application/vnd.mozilla.xul+xml;charset=UTF-8," + option, '', 'chrome,titlebar,toolbar,centerscreen,dialog=no');
 			}
 		},
-	};
-
-	FeiRuoTabplus.option = function() {
-		var xul = '<?xml version="1.0"?><?xml-stylesheet href="chrome://global/skin/" type="text/css"?>\
+		option: function() {
+			var xul = '<?xml version="1.0"?><?xml-stylesheet href="chrome://global/skin/" type="text/css"?>\
 					<prefwindow xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"\
 					id="FeiRuoTabplus_Settings"\
 					ignorekeys="true"\
@@ -1645,7 +1644,8 @@
 					</prefpane>\
 					</prefwindow>\
           			';
-		return encodeURIComponent(xul);
+			return encodeURIComponent(xul);
+		}
 	};
 
 	FeiRuoTabplus.OptionScript = {
@@ -1906,7 +1906,7 @@
 									opener.FeiRuoTabplus.getWindow(0).focus();\
 							}\
 							function MouseChanged(type){\
-								opener.FeiRuoTabplus.Detaill_OptionScript.MouseChanged();\
+								opener.FeiRuoTabplus.Detaill_OptionScript.MouseChanged(type);\
 							}\
 						</script>\
 							<vbox style = "width:400px; min-height:275px;">\
@@ -2285,6 +2285,8 @@
 
 			_$D("MouseBtn").selectedIndex = param["btn"] || 0;
 
+			_$D("MouseScroll").selectedIndex = (param["action"] == 'MouseScrollDown' ? 1 : 0);
+
 			_$D("MouseDblClick").checked = (param["action"] == "dblclick" ? true : false);
 
 			if (param["action"] == "dblclick" || param["action"] == "click" || !param["action"])
@@ -2292,7 +2294,7 @@
 			else
 				_$D("MouseAction").value = "MouseMidScroll";
 
-			this.MouseChanged();
+			this.MouseChanged(_$D("MouseAction").value == "MouseMidScroll" ? 1 : false);
 
 			_$D("EventTag").value = param["tag"] || "Tab";
 
@@ -2577,6 +2579,13 @@
 	function alert(aString, aTitle) {
 		Cc['@mozilla.org/alerts-service;1'].getService(Ci.nsIAlertsService)
 			.showAlertNotification("", aTitle || "FeiRuoTabplus", aString, false, "", null);
+	}
+
+	function ShowStatus(str, time) {
+		XULBrowserWindow.statusTextField.label = '[FeiRuoTabplus]' + str;
+		setTimeout(function() {
+			XULBrowserWindow.statusTextField.label = '';
+		}, time || 1500)
 	}
 
 	function $C(name, attr) {
