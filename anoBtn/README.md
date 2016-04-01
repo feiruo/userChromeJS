@@ -6,7 +6,8 @@ anoBtn.uc.js
  - 使用外部配置文件，请参考配置文件。
  - 工具菜单中增加一个重载菜单，左键重载，右键编辑配置文件。
  - 支持多级菜单（如无特殊需求，不推荐，影响体验）。
- - 支持文件夹枚举文件。
+ - 支持文件夹枚举文件及执行文件参数。
+ - 开放的菜单生成函数 window.AnoBtn_BuildPopup。
  - 配置与addmenu一样，但仅支持本脚本菜单位置，具体请参照；https://github.com/ywzhaiqi/userChromeJS/tree/master/addmenuPlus
  - 配置文件位置：
 
@@ -33,10 +34,50 @@ anoBtn.uc.js
  			Filter: /\.(exe|lnk|bat|xls|xlsx|txt|doc|docx|jpg|wps)$/i,
  			//是否枚举子目录内的文件，值代表子目录深度，多少级的子目录，0为根目录（即不枚举子目录）
  			Directories: 2,
- 			//排除目录,仅当Dirs>1时生效。
+ 			//排除目录,仅当Directories>1时生效。
  			ExcludeDirs: /tmp|temp|ConFile|msdll/i，
- 			//枚举目录,仅当Dirs>1时生效。留空表示不筛选
+ 			//枚举目录,仅当Directories>1时生效。留空表示不筛选
  			FilterDirs: "",
+ 			//可执行文件参数
+			ExeText: {
+				//需要带参数的执行文件
+				Program: /^(firefox|nightly)\.(exe)$/i,
+				//参数：%DIR%(上一级目录名),%EXE%(不带后缀程序名)
+				text: "-no-remote -profile ..\\Profile_%DIR%",
+			},
  		},
+
+ - 菜单生成函数用法：
+
+ 		var Menus=[{
+ 			label: "菜单显示名称",
+ 			image: "图标",
+ 			//枚举文件夹内的所有文件。注意：Linux路径区分大小写！！！！
+ 			MapFolder: '/chrome/tools',
+ 			//排除的文件，需要注意:此处不使用"g"全局模式，可以匹配所有文件,
+ 			Exclude: /\.(dat|reg|sample|config|db|log|dll|json|zip|rar|ini)$|7za\.exe|wget\.exe/i,
+ 			//枚举的文件
+ 			Filter: /\.(exe|lnk|bat|xls|xlsx|txt|doc|docx|jpg|wps)$/i,
+ 			//是否枚举子目录内的文件，值代表子目录深度，多少级的子目录，0为根目录（即不枚举子目录）
+ 			Directories: 2,
+ 			//排除目录,仅当Directories>1时生效。
+ 			ExcludeDirs: /tmp|temp|ConFile|msdll/i，
+ 			//枚举目录,仅当Directories>1时生效。留空表示不筛选
+ 			FilterDirs: "",
+ 			//可执行文件参数
+			ExeText: {
+				//需要带参数的执行文件
+				Program: /^(firefox|nightly)\.(exe)$/i,
+				//参数：%DIR%(上一级目录名),%EXE%(不带后缀程序名)
+				text: "-no-remote -profile ..\\Profile_%DIR%",
+			},
+ 		}]
+ 		var Popup=document.createElement("menupopup");
+ 			Popup.setAttribute("id","PopupID");
+ 		PopupBuild = new AnoBtn_BuildPopup(Popup);
+ 		//Or this: PopupBuild = new AnoBtn_BuildPopup("PopupID");
+ 		PopupBuild.Build(Menus);
+ 		//so your menu popup created,suppout all events that anoBtn suppouted
+
 
 ![图片](anoBtn.png)

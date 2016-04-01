@@ -14,6 +14,7 @@
 // @downloadURL		https://github.com/feiruo/userChromeJS/raw/master/anoBtn/anoBtn.uc.js
 // @note			支持菜单和脚本设置重载
 // @note			需要 _anoBtn.js 配置文件
+// @version			1.4.0 	2016.03.30 	15:30	修改机制，遍历文件支持参数，开放生成函数AnoBtn_BuildPopup，方法[PopupBuild = new AnoBtn_BuildPopup('PopupID');PopupBuild.Build(Menus)]。
 // @version			1.3.9 	2016.03.24 	17:30	Fix clone & load。
 // @version			1.3.8 	2016.03.24 	14:30	Fix Urlbar-icons & popup。
 // @version			1.3.7 	2015.11.05 	12:00	修复枚举目录不存在导致的错误，修正原菜单移动方式,修正编辑。
@@ -66,13 +67,25 @@
 				onclick: "anoBtn.BtnClick(event);",
 			}), ins);
 
+			this.ToRegExp();
+			this.Rebuild();
+			setTimeout(function() {
+				anoBtn.Rebuild();
+			}, 1000); //again for webDeveloperMenu
+			this.style = addStyle(CSS);
+			window.addEventListener("unload", function() {
+				anoBtn.onDestroy();
+			}, false);
+		},
+
+		ToRegExp: function() {
 			let he = "(?:_HTML(?:IFIED)?|_ENCODE)?";
 			let rTITLE = "%TITLE" + he + "%|%t\\b";
 			let rTITLES = "%TITLES" + he + "%|%t\\b";
 			let rURL = "%(?:R?LINK_OR_)?URL" + he + "%|%u\\b";
 			let rHOST = "%HOST" + he + "%|%h\\b";
-			let rIP = "%IP" + he + "%|%h\\b";
-			let rBASEDOMAIN = "%BASEDOMAIN" + he + "%|%h\\b";
+			let rIP = "%IP" + he + "%";
+			let rBASEDOMAIN = "%BASEDOMAIN" + he + "%";
 			let rSEL = "%SEL" + he + "%|%s\\b";
 			let rLINK = "%R?LINK(?:_TEXT|_HOST)?" + he + "%|%l\\b";
 			let rIMAGE = "%IMAGE(?:_URL|_ALT|_TITLE)" + he + "%|%i\\b";
@@ -105,34 +118,14 @@
 			this.rRLT_OR_UT = new RegExp(rRLT_OR_UT, "i");
 
 			this.regexp = new RegExp([rTITLE, rTITLES, rURL, rHOST, rBASEDOMAIN, rIP, rSEL, rLINK, rIMAGE, rIMAGE_BASE64, rMEDIA, rCLIPBOARD, rFAVICON, rFAVICON_BASE64, rEMAIL, rExt, rRLT_OR_UT].join("|"), "ig");
-
-			this.Rebuild();
-			setTimeout(function() {
-				anoBtn.Rebuild();
-			}, 1000); //again for webDeveloperMenu
-			this.style = addStyle(CSS);
-			window.addEventListener("unload", function() {
-				anoBtn.onDestroy();
-			}, false);
 		},
 
 		onDestroy: function() {
-			this.RemoveByID();
 			this.RebuildBtn();
 			this.RebuildPopup();
 			if ($("anoBtn_set"))
 				$("anoBtn_set").parentNode.removeChild($("anoBtn_set"));
 			Services.obs.notifyObservers(null, "startupcache-invalidate", "");
-		},
-
-		RemoveByID: function(anomenu) {
-			if (!anomenu) return;
-			anomenu.forEach(item => {
-				if (item.child) this.RemoveByID(item.child);
-				else if (item.id && $(item.id) && (item.clone == false)) {
-					$("main-menubar").appendChild($(item.id));
-				}
-			})
 		},
 
 		BtnClick: function(event) {
@@ -162,7 +155,7 @@
 
 		Rebuild: function(isAlert) {
 			var MenuDate = this.LoadFile(this.File);
-			this.RemoveByID(this.anomenu);
+			!!this.BuildPopup && this.BuildPopup.Remove();
 			if (!MenuDate) return;
 			this.anomenu = MenuDate.anomenu;
 			this.anobtnset = MenuDate.anobtnset;
@@ -222,340 +215,22 @@
 
 		RebuildPopup: function(isAlert) {
 			if (!this.anomenu) return;
-			this.CustomShowings = [];
-			try {
-				for (i in this.anomenu) {
-					$("main-menubar").insertBefore($(this.anomenu[i].id), $("main-menubar").childNodes[7]);
-				}
-			} catch (e) {};
 			var Popup = $("anoBtn_Popup");
 			if (Popup) Popup.parentNode.removeChild(Popup);
 			this.Popup = null;
+			!!this.BuildPopup && this.BuildPopup.Remove();
+			delete this.BuildPopup;
 			delete Popup;
 			if (!isAlert) return;
-			this.Popup = $C("menupopup", {
-				id: "anoBtn_Popup",
-				position: this.anobtnset.position,
-				// onpopupshowing: "anoBtn.PopupShowing(event);"
-			});
-			for (let [, obj] in Iterator(this.anomenu)) {
-				if (!obj) continue;
-				this.Popup.appendChild(this.BuildMenuitem(obj));
-			}
-			this.icon.appendChild(this.Popup);
-		},
-
-		PopupShowing: function(event) {
-			if (event.target != anoBtn.Popup || event.target != event.currentTarget) return;
-			Array.prototype.slice.call((document).querySelectorAll(".anoBtn_CustomMenu,.anoBtn_MenuNote,anoBtn_FFMenu,anoBtn_CustomMenu_menuseparator")).forEach(itm => {
-				itm.parentNode.removeChild(itm);
-			})
-			for (let [, obj] in Iterator(anoBtn.anomenu)) {
-				if (!obj) continue;
-				anoBtn.Popup.appendChild(anoBtn.BuildMenuitem(obj, {
-					isTopMenuitem: true
+			if (!this.BuildPopup) {
+				this.BuildPopup = new AnoBtn_BuildPopup('anoBtn', $C("menupopup", {
+					id: "anoBtn_Popup",
+					position: this.anobtnset.position,
+					// onpopupshowing: "anoBtn.PopupShowing(event);"
 				}));
 			}
-		},
-
-		BuildMenu: function(menuObj, i) {
-			var menu = document.createElement("menu");
-			var Popup = menu.appendChild(document.createElement("menupopup"));
-			if (menuObj.MapFolder)
-				menuObj = this.EnumerateFolder(menuObj);
-
-			for (let [key, val] in Iterator(menuObj)) {
-				if (key === "child" || key === "MapFolder" || key === "Sort" || key === "Filter" || key === "Exclude" || key === "Directories" || key === "FilterDirs" || key === "ExcludeDirs") continue;
-				if (key === 'onshowing') {
-					this.customShowings.push({
-						item: menu,
-						fnSource: menuObj.onshowing.toSource()
-					});
-					delete menuObj.onshowing;
-					continue;
-				}
-				if (typeof val == "function")
-					menuObj[key] = val = "(" + val.toSource() + ").call(this, event);"
-				menu.setAttribute(key, val);
-			}
-
-			let cls = menu.classList;
-			cls.add("anoBtn_CustomMenu");
-			cls.add("menu-iconic");
-			if (menuObj.condition)
-				this.SetCondition(menu, menuObj.condition);
-
-			menuObj.child.forEach(function(obj) {
-				Popup.appendChild(this.BuildMenuitem(obj));
-			}, this);
-
-			if (!menu.hasAttribute('label')) {
-				let firstItem = menu.querySelector('menuitem');
-				if (firstItem) {
-					let command = firstItem.getAttribute('command');
-					if (command)
-						firstItem = document.getElementById(command) || firstItem;
-					['label', 'accesskey', 'image', 'icon'].forEach(function(n) {
-						if (!menu.hasAttribute(n) && firstItem.hasAttribute(n))
-							menu.setAttribute(n, firstItem.getAttribute(n));
-					}, this);
-					menu.setAttribute('onclick', "\
-                    if (event.target != event.currentTarget) return;\
-                    var firstItem = event.currentTarget.querySelector('menuitem');\
-                    if (!firstItem) return;\
-                    if (event.button === 1) {\
-                        checkForMiddleClick(firstItem, event);\
-                    } else {\
-                        firstItem.doCommand();\
-                        closeMenus(event.currentTarget);\
-                    }\
-                ");
-				}
-			}
-			return menu;
-		},
-
-		BuildMenuitem: function(obj, opt) {
-			if (obj.MapFolder)
-				return this.BuildMenu(this.EnumerateFolder(obj));
-
-			let menuitem;
-			if (obj.id && (menuitem = $(obj.id))) {
-				let dupMenuitem;
-				let isDupMenu = (obj.clone != false);
-				if (isDupMenu) {
-					dupMenuitem = menuitem.cloneNode(true);
-				} else {
-					dupMenuitem = menuitem;
-				}
-
-				for (let [key, val] in Iterator(obj)) {
-					if (typeof val == "function")
-						obj[key] = val = "(" + val.toSource() + ").call(this, event);";
-					dupMenuitem.setAttribute(key, val);
-				}
-
-				let type = dupMenuitem.nodeName,
-					cls = dupMenuitem.classList;
-				if (type == 'menuitem' || type == 'menu')
-					if (!cls.contains(type + '-iconic'))
-						cls.add(type + '-iconic');
-
-				if (!cls.contains('anoBtn_CustomMenu'))
-					cls.add('anoBtn_CustomMenu');
-				if (!isDupMenu && !cls.contains('anoBtn_MenuNote'))
-					cls.add('anoBtn_MenuNote');
-
-				let noMove = !isDupMenu;
-				return dupMenuitem;
-			}
-
-			if (obj.child)
-				return this.BuildMenu(obj);
-
-			if (obj.label === "separator" || (!obj.label && !obj.image && !obj.text && !obj.keyword && !obj.url && !obj.oncommand && !obj.command))
-				menuitem = document.createElement("menuseparator");
-			else if (obj.oncommand || obj.command) {
-				let org = obj.command ? document.getElementById(obj.command) : null;
-				if (org && org.localName === "menuseparator") {
-					menuitem = document.createElement("menuseparator");
-					menuitem.setAttribute('class', 'anoBtn_CustomMenu_menuseparator');
-				} else {
-					menuitem = document.createElement("menuitem");
-					if (obj.command)
-						menuitem.setAttribute("command", obj.command);
-					if (!obj.label)
-						obj.label = obj.command || obj.oncommand;
-				}
-			} else {
-				menuitem = document.createElement("menuitem");
-
-				if (!obj.label)
-					obj.label = obj.exec || obj.keyword || obj.url || obj.text || "NoName" + i;
-
-				if (obj.keyword && !obj.text) {
-					let index = obj.keyword.search(/\s+/);
-					if (index > 0) {
-						obj.text = obj.keyword.substr(index).trim();
-						obj.keyword = obj.keyword.substr(0, index);
-					}
-				}
-
-				if (obj.where && /\b(tab|tabshifted|window|current)\b/i.test(obj.where))
-					obj.where = RegExp.$1.toLowerCase();
-
-				if (obj.where && !("acceltext" in obj))
-					obj.acceltext = obj.where;
-
-				if (!obj.condition && (obj.url || obj.text)) {
-					let condition = "";
-					if (this.rSEL.test(obj.url || obj.text)) condition += " select";
-					if (this.rLINK.test(obj.url || obj.text)) condition += " link";
-					if (this.rEMAIL.test(obj.url || obj.text)) condition += " mailto";
-					if (this.rIMAGE.test(obj.url || obj.text)) condition += " image";
-					if (this.rMEDIA.test(obj.url || obj.text)) condition += " media";
-					if (condition)
-						obj.condition = condition;
-				}
-
-				if (obj.exec)
-					obj.exec = this.handleRelativePath(obj.exec);
-			}
-
-			for (let [key, val] in Iterator(obj)) {
-				if (key === "command" || key === "MapFolder" || key === "Filter" || key === "Sort" || key === "ExcludeDir") continue;
-				if (typeof val == "function")
-					obj[key] = val = "(" + val.toSource() + ").call(this, event);";
-				menuitem.setAttribute(key, val);
-			}
-			var cls = menuitem.classList;
-			cls.add("anoBtn_CustomMenu");
-			let type = menuitem.nodeName;
-			if (type == 'menuitem' || type == 'menu' && (!cls.contains(type + '-iconic')))
-				cls.add(type + '-iconic');
-
-			if (obj.condition)
-				this.SetCondition(menuitem, obj.condition);
-
-			if (menuitem.localName == "menuseparator")
-				return menuitem;
-
-			if (!obj.onclick)
-				menuitem.setAttribute("onclick", "checkForMiddleClick(this, event)");
-
-			if (obj.oncommand || obj.command)
-				return menuitem;
-
-			menuitem.setAttribute("oncommand", "anoBtn.onCommand(event);");
-			this.SetMenusIcon(menuitem, obj);
-			return menuitem;
-		},
-
-		EnumerateFolder: function(obj) {
-			obj || (obj = {});
-			var path = this.handleRelativePath(obj.MapFolder);
-			var dir = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
-			dir.initWithPath(path);
-			if (!dir.exists() || !dir.isDirectory())
-				return obj;
-			var Entries = dir.directoryEntries;
-			var Exclude = obj.Exclude ? ((typeof obj.Exclude == "string") ? (new RegExp(obj.Exclude)) : obj.Exclude) : null;
-			var Filter = obj.Filter ? ((typeof obj.Filter == "string") ? (new RegExp(obj.Filter)) : obj.Filter) : null;
-			var ExcludeDirs = obj.ExcludeDirs ? ((typeof obj.ExcludeDirs == "string") ? (new RegExp(obj.ExcludeDirs)) : obj.ExcludeDirs) : null;
-			var FilterDirs = obj.FilterDirs ? ((typeof obj.FilterDirs == "string") ? (new RegExp(obj.FilterDirs)) : obj.FilterDirs) : null;
-			obj.child || (obj.child = []);
-			if (obj.child.length > 0 && obj.child[obj.child.length - 1].label != "separator") {
-				obj.child.push({
-					label: 'separator',
-				});
-			}
-			while (Entries.hasMoreElements()) {
-				var Entry = Entries.getNext();
-				Entry.QueryInterface(Components.interfaces.nsIFile);
-				if (Entry.isDirectory() && (typeof obj.Directories === 'number') && (obj.Directories > 0)) {
-					if (ExcludeDirs && ExcludeDirs.test(Entry.leafName)) continue;
-					if (FilterDirs && !FilterDirs.test(Entry.leafName)) continue;
-					obj.child.push(anoBtn.EnumerateFolder({
-						label: Entry.leafName,
-						MapFolder: Entry.path,
-						exec: Entry.path,
-						Directories: obj.Directories - 1,
-						Filter: obj.Filter,
-						Exclude: obj.Exclude,
-						FilterDirs: obj.FilterDirs,
-						ExcludeDirs: obj.ExcludeDirs,
-						onclick: "anoBtn.onCommand(event);",
-						Sort: 0,
-						image: "moz-icon://" + Services.io.getProtocolHandler("file").QueryInterface(Ci.nsIFileProtocolHandler).getURLSpecFromFile(Entry) + "?size=16",
-					}))
-					continue;
-				}
-				if (!Entry.isFile()) continue;
-				if (Exclude && Exclude.test(Entry.leafName)) continue;
-				if (Filter && !Filter.test(Entry.leafName)) continue;
-				obj.child.push({
-					label: Entry.leafName.substr(0, Entry.leafName.lastIndexOf(".")),
-					exec: Entry.path,
-					Sort: 1,
-					tooltiptext: Entry.path,
-				});
-			}
-			obj.MapFolder = false;
-			obj.child.sort(function(a, b) {
-				return a.Sort - b.Sort;
-			});
-			return obj;
-		},
-
-		SetCondition: function(menu, condition) {
-			if (/\bnormal\b/i.test(condition)) {
-				menu.setAttribute("condition", "normal");
-			} else {
-				let match = condition.toLowerCase().match(/\b(?:no)?(?:select|link|mailto|image|canvas|media|input)\b/ig);
-				if (!match || !match[0])
-					return;
-				match = match.filter(function(c, i, a) a.indexOf(c) === i);
-				menu.setAttribute("condition", match.join(" "));
-			}
-		},
-
-		SetMenusIcon: function(menu, obj) {
-			if (menu.hasAttribute("src") || menu.hasAttribute("image") || menu.hasAttribute("icon"))
-				return;
-
-			if (obj.exec) {
-				var aFile = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
-				try {
-					aFile.initWithPath(obj.exec);
-				} catch (e) {
-					return;
-				}
-				if (!aFile.exists()) {
-					menu.setAttribute("disabled", "true");
-				} else {
-					let fileURL = Services.io.getProtocolHandler("file").QueryInterface(Ci.nsIFileProtocolHandler).getURLSpecFromFile(aFile);
-					menu.setAttribute("image", "moz-icon://" + fileURL + "?size=16");
-				}
-				return;
-			}
-
-			if (obj.keyword) {
-				let engine = Services.search.getEngineByAlias(obj.keyword);
-				if (engine && engine.iconURI) {
-					menu.setAttribute("image", engine.iconURI.spec);
-					return;
-				}
-			}
-			var setIconCallback = function(url) {
-				let uri, iconURI;
-				try {
-					uri = Services.io.newURI(url, null, null);
-				} catch (e) {}
-				if (!uri) return;
-
-				menu.setAttribute("scheme", uri.scheme);
-				PlacesUtils.favicons.getFaviconDataForPage(uri, {
-					onComplete: function(aURI, aDataLen, aData, aMimeType) {
-						try {
-							// javascript: URI の host にアクセスするとエラー
-							menu.setAttribute("image", aURI && aURI.spec ?
-								"moz-anno:favicon:" + aURI.spec :
-								"moz-anno:favicon:" + uri.scheme + "://" + uri.host + "/favicon.ico");
-						} catch (e) {}
-					}
-				});
-			}
-			PlacesUtils.keywords.fetch(obj.keyword || '').then(entry => {
-				let url;
-				if (entry) {
-					url = entry.url.href;
-				} else {
-					url = (obj.url + '').replace(this.regexp, "");
-				}
-				setIconCallback(url);
-			}, e => {
-				console.log(e)
-			}).catch(e => {});
+			this.BuildPopup.Build(this.anomenu);
+			this.icon.appendChild(this.BuildPopup.Popup);
 		},
 
 		onCommand: function(event) {
@@ -566,6 +241,11 @@
 			var url = menuitem.getAttribute("url") || "";
 			var where = menuitem.getAttribute("where") || "";
 			var exec = menuitem.getAttribute("exec") || "";
+			var Post = menuitem.getAttribute("Post") || "";
+			var Action = menuitem.getAttribute("Action") || "";
+
+			if (Post)
+				return this.PostData(this.ConvertText(url), this.ConvertText(Post));
 
 			if (keyword) {
 				let param = (text ? (text = this.ConvertText(text)) : "");
@@ -586,6 +266,60 @@
 				this.Exec(exec, this.ConvertText(text));
 			else if (text)
 				this.Copy(this.ConvertText(text));
+			else if (Action)
+				this.OpenAction(Action);
+		},
+
+		OpenAction: function(url, fId, val, bId, bClass) {
+			var wrap = {
+				try: function(js) {
+					return "try{" + js + "}catch(e){}";
+				},
+				delay: function(js) {
+					return wrap.try("content.window.setTimeout(function(){" + wrap.try(js) + "},100);");
+				},
+				doOnLoad: function(js) {
+					return wrap.try("let onLoad = function(){" +
+						"removeEventListener('load',onLoad,true);" +
+						wrap.try(js) +
+						"};" +
+						"addEventListener('load',onLoad,true);");
+				},
+				quotes: function(str) {
+					return "\"" + str + "\"";
+				},
+				getElement: function(id) {
+					const selector = "form #" + id;
+					return "content.window.document.querySelector(" + wrap.quotes(selector) + ")";
+				},
+				getElementC: function(id) {
+					const selector = "form ." + id;
+					return "content.window.document.querySelector(" + wrap.quotes(selector) + ")";
+				}
+			};
+
+			function openURL(url) {
+				var browser = window.getBrowser();
+				try {
+					window.TreeStyleTabService.readyToOpenChildTab(browser.selectedTab);
+				} catch (e) {}
+				var newTab = browser.addTab(url, {
+					ownerTab: browser.selectedTab,
+					relatedToCurrent: true
+				});
+				browser.selectedTab = newTab;
+				return browser.getBrowserForTab(newTab);
+			}
+
+			var contentScript = wrap.getElement(fId) + ".value = " + wrap.quotes(this.ConvertText(val)) + ";";
+			if (bId)
+				contentScript += wrap.delay(wrap.getElement(bId) + ".click();")
+			else if (bClass)
+				contentScript += wrap.delay(wrap.getElementC(bClass) + ".click();")
+			contentScript = "data:text/javascript," + encodeURIComponent(wrap.doOnLoad(contentScript));
+
+			var targetBrowser = openURL(url);
+			targetBrowser.messageManager.loadFrameScript(contentScript, false);
 		},
 
 		OpenCommand: function(event, url, where, postData) {
@@ -635,6 +369,21 @@
 			}
 		},
 
+		PostData: function(aURI, aPostData) {
+			var stringStream = Cc["@mozilla.org/io/string-input-stream;1"].createInstance(Ci.nsIStringInputStream);
+			if ("data" in stringStream)
+				stringStream.data = aPostData;
+			else
+				stringStream.setData(aPostData, aPostData.length);
+
+			var PostData = Cc["@mozilla.org/network/mime-input-stream;1"].createInstance(Ci.nsIMIMEInputStream);
+			PostData.addHeader("Content-Type", "application/x-www-form-urlencoded");
+			PostData.addContentLength = true;
+			PostData.setData(stringStream);
+
+			gBrowser.loadOneTab(aURI, null, null, PostData, false);
+		},
+
 		ConvertText: function(text) {
 			var that = this;
 			var context = gContextMenu || {
@@ -651,17 +400,6 @@
 			};
 			var tab = document.popupNode && document.popupNode.localName == "tab" ? document.popupNode : null;
 			var win = tab ? tab.linkedBrowser.contentWindow : this.FocusedWindow;
-
-			return text.replace(this.regexp, function(str) {
-				str = str.toUpperCase().replace("%LINK", "%RLINK");
-				if (str.indexOf("_HTMLIFIED") >= 0)
-					return htmlEscape(convert(str.replace("_HTMLIFIED", "")));
-				if (str.indexOf("_HTML") >= 0)
-					return htmlEscape(convert(str.replace("_HTML", "")));
-				if (str.indexOf("_ENCODE") >= 0)
-					return encodeURIComponent(convert(str.replace("_ENCODE", "")));
-				return convert(str);
-			});
 
 			function convert(str) {
 				switch (str) {
@@ -719,6 +457,11 @@
 						return img2base64(gBrowser.getIcon(tab ? tab : null));
 					case "%EMAIL%":
 						return getEmailAddress() || "";
+					case "%IP%":
+						return FeiRuoNet_DNSCahe && FeiRuoNet_DNSCahe[gBrowser.selectedBrowser.CurrentURI.host];
+					case "%BASEDOMAIN%":
+						var eTLDService = Cc["@mozilla.org/network/effective-tld-service;1"].getService(Ci.nsIEffectiveTLDService);
+						return eTLDService.getBaseDomain(makeURI(gBrowser.selectedBrowser.CurrentURI.spec));
 					case "%EOL%":
 						return "\r\n";
 					case "%EOL%":
@@ -776,6 +519,17 @@
 				canvas = null;
 				return data;
 			}
+
+			return text.replace(this.regexp, function(str) {
+				str = str.toUpperCase().replace("%LINK", "%RLINK");
+				if (str.indexOf("_HTMLIFIED") >= 0)
+					return htmlEscape(convert(str.replace("_HTMLIFIED", "")));
+				if (str.indexOf("_HTML") >= 0)
+					return htmlEscape(convert(str.replace("_HTML", "")));
+				if (str.indexOf("_ENCODE") >= 0)
+					return encodeURIComponent(convert(str.replace("_ENCODE", "")));
+				return convert(str);
+			});
 		},
 
 		handleRelativePath: function(path) {
@@ -795,7 +549,7 @@
 		},
 
 		getSelection: function(win) {
-			win || (win = this.focusedWindow);
+			win || (win = this.FocusedWindow);
 			var selection = this.getRangeAll(win).join(" ");
 			if (!selection) {
 				let element = document.commandDispatcher.focusedElement;
@@ -819,7 +573,7 @@
 		},
 
 		getRangeAll: function(win) {
-			win || (win = this.focusedWindow);
+			win || (win = this.FocusedWindow);
 			var sel = win.getSelection();
 			var res = [];
 			for (var i = 0; i < sel.rangeCount; i++) {
@@ -946,6 +700,312 @@
 			return sandbox || null;
 		},
 	};
+
+	function AnoBtn_BuildPopup(ID, Popup) {
+		this.ID = ID;
+		if (typeof Popup == 'string')
+			Popup = document.getElementById(Popup);
+		Popup = Popup || document.getElementById(ID) || document.getElementById(ID + '_Popup');
+		if (!Popup || !Popup.tagName || Popup.tagName != "menupopup") {
+			Popup = document.createElement("menupopup");
+			Popup.setAttribute('id', thins.ID + '_Popup')
+		}
+		this.Popup = Popup;
+		this.Remove();
+	}
+	AnoBtn_BuildPopup.prototype = {
+		ID: null,
+		Popup: null,
+		isReady: false,
+		Remove: function() {
+			Array.prototype.slice.call((this.Popup || document).querySelectorAll("." + this.ID + "_MenuNote")).forEach(item => {
+				$("main-menubar").appendChild(item);
+				item.classList.remove(this.ID + '_CustomMenu');
+			});
+			Array.prototype.slice.call((this.Popup).querySelectorAll("." + this.ID + "_CustomMenu")).forEach(item => {
+				item.parentNode.removeChild(item);
+			});
+		},
+		Build: function(Menus) {
+			if (!Menus) return this.Remove();
+			for (let [, obj] in Iterator(Menus)) {
+				if (!obj) continue;
+				this.Popup.appendChild(this.CreateMenuitem(obj));
+			}
+			this.isReady = true;
+			return this.Popup;
+		},
+		CreateMenuitem: function(obj, i) {
+			if (obj.MapFolder)
+				return this.CreateMenu(this.EnumerateFolder(obj));
+			let menuitem;
+			if (obj.id && (menuitem = $(obj.id))) {
+				let dupMenuitem;
+				let isDupMenu = (obj.clone != false);
+				if (isDupMenu)
+					dupMenuitem = menuitem.cloneNode(true);
+				else
+					dupMenuitem = menuitem;
+				for (let [key, val] in Iterator(obj)) {
+					if (typeof val == "function")
+						obj[key] = val = "(" + val.toSource() + ").call(this, event);";
+					dupMenuitem.setAttribute(key, val);
+				}
+				let type = dupMenuitem.nodeName,
+					cls = dupMenuitem.classList;
+				if ((type == 'menuitem' || type == 'menu') && !cls.contains(type + '-iconic')) cls.add(type + '-iconic');
+				if (!cls.contains(this.ID + '_CustomMenu')) cls.add(this.ID + '_CustomMenu');
+				if (!isDupMenu && !cls.contains(this.ID + '_MenuNote')) cls.add(this.ID + '_MenuNote');
+				return dupMenuitem;
+			}
+			if (obj.child)
+				return this.CreateMenu(obj);
+			if (obj.label === "separator" || (!obj.label && !obj.image && !obj.text && !obj.keyword && !obj.url && !obj.oncommand && !obj.command)) {
+				menuitem = document.createElement("menuseparator");
+			} else if (obj.oncommand || obj.command) {
+				let org = obj.command ? document.getElementById(obj.command) : null;
+				if (org && org.localName === "menuseparator") {
+					menuitem = document.createElement("menuseparator");
+				} else {
+					menuitem = document.createElement("menuitem");
+					if (obj.command)
+						menuitem.setAttribute("command", obj.command);
+					if (!obj.label)
+						obj.label = obj.command || obj.oncommand;
+				}
+			} else {
+				menuitem = document.createElement("menuitem");
+				if (!obj.label)
+					obj.label = obj.exec || obj.keyword || obj.url || obj.text || "NoName";
+
+				if (obj.keyword && !obj.text) {
+					let index = obj.keyword.search(/\s+/);
+					if (index > 0) {
+						obj.text = obj.keyword.substr(index).trim();
+						obj.keyword = obj.keyword.substr(0, index);
+					}
+				}
+
+				if (obj.where && /\b(tab|tabshifted|window|current)\b/i.test(obj.where))
+					obj.where = RegExp.$1.toLowerCase();
+
+				if (obj.where && !("acceltext" in obj))
+					obj.acceltext = obj.where;
+
+				if (obj.exec)
+					obj.exec = this.handleRelativePath(obj.exec);
+			}
+			for (let [key, val] in Iterator(obj)) {
+				if (key === "command" || key === "MapFolder" || key === "Filter" || key === "Sort" || key === "ExcludeDir") continue;
+				if (typeof val == "function")
+					obj[key] = val = "(" + val.toSource() + ").call(this, event);";
+				menuitem.setAttribute(key, val);
+			}
+			var cls = menuitem.classList;
+			cls.add(this.ID + "_CustomMenu");
+			let type = menuitem.nodeName;
+			if ((type == 'menuitem' || type == 'menu') && (!cls.contains(type + '-iconic')))
+				cls.add(type + '-iconic');
+
+			if (menuitem.localName == "menuseparator")
+				return menuitem;
+
+			if (!obj.onclick)
+				menuitem.setAttribute("onclick", "checkForMiddleClick(this, event)");
+
+			if (obj.oncommand || obj.command)
+				return menuitem;
+			menuitem.setAttribute("oncommand", "anoBtn.onCommand(event);");
+			this.SetMenusIcon(menuitem, obj);
+			return menuitem;
+		},
+		CreateMenu: function(menuObj, i) {
+			var menu = document.createElement("menu");
+			var Popup = menu.appendChild(document.createElement("menupopup"));
+			if (menuObj.MapFolder)
+				menuObj = this.EnumerateFolder(menuObj);
+
+			for (let [key, val] in Iterator(menuObj)) {
+				if (key === "child" || key === "MapFolder" || key === "Sort" || key === "Filter" || key === "Exclude" || key === "Directories" || key === "FilterDirs" || key === "ExcludeDirs") continue;
+				if (key === 'onshowing') {
+					this.customShowings.push({
+						item: menu,
+						fnSource: menuObj.onshowing.toSource()
+					});
+					delete menuObj.onshowing;
+					continue;
+				}
+				if (typeof val == "function")
+					menuObj[key] = val = "(" + val.toSource() + ").call(this, event);"
+				menu.setAttribute(key, val);
+			}
+
+			let cls = menu.classList;
+			cls.add(this.ID + "_CustomMenu");
+			cls.add("menu-iconic");
+
+			menuObj.child.forEach(function(obj) {
+				Popup.appendChild(this.CreateMenuitem(obj));
+			}, this);
+
+			if (!menu.hasAttribute('label')) {
+				let firstItem = menu.querySelector('menuitem');
+				if (firstItem) {
+					let command = firstItem.getAttribute('command');
+					if (command)
+						firstItem = document.getElementById(command) || firstItem;
+					['label', 'accesskey', 'image', 'icon'].forEach(function(n) {
+						if (!menu.hasAttribute(n) && firstItem.hasAttribute(n))
+							menu.setAttribute(n, firstItem.getAttribute(n));
+					}, this);
+					menu.setAttribute('onclick', "if (event.target != event.currentTarget) return;var firstItem = event.currentTarget.querySelector('menuitem');if (!firstItem) return;if (event.button === 1) {checkForMiddleClick(firstItem, event);} else {firstItem.doCommand();closeMenus(event.currentTarget);}");
+				}
+			}
+			return menu;
+		},
+		EnumerateFolder: function(obj) {
+			obj || (obj = {});
+			var path = this.handleRelativePath(obj.MapFolder);
+			var dir = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
+			dir.initWithPath(path);
+			if (!dir.exists() || !dir.isDirectory())
+				return obj;
+			var Entries = dir.directoryEntries;
+			var ExcludeDirs = obj.ExcludeDirs ? ((typeof obj.ExcludeDirs == "string") ? (new RegExp(obj.ExcludeDirs)) : obj.ExcludeDirs) : null;
+			var FilterDirs = obj.FilterDirs ? ((typeof obj.FilterDirs == "string") ? (new RegExp(obj.FilterDirs)) : obj.FilterDirs) : null;
+			obj.child || (obj.child = []);
+			if (obj.child.length > 0 && obj.child[obj.child.length - 1].label != "separator") {
+				obj.child.push({
+					label: 'separator',
+				});
+			}
+			while (Entries.hasMoreElements()) {
+				var Entry = Entries.getNext();
+				Entry.QueryInterface(Components.interfaces.nsIFile);
+				if (Entry.isDirectory() && (typeof obj.Directories === 'number') && (obj.Directories > 0)) {
+					if (ExcludeDirs && ExcludeDirs.test(Entry.leafName)) continue;
+					if (FilterDirs && !FilterDirs.test(Entry.leafName)) continue;
+					obj.child.push(this.EnumerateFolder({
+						label: Entry.leafName,
+						MapFolder: Entry.path,
+						exec: Entry.path,
+						Directories: obj.Directories - 1,
+						Filter: obj.Filter,
+						Exclude: obj.Exclude,
+						ExeText: obj.ExeText,
+						FilterDirs: obj.FilterDirs,
+						ExcludeDirs: obj.ExcludeDirs,
+						onclick: "anoBtn.onCommand(event);",
+						Sort: 0,
+						image: "moz-icon://" + Services.io.getProtocolHandler("file").QueryInterface(Ci.nsIFileProtocolHandler).getURLSpecFromFile(Entry) + "?size=16",
+					}))
+					continue;
+				}
+				if (!Entry.isFile()) continue;
+				var Exclude = obj.Exclude ? ((typeof obj.Exclude == "string") ? (new RegExp(obj.Exclude)) : obj.Exclude) : null;
+				var Filter = obj.Filter ? ((typeof obj.Filter == "string") ? (new RegExp(obj.Filter)) : obj.Filter) : null;
+				if (Exclude && Exclude.test(Entry.leafName)) continue;
+				if (Filter && !Filter.test(Entry.leafName)) continue;
+				var child = {
+					label: Entry.leafName.substr(0, Entry.leafName.lastIndexOf(".")),
+					exec: Entry.path,
+					Sort: 1,
+					tooltiptext: Entry.path,
+				};
+				var text;
+				if (typeof obj.ExeText == 'object') {
+					var Program = obj.ExeText.Program ? ((typeof obj.ExeText.Program == "string") ? (new RegExp(obj.ExeText.Program)) : obj.ExeText.Program) : null;
+					if (Program.test(Entry.leafName)) {
+						text = obj.ExeText.text.replace(/%DIR%/i, dir.leafName).replace(/%EXE%/i, obj.label)
+					}
+
+				}
+				if (!!text) child.text = text;
+				obj.child.push(child);
+			}
+			if (obj && obj.child && obj.child[obj.child.length - 1] && obj.child[obj.child.length - 1].label == "separator")
+				delete obj.child[obj.child.length - 1];
+			obj.MapFolder = false;
+			obj.child.sort(function(a, b) {
+				return a.Sort - b.Sort;
+			});
+			return obj;
+		},
+		handleRelativePath: function(path) {
+			if (path) {
+				//path = path.replace(/\//g, '\\').toLocaleLowerCase();
+				path = path.replace(/\//g, '\\');
+				var profD = Cc['@mozilla.org/file/directory_service;1'].getService(Ci.nsIProperties).get("ProfD", Ci.nsILocalFile);
+				if (/^(\\)/.test(path)) {
+					if (path.startsWith('\\..\\')) {
+						return profD.parent.path + path.replace('\\..', '');
+					}
+					return profD.path + path;
+				} else {
+					return path;
+				}
+			}
+		},
+		SetMenusIcon: function(menu, obj) {
+			if (menu.hasAttribute("src") || menu.hasAttribute("image") || menu.hasAttribute("icon"))
+				return;
+
+			if (obj.exec) {
+				var aFile = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
+				try {
+					aFile.initWithPath(obj.exec);
+				} catch (e) {
+					return;
+				}
+				if (!aFile.exists()) {
+					menu.setAttribute("disabled", "true");
+				} else {
+					let fileURL = Services.io.getProtocolHandler("file").QueryInterface(Ci.nsIFileProtocolHandler).getURLSpecFromFile(aFile);
+					menu.setAttribute("image", "moz-icon://" + fileURL + "?size=16");
+				}
+				return;
+			}
+
+			if (obj.keyword) {
+				let engine = Services.search.getEngineByAlias(obj.keyword);
+				if (engine && engine.iconURI) {
+					menu.setAttribute("image", engine.iconURI.spec);
+					return;
+				}
+			}
+			var setIconCallback = function(url) {
+				let uri, iconURI;
+				try {
+					uri = Services.io.newURI(url, null, null);
+				} catch (e) {}
+				if (!uri) return;
+
+				menu.setAttribute("scheme", uri.scheme);
+				PlacesUtils.favicons.getFaviconDataForPage(uri, {
+					onComplete: function(aURI, aDataLen, aData, aMimeType) {
+						try {
+							// javascript: URI の host にアクセスするとエラー
+							menu.setAttribute("image", aURI && aURI.spec ?
+								"moz-anno:favicon:" + aURI.spec :
+								"moz-anno:favicon:" + uri.scheme + "://" + uri.host + "/favicon.ico");
+						} catch (e) {}
+					}
+				});
+			}
+			PlacesUtils.keywords.fetch(obj.keyword || '').then(entry => {
+				let url;
+				if (entry) {
+					url = entry.url.href;
+				} else {
+					url = (obj.url + '').replace(/%TITLE(?:_HTML(?:IFIED)?|_ENCODE)?%|%t\b|%TITLES(?:_HTML(?:IFIED)?|_ENCODE)?%|%t\b|%(?:R?LINK_OR_)?URL(?:_HTML(?:IFIED)?|_ENCODE)?%|%u\b|%HOST(?:_HTML(?:IFIED)?|_ENCODE)?%|%h\b|%BASEDOMAIN(?:_HTML(?:IFIED)?|_ENCODE)?%|%h\b|%IP(?:_HTML(?:IFIED)?|_ENCODE)?%|%h\b|%SEL(?:_HTML(?:IFIED)?|_ENCODE)?%|%s\b|%R?LINK(?:_TEXT|_HOST)?(?:_HTML(?:IFIED)?|_ENCODE)?%|%l\b|%IMAGE(?:_URL|_ALT|_TITLE)(?:_HTML(?:IFIED)?|_ENCODE)?%|%i\b|%IMAGE_BASE64(?:_HTML(?:IFIED)?|_ENCODE)?%|%i\b|%MEDIA_URL(?:_HTML(?:IFIED)?|_ENCODE)?%|%m\b|%CLIPBOARD(?:_HTML(?:IFIED)?|_ENCODE)?%|%p\b|%FAVICON(?:_HTML(?:IFIED)?|_ENCODE)?%|%FAVICON_BASE64(?:_HTML(?:IFIED)?|_ENCODE)?%|%EMAIL(?:_HTML(?:IFIED)?|_ENCODE)?%|%EOL(?:_HTML(?:IFIED)?|_ENCODE)?%|%RLT_OR_UT(?:_HTML(?:IFIED)?|_ENCODE)?%/gi, "");
+				}
+				setIconCallback(url);
+			}, e => {
+				console.log(e)
+			}).catch(e => {});
+		}
+	};
+	window.AnoBtn_BuildPopup = AnoBtn_BuildPopup;
 	// 来自 User Agent Overrider 扩展
 	const ToolbarManager = (function() {
 

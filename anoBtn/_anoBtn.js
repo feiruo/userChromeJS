@@ -40,15 +40,22 @@ var anomenu = [ //下面添加菜单
 		//枚举文件夹内的所有文件，当做可执行文件加入菜单，斜杠"/"或"\"开头为相对配置文件夹，注意：Linux路径区分大小写！！！！
 		MapFolder: '/chrome/tools',
 		//枚举的文件，需要注意:此处不使用"g"全局模式，可以匹配所有文件,
-		Filter: /\.(exe|lnk|bat|xls|xlsx|txt|doc|docx|jpg|wps)$/i,
+		Filter: /(firefox|nightly)\.(exe)$/i,
 		//排除文件
 		Exclude: /\.(dat|reg|sample|config|db|log|dll|json|zip|rar|ini)$|7za\.exe|UpdataS\.bat|wget\.exe/i,
 		//是否枚举子目录内的文件，值代表子目录深度，多少级的子目录，0为根目录（即不枚举子目录）
 		Directories: 2,
-		//枚举目录,仅当Dirs>1时生效。
-		FilterDirs: "", //枚举目录
-		//枚举目录,仅当Dirs>1时生效。留空表示不进行该行为。
-		ExcludeDirs: /tmp|temp|ConFile|msdll/i,
+		//枚举目录,仅当Dirs>0时生效。
+		FilterDirs: /^(?!Profile|firefox$)firefox.*/i,
+		//排除目录,仅当Dirs>0时生效。留空表示不进行该行为。
+		ExcludeDirs: /^firefox$/i,
+		//可执行文件参数
+		ExeText: {
+			//需要带参数的执行文件
+			Program: /^(firefox|nightly)\.(exe)$/i,
+			//参数：%DIR%(上一级目录名),%EXE%(不带后缀程序名)
+			text: "-no-remote -profile ..\\Profile_%DIR%",
+		},
 		//菜单图标
 		image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAAAbklEQVQ4je3TXwqAIAzAYe+VsP32pvc/QuQx7KmIAm39eYkGwz3IB24zhCdDRBIwmVn1JDCJSFqhK8gWW6HeZVWN+3Opzayehnr5HqSq8eyAmk/zTvuHPgV59ggYDtDNT1u2UAbKBWgEsrclzZgBLQgC98zNgUMAAAAASUVORK5CYII=",
 		child: [ //没有目录级数限制，文件夹枚举和原有菜单移动在子菜单也适用
