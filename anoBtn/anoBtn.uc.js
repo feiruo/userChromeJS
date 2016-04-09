@@ -458,10 +458,10 @@
 					case "%EMAIL%":
 						return getEmailAddress() || "";
 					case "%IP%":
-						return FeiRuoNet_DNSCahe && FeiRuoNet_DNSCahe[gBrowser.selectedBrowser.CurrentURI.host];
+						return FeiRuoNet_InfoCaches && FeiRuoNet_InfoCaches.DNS[gBrowser.selectedBrowser.currentURI.host];
 					case "%BASEDOMAIN%":
 						var eTLDService = Cc["@mozilla.org/network/effective-tld-service;1"].getService(Ci.nsIEffectiveTLDService);
-						return eTLDService.getBaseDomain(makeURI(gBrowser.selectedBrowser.CurrentURI.spec));
+						return eTLDService.getBaseDomain(makeURI(gBrowser.selectedBrowser.currentURI.spec));
 					case "%EOL%":
 						return "\r\n";
 					case "%EOL%":
