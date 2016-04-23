@@ -17,17 +17,18 @@
 // @downloadURL		https://github.com/feiruo/userChromeJS/raw/master/FeiRuoMouse/FeiRuoMouse.uc.js
 // @note            Begin 2015.04.23
 // @note            手势与拖拽。
-// @version      	0.1.1 	2016.03.04	14:00 	修复手势L>R，L<R轨迹不消失问题，添加窗口拖拽功能。
-// @version      	0.1.0 	2016.02.23	17:00 	修复手势轨迹问题，完善拖拽，向上支持,修正编辑。
-// @version      	0.0.9 	2015.06.20	15:00 	修改机制，需要从新编辑配置文件。
-// @version      	0.0.8 	2015.06.10	15:00 	修复切换标签时轨迹不消失问题。
-// @version      	0.0.7 	2015.05.30	18:00 	Add mouse button&&staus time&&Fix R<L R>L etc。
-// @version      	0.0.6 	2015.05.29	10:00 	delete TextLink&&QRCreator。
-// @version      	0.0.5 	2015.05.20	23:00 	Fix Ges disable on some page ex http://news.qq.com/a/20150521/002254.htm。
-// @version      	0.0.4 	2015.05.20	23:00 	Fix dead object。
-// @version         0.0.3 	2015.05.18 	15:00	修复拖拽，自定义手势轨迹。
-// @version         0.0.2 	2015.05.17 	15:00	TextLink&QRCreator&E10s。
-// @version         0.0.1 	2015.04.28 	10:00	Build。
+// @version         0.1.2   2016.04.23  17:00   Fix Ges disable on some page ex http://news.qq.com/a/20160423/019405.htm。
+// @version         0.1.1   2016.03.04  14:00   修复手势L>R，L<R轨迹不消失问题，添加窗口拖拽功能。
+// @version         0.1.0   2016.02.23  17:00   修复手势轨迹问题，完善拖拽，向上支持,修正编辑。
+// @version         0.0.9   2015.06.20  15:00   修改机制，需要从新编辑配置文件。
+// @version         0.0.8   2015.06.10  15:00   修复切换标签时轨迹不消失问题。
+// @version         0.0.7   2015.05.30  18:00   Add mouse button&&staus time&&Fix R<L R>L etc。
+// @version         0.0.6   2015.05.29  10:00   delete TextLink&&QRCreator。
+// @version         0.0.5   2015.05.20  23:00   Fix Ges disable on some page ex http://news.qq.com/a/20150521/002254.htm。
+// @version         0.0.4   2015.05.20  23:00   Fix dead object。
+// @version         0.0.3   2015.05.18  15:00   修复拖拽，自定义手势轨迹。
+// @version         0.0.2   2015.05.17  15:00   TextLink&QRCreator&E10s。
+// @version         0.0.1   2015.04.28  10:00   Build。
 // ==/UserScript==
 (function() {
 
@@ -330,8 +331,9 @@
 			var Events = ["mousedown", "mousemove", "mouseup", "contextmenu", "DOMMouseScroll", "draggesture"];
 			try {
 				Events.forEach(function(type) {
-					gBrowser.mPanelContainer.removeEventListener(type, FeiRuoMouse.Listener_Ges, (type == 'contextmenu'));
-					//getBrowser().removeEventListener(type, FeiRuoMouse.Listener_Ges, false);
+					// gBrowser.mPanelContainer.removeEventListener(type, FeiRuoMouse.Listener_Ges, (type == 'contextmenu'));
+					gBrowser.mPanelContainer.removeEventListener(type, FeiRuoMouse.Listener_Ges, true);
+					// getBrowser().removeEventListener(type, FeiRuoMouse.Listener_Ges, false);
 				});
 			} catch (ex) {
 				Cu.reportError(ex);
@@ -340,9 +342,9 @@
 			if (!isAlert) return;
 			try {
 				Events.forEach(function(type) {
-					gBrowser.mPanelContainer.addEventListener(type, FeiRuoMouse.Listener_Ges, (type == 'contextmenu'));
-					// gBrowser.mPanelContainer.addEventListener(type, FeiRuoMouse.Listener_Ges, true);
-					//getBrowser().addEventListener(type, FeiRuoMouse.Listener_Ges, false);
+					// gBrowser.mPanelContainer.addEventListener(type, FeiRuoMouse.Listener_Ges, (type == 'contextmenu'));
+					gBrowser.mPanelContainer.addEventListener(type, FeiRuoMouse.Listener_Ges, true);
+					// getBrowser().addEventListener(type, FeiRuoMouse.Listener_Ges, false);
 				});
 			} catch (ex) {
 				Cu.reportError(ex);
@@ -1892,7 +1894,7 @@
 	}
 
 	function log() {
-		Application.console.log("[FeiRuoMouse] " + Array.slice(arguments));
+		console.log("[FeiRuoMouse] " + Array.slice(arguments));
 	}
 
 	function $C(name, attr) {
