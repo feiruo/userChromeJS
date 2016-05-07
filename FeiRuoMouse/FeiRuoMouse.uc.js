@@ -17,6 +17,7 @@
 // @downloadURL		https://github.com/feiruo/userChromeJS/raw/master/FeiRuoMouse/FeiRuoMouse.uc.js
 // @note            Begin 2015.04.23
 // @note            手势与拖拽。
+// @version         0.1.2.1 2016.05.07  17:00   Fix Key an withuout key。
 // @version         0.1.2   2016.04.23  17:00   Fix Ges disable on some page ex http://news.qq.com/a/20160423/019405.htm。
 // @version         0.1.1   2016.03.04  14:00   修复手势L>R，L<R轨迹不消失问题，添加窗口拖拽功能。
 // @version         0.1.0   2016.02.23  17:00   修复手势轨迹问题，完善拖拽，向上支持,修正编辑。
@@ -692,7 +693,7 @@
 			if (obj.Enable != "1")
 				return this.ActionStaus(event, dChain, obj.label + "(未启用)");
 
-			if (!obj.Key || (obj.TKey != "1" && EventKey == obj.Key) || (obj.TKey == "1" && EventKey != obj.Key))
+			if ((!obj.Key && !EventKey) || (obj.TKey != "1" && EventKey == obj.Key) || (obj.TKey == "1" && EventKey != obj.Key))
 				FeiRuoMouse.Listen_Command(type, event, obj, dChain);
 			else
 				this.ActionStaus(event, dChain);
