@@ -1,24 +1,26 @@
 // ==UserScript==
-// @name 			FeiRuoMouse.uc.js
-// @description		手势与拖拽
-// @author			feiruo
-// @namespace		feiruosama@gmail.com
-// @include			main
-// @compatibility	Firefox 16
-// @charset			UTF-8
-// @id 				[4E4E49D6]
+// @name            FeiRuoMouse.uc.js
+// @description     手势与拖拽
+// @author          feiruo
+// @namespace       feiruosama@gmail.com
+// @include         main
+// @compatibility   Firefox 16
+// @charset         UTF-8
+// @id              [4E4E49D6]
 // @inspect         window.FeiRuoMouse
 // @startup         window.FeiRuoMouse.init();
 // @shutdown        window.FeiRuoMouse.onDestroy();
-// @optionsURL		about:config?filter=FeiRuoMouse.
-// @config 			window.FeiRuoMouse.OpenPref();
-// @reviewURL		http://www.feiruo.pw
-// @homepageURL		https://github.com/feiruo/userChromeJS/tree/master/FeiRuoMouse
-// @downloadURL		https://github.com/feiruo/userChromeJS/raw/master/FeiRuoMouse/FeiRuoMouse.uc.js
+// @optionsURL      about:config?filter=FeiRuoMouse.
+// @config          window.FeiRuoMouse.OpenPref();
+// @reviewURL       http://www.feiruo.pw
+// @homepageURL     https://github.com/feiruo/userChromeJS/tree/master/FeiRuoMouse
+// @downloadURL     https://github.com/feiruo/userChromeJS/raw/master/FeiRuoMouse/FeiRuoMouse.uc.js
 // @note            Begin 2015.04.23
 // @note            手势与拖拽。
-// @version         0.1.2.1 2016.05.07  17:00   Fix Key an withuout key。
-// @version         0.1.2   2016.04.23  17:00   Fix Ges disable on some page ex http://news.qq.com/a/20160423/019405.htm。
+// @version         0.1.3   2016.05.08  14:30   Fix assist keys rlues,add "Any" and assist keys for Ges。
+// @version         0.1.2.2 2016.05.07  17:00   Fix assist Keys。
+// @version         0.1.2.1 2016.04.23  17:00   Fix Ges disable on some page ex http://news.qq.com/a/20160423/019405.htm。
+// @version         0.1.2   2016.03.17  22:00   Fix sth. && ADD TextLinkLite suppout for e10s 48up。
 // @version         0.1.1   2016.03.04  14:00   修复手势L>R，L<R轨迹不消失问题，添加窗口拖拽功能。
 // @version         0.1.0   2016.02.23  17:00   修复手势轨迹问题，完善拖拽，向上支持,修正编辑。
 // @version         0.0.9   2015.06.20  15:00   修改机制，需要从新编辑配置文件。
@@ -48,6 +50,7 @@
 	}
 
 	var FeiRuoMouse = {
+		IsMultiProcessScript: false,
 		DragIng: {},
 		Moving: {
 			isDragging: false,
@@ -65,6 +68,10 @@
 			hideFireContext: false,
 			shouldFireContext: false
 		},
+
+		get FFVer() {
+			return (parseInt(Cc["@mozilla.org/xre/app-info;1"].getService(Ci.nsIXULAppInfo).version.substr(0, 3) * 10, 10) / 10);
+		},
 		get Prefs() {
 			delete this.Prefs;
 			return this.Prefs = Services.prefs.getBranch("userChromeJS.FeiRuoMouse.");
@@ -81,21 +88,8 @@
 			return this.file = aFile;
 		},
 		get Content() {
-			var cont;
-			if (!window.content) {
-				function listener(message) {
-					cont = message.objects.cont
-				}
-				gBrowser.selectedBrowser.messageManager.loadFrameScript("data:application/x-javascript;charset=UTF-8," + escape('sendAsyncMessage("FeiRuoMouse:FeiRuoMouse-e10s-content-message", {}, {cont: content,})'), true);
-				gBrowser.selectedBrowser.messageManager.addMessageListener("FeiRuoMouse:FeiRuoMouse-e10s-content-message", listener);
-			}
-			try {
-				cont = cont;
-			} catch (e) {
-				cont = gBrowser.selectedBrowser.contentWindowAsCPOW;
-			}
 			delete this.Content;
-			return this.Content = window.content || cont || gBrowser.selectedBrowser._contentWindow;
+			return this.Content = window.content || gBrowser.selectedBrowser._contentWindow || gBrowser.selectedBrowser.contentWindowAsCPOW;
 		},
 
 		init: function() {
@@ -111,7 +105,6 @@
 
 			this.loadSetting();
 			this.loadCustomCommand();
-
 			this.Prefs.addObserver('', this.Prefobs, false);
 			window.addEventListener("unload", function() {
 				FeiRuoMouse.onDestroy();
@@ -147,6 +140,7 @@
 					case 'EnableDrag':
 					case 'EnableGes':
 					case 'EnableMove':
+					case 'EnableTextLink':
 					case 'DragCustom':
 					case 'GesCustom':
 					case 'GesTrailEnabel':
@@ -187,6 +181,9 @@
 
 			if (!type || type === "EnableGes")
 				this.Listen_Ges(this.getPrefs(0, "EnableGes", true));
+
+			if (!type || type === "EnableTextLink")
+				this.Listen_TextLink(this.getPrefs(0, "EnableTextLink", true));
 
 			if (!type || type === "EnableMove")
 				this.Listen_Move(this.getPrefs(0, "EnableMove", true));
@@ -251,13 +248,21 @@
 				Key = keys.join("+");
 				obj.Key = Key;
 
-				if (Prefs == "DragCustom" && Type) {
-					if (Action != "ANY")
-						FeiRuoMouse["DragRules_" + Type][Action] = obj;
-					else
-						FeiRuoMouse["DragRules_Any" + Type][Key] = obj;
-				} else if (Prefs == "GesCustom") {
-					FeiRuoMouse.GesturesRules[Action] = obj;
+				Rule = null;
+				if (Prefs == "DragCustom" && Type)
+					Rule = "DragRules_" + Type;
+				else if (Prefs == "GesCustom")
+					Rule = "GesturesRules";
+				else
+					Rule = null;
+				if (!!Rule) {
+					if (Action != "ANY") {
+						FeiRuoMouse[Rule][Action] = FeiRuoMouse[Rule][Action] || {};
+						FeiRuoMouse[Rule][Action][Key || 'Org'] = obj;
+					} else {
+						FeiRuoMouse[Rule + "_Any"] = FeiRuoMouse[Rule + "_Any"] || {};
+						FeiRuoMouse[Rule + "_Any"][Key || "Org"] = obj;
+					}
 				}
 			}
 		},
@@ -307,6 +312,32 @@
 		},
 
 		/*****************************************************************************************/
+		Listen_TextLink: function(isAlert) {
+			this.EnableTextLink = isAlert ? true : false;
+			try {
+				if (gMultiProcessBrowser) {
+					window.messageManager.removeMessageListener("FeiRuoMouse:FeiRuoMouse-TextLink-ETEST", FeiRuoMouse.TextToLinkOpen);
+				} else {
+					window.document.removeEventListener('dblclick', FeiRuoMouse.Listener_TextLink, false);
+					window.document.removeEventListener('keypress', FeiRuoMouse.Listener_TextLink, false);
+				}
+			} catch (ex) {
+				log(ex)
+			}
+			if (!isAlert) return;
+			if (gMultiProcessBrowser) {
+				if (!this.IsMultiProcessScript) {
+					var script = "data:application/javascript," + encodeURIComponent(this.Listener_TextLink_MPB.toString() + this.TextToLinkURL.toString() + 'addEventListener("dblclick", Listener_TextLink_MPB, false);addEventListener("keypress", Listener_TextLink_MPB, false);');
+					window.messageManager.loadFrameScript(script, true);
+					this.IsMultiProcessScript = true;
+				}
+				window.messageManager.addMessageListener("FeiRuoMouse:FeiRuoMouse-TextLink-ETEST", FeiRuoMouse.TextToLinkOpen);
+			} else {
+				window.document.addEventListener('dblclick', FeiRuoMouse.Listener_TextLink, false);
+				window.document.addEventListener('keypress', FeiRuoMouse.Listener_TextLink, false);
+			}
+		},
+
 		Listen_Move: function(isAlert) {
 			var Events = ["mousedown", "click", "mousemove", "mouseup", "dblclick", "contextmenu"];
 			try {
@@ -553,6 +584,26 @@
 			}
 		},
 
+		Listener_TextLink: function(event) {
+			if (!event) return;
+			var obj = FeiRuoMouse.TextToLinkURL(event);
+			if (!obj) return;
+			setTimeout(function() {
+				FeiRuoMouse.TextToLinkOpen(obj.allStr, obj.si, obj.ei);
+			}, 100);
+		},
+
+		Listener_TextLink_MPB: function Listener_TextLink_MPB(event) {
+			if (!event) return;
+			var obj = TextToLinkURL(event);
+			if (!obj) return;
+			sendAsyncMessage("FeiRuoMouse:FeiRuoMouse-TextLink-ETEST", {}, {
+				allStr: obj.allStr,
+				si: obj.si,
+				ei: obj.ei,
+			});
+		},
+
 		/*****************************************************************************************/
 		HasWindowMoved: function() {
 			if (FeiRuoMouse.Moving.drgChk > 10) {
@@ -679,14 +730,22 @@
 		/*****************************************************************************************/
 		Listen_AidtKey: function(event, dChain, type) {
 			var EventKey = this.ActionEventKey(event);
-			var obj;
+			var obj, Rlue;
 			if (!type) {
-				obj = this.GesturesRules[dChain];
+				Rlue = "GesturesRules";
 				type = "Ges";
 			} else {
-				obj = this["DragRules_" + type][dChain] || this["DragRules_Any" + type][EventKey];
+				Rlue = "DragRules_" + type;
 				type = "Drag";
 			}
+
+			obj = this[Rlue] ? this[Rlue][dChain] : null;
+			if (obj) obj = obj[EventKey || "Org"];
+			if (!obj) {
+				obj = this[Rlue + "_Any"];
+				if (obj) obj = obj[EventKey || "Org"];
+			}
+			console.log(obj)
 			if (!obj)
 				return this.ActionStaus(event, dChain);
 
@@ -720,28 +779,35 @@
 		ActionStaus: function(event, dChain, str) {
 			if (!this.isStatus) return;
 			var type = this.ActionEventType(event);
-			var key = this.ActionEventKey(event);
+			var EventKey = this.ActionEventKey(event);
+			var obj, Rlue;
 			if (!str) {
-				var obj;
-				if (type)
-					obj = FeiRuoMouse["DragRules_" + type.en][dChain] || FeiRuoMouse["DragRules_Any" + type.en][key];
-				else
-					obj = FeiRuoMouse.GesturesRules[dChain];
+				if (!type) {
+					Rlue = "GesturesRules";
+				} else {
+					Rlue = "DragRules_" + type.en;
+				}
+				obj = this[Rlue] ? this[Rlue][dChain] : null;
+				if (obj) obj = obj[EventKey || "Org"];
+				if (!obj) {
+					obj = this[Rlue + "_Any"];
+					if (obj) obj = obj[EventKey || "Org"];
+				}
 			}
 
 			if (obj) {
 				str = obj.Command ? ("(" + obj.Command + ")") : "";
-
-				if (!obj.TKey && key != obj.Key)
+				if (!obj.TKey && EventKey != obj.Key)
 					str = "";
-
-				if (obj.TKey && key == obj.Key)
+				if (obj.TKey && EventKey == obj.Key)
 					str = str + "(已排除)";
+				if (obj.Enable != "1")
+					str = str + "(未启用)";
 			}
 
 			type = type ? (type.cn + "拖拽：") : "手势：";
-			key = key ? (key + "+") : "";
-			status(type + key + dChain + (str ? str : "(未定义)"));
+			EventKey = EventKey ? (EventKey + "+") : "";
+			status(type + EventKey + dChain + (str ? str : "(未定义)"));
 		},
 
 		ActionEventKey: function(event) {
@@ -771,6 +837,367 @@
 				type.cn = "文字";
 			}
 			return type;
+		},
+
+		/*****************************************************************************************/
+		TextToLinkURL: function TextToLinkURL(event) {
+			if (event.button != 0 && event.keyCode != 13) return;
+			// const ioService = Components.classes['@mozilla.org/network/io-service;1'].getService(Components.interfaces.nsIIOService);
+			const mailRx = /(^(mailto:|\uff4d\uff41\uff49\uff4c\uff54\uff4f\uff1a)(?:(?:(?:(?:[a-zA-Z0-9_#\$\%&'*+/=?\^`{}~|\-]+)(?:\.(?:[a-zA-Z0-9_#\$\%&'*+/=?\^`{}~|\-]+))*)|(?:"(?:\\[^\r\n]|[^\\"])*")))\@(?:(?:(?:(?:[a-zA-Z0-9_#\$\%&'*+/=?\^`{}~|\-]+)(?:\.(?:[a-zA-Z0-9_#\$\%&'*+/=?\^`{}~|\-]+))*)|(?:\[(?:\\\S|[\x21-\x5a\x5e-\x7e])*\])))$)/;
+			const mailRx1 = /(^(?:(?:(?:(?:[a-zA-Z0-9_#\$\%&'*+/=?\^`{}~|\-]+)(?:\.(?:[a-zA-Z0-9_#\$\%&'*+/=?\^`{}~|\-]+))*)|(?:"(?:\\[^\r\n]|[^\\"])*")))\@(?:(?:(?:(?:[a-zA-Z0-9_#\$\%&'*+/=?\^`{}~|\-]+)(?:\.(?:[a-zA-Z0-9_#\$\%&'*+/=?\^`{}~|\-]+))*)|(?:\[(?:\\\S|[\x21-\x5a\x5e-\x7e])*\])))$)/;
+			var doc = event.originalTarget.ownerDocument;
+			if (doc.contentType != 'text/plain' &&
+				doc.contentType != 'text/html' &&
+				doc.contentType != 'application/xml' &&
+				doc.contentType != 'application/xhtml+xml') return;
+			if (doc.designMode == 'on') return;
+			var win = doc.defaultView;
+			if (!win) return;
+			var str1, text, str2;
+			var node = isParentEditableNode(win);
+			if (!node) {
+				var selection = win.getSelection();
+				var selRange;
+				try {
+					selRange = selection.getRangeAt(0);
+				} catch (e) {
+					selRange = selection;
+				}
+				if (!selRange) return;
+				text = selection.toString();
+				if (text == '') return;
+				var sNode = selRange.startContainer;
+				var soffset = selRange.startOffset;
+				var eNode = selRange.endContainer;
+				var eoffset = selRange.endOffset;
+				if (sNode != eNode) {
+					eNode = sNode;
+					eoffset = soffset + text.length - 1;
+				}
+				var sOyaNode = oyaNode(sNode);
+				var eOyaNode = oyaNode(eNode);
+				var root;
+				if (sOyaNode == eOyaNode)
+					root = sOyaNode;
+				else
+					root = doc;
+				if (!root)
+					return;
+
+				const allowedParents = [
+					"a", "abbr", "acronym", "address", "applet", "b", "bdo", "big", "blockquote", "body",
+					"caption", "center", "cite", "code", "dd", "del", "dir", "div", "dfn", "dl", "dt", "em",
+					"fieldset", "font", "form", "h1", "h2", "h3", "h4", "h5", "h6", "i", "iframe",
+					"ins", "kdb", "li", "menu", "noframes", "noscript", "object", "ol", "p", "pre", "q", "samp", "small", "span", "strike",
+					"s", "strong", "sub", "sup", "table", "td", "th", "thead", "tt", "u", "var"
+				];
+				var xpath = ".//text()[(parent::" + allowedParents.join(" or parent::") + ")]";
+
+				var candidates = doc.evaluate(xpath, root, null, 6, null);
+				var i1 = -1;
+				for (var i = i1 + 1, len = candidates.snapshotLength; i < len; i++) {
+					if (candidates.snapshotItem(i) != sNode) continue;
+					i1 = i - 1;
+					break;
+				}
+				str1 = "";
+				if (i >= 0) {
+					for (var i = i1; i >= 0; i--) {
+						if (sOyaNode == oyaNode(candidates.snapshotItem(i))) {
+							if (candidates.snapshotItem(i).nextSibling &&
+								/^br$/i.test(candidates.snapshotItem(i).nextSibling.localName)) {
+								break;
+							}
+							if (/^a$/i.test(candidates.snapshotItem(i).parentNode.localName) &&
+								candidates.snapshotItem(i).parentNode.hasAttribute("href"))
+								break;
+							str1 = candidates.snapshotItem(i).nodeValue + str1;
+							if (/[ 　]/.test(str1))
+								break;
+						} else {
+							break;
+						}
+					}
+				}
+				str2 = str1;
+				if (sNode.nodeValue && soffset > 0) str1 = str1 + sNode.nodeValue.substr(0, soffset);
+
+				for (var i = i1 + 1, len = candidates.snapshotLength; i < len; i++) {
+					if (sOyaNode == oyaNode(candidates.snapshotItem(i))) {
+						str2 = str2 + candidates.snapshotItem(i).nodeValue;
+						if (i > i1 + 1 && /[ 　]/.test(candidates.snapshotItem(i).nodeValue))
+							break;
+					} else {
+						break;
+					}
+
+					if (candidates.snapshotItem(i).nextSibling &&
+						/^br$/i.test(candidates.snapshotItem(i).nextSibling.localName)) {
+						break;
+					}
+					if (!candidates.snapshotItem(i).nextSibling &&
+						candidates.snapshotItem(i).parentNode &&
+						candidates.snapshotItem(i).parentNode.nextSibling &&
+						/^br$/i.test(candidates.snapshotItem(i).parentNode.nextSibling.localName)) {
+						break;
+					}
+				}
+
+				str2 = str2.substr(str1.length + text.length);
+			} else {
+				if (!node.hasAttribute("readonly"))
+					return;
+				if (node &&
+					(node.type == "text" || node.type == "textarea") &&
+					'selectionStart' in node &&
+					node.selectionStart != node.selectionEnd) {
+					var offsetStart = Math.min(node.selectionStart, node.selectionEnd);
+					var offsetEnd = Math.max(node.selectionStart, node.selectionEnd);
+					str1 = node.value.substr(0, offsetStart);
+					text = node.value.substr(offsetStart, offsetEnd - offsetStart);
+					str2 = node.value.substr(offsetEnd);
+				} else {
+					return;
+				}
+			}
+
+			/************************************************/
+
+			var allStr = str1 + text + str2;
+			var si = str1.length
+			var ei = si + text.length;
+			while (text.match(/^[\u3001\u3002\uff08\uff5b\uff3b\u300c\u3014\u3008\u300a\u300e\u3010\u2018\u201c\u201d\u2019\u226a\uff1c\uff09\uff5d\uff3d\u300d\u3015\u3009\u300b\u300f\u3011\u2018\u201c\u201d\u2019\u226b\uff1e]/)) {
+				si = si + 1;
+				text = text.substr(1);
+			}
+			while (text.match(/[\s\u3001\u3002\uff08\uff5b\uff3b\u300c\u3014\u3008\u300a\u300e\u3010\u2018\u201c\u201d\u2019\u226a\uff1c\uff09\uff5d\uff3d\u300d\u3015\u3009\u300b\u300f\u3011\u2018\u201c\u201d\u2019\u226b\uff1e]$/)) {
+				ei = ei - 1;
+				text = text.substr(0, text.length - 1);
+			}
+			allStr = allStr.replace(/\.$/, '');
+			return {
+				allStr: allStr,
+				si: si,
+				ei: ei
+			};
+			/************************************************/
+			function oyaNode(aNode) {
+				var pNode = aNode.parentNode;
+				while (pNode && /^(a|abbr|acronym|b|bdo|big|body|code|dfn|em|font|i|kbd|label|pre|q|samp|small|span|strong|sub|sup|tt|var|wbr)$/i.test(pNode.localName)) {
+					pNode = pNode.parentNode;
+				}
+				return pNode;
+			}
+
+			function isParentEditableNode(node) {
+				while (node && node.parentNode) {
+					try {
+						if (!(node instanceof Ci.nsIDOMNSEditableElement))
+							throw 0;
+						node.QueryInterface(Ci.nsIDOMNSEditableElement);
+						return node;
+					} catch (e) {}
+					if (/input|textarea/.test(node.localName))
+						return node;
+					if (node.isContentEditable || node.contentEditable == 'true')
+						return node;
+					node = node.parentNode;
+				}
+				return null;
+			}
+		},
+
+		TextToLinkOpen: function(allStr, si, ei) {
+			if (typeof allStr == 'object') {
+				var obj = allStr.objects;
+				allStr = obj.allStr;
+				si = obj.si;
+				ei = obj.ei;
+			}
+			const RELATIVE = true; //相対urlを解決するかどうか
+			const ioService = Components.classes['@mozilla.org/network/io-service;1'].getService(Components.interfaces.nsIIOService);
+			const urlRegex = /(((h?t)?tps?|h..ps?|ftp|((\uff48)?\uff54)?\uff54\uff50(\uff53)?|\uff48..\uff50(\uff53)?|\uff46\uff54\uff50)(:\/\/|\uff1a\/\/|:\uff0f\uff0f|\uff1a\uff0f\uff0f)[-_.~*'()|a-zA-Z0-9;:\/?,@&=+$%#\uff0d\uff3f\u301c\uffe3\uff0e\uff01\uff5e\uff0a\u2019\uff08\uff09\uff5c\uff41-\uff5a\uff21-\uff3a\uff10-\uff19\uff1b\uff1a\uff0f\uff1f\uff1a\uff20\uff06\uff1d\uff0b\uff04\uff0c\uff05\uff03\uff5c\uff3b\uff3d]*[-_,.~*)\[\]|a-zA-Z0-9;!:\/?@&=+$%#\uff0d\uff3f\u301c\uffe3\uff0e\uff01\uff5e\uff0a\u2019\uff5c\uff41-\uff5a\uff21-\uff3a\uff10-\uff19\uff1b\uff1a\uff0f\uff1f\uff20\uff06\uff1d\uff0b\uff04\uff0c\uff05\uff03\uff5c\uff3b\uff3d]+)/ig;
+			const urlRx1 = /(:\/\/|\uff1a\/\/|:\uff0f\uff0f|\uff1a\uff0f\uff0f)/i;
+			const urlRx = /^(ttp|tp|h..p|\uff54\uff54\uff50|\uff54\uff50|\uff48..\uff50)/i;
+			const urlRegex1 = /([-_.~*'()|a-zA-Z0-9;:\/?,@&=+$%#\uff0d\uff3f\u301c\uffe3\uff0e\uff01\uff5e\uff0a\u2019\uff08\uff09\uff5c\uff41-\uff5a\uff21-\uff3a\uff10-\uff19\uff1b\uff1a\uff0f\uff1f\uff20\uff06\uff1d\uff0b\uff04\uff0c\uff05\uff03\uff5c\uff3b\uff3d]*[.\uff0e]+[-_.~*'\[\]|a-zA-Z0-9;:\/?,@&=+$%#\uff0d\uff3f\u301c\uffe3\uff0e\uff01\uff5e\uff0a\u2019\uff08\uff09\uff5c\uff41-\uff5a\uff21-\uff3a\uff10-\uff19\uff1b\uff1a\uff0f\uff1f\uff1a\uff20\uff06\uff1d\uff0b\uff04\uff0c\uff05\uff03\uff5c]+[.\uff0e/\uff0f]*[-_,.~*\[\]|a-zA-Z0-9;!:\/?@&=+$%#\uff0d\uff3f\u301c\uffe3\uff0e\uff01\uff5e\uff0a\u2019\uff5c\uff41-\uff5a\uff21-\uff3a\uff10-\uff19\uff1b\uff1a\uff0f\uff1f\uff1a\uff20\uff06\uff1d\uff0b\uff04\uff0c\uff05\uff03\uff5c]+)/ig;
+			const mailRx1 = /(^(?:(?:(?:(?:[a-zA-Z0-9_#\$\%&'*+/=?\^`{}~|\-]+)(?:\.(?:[a-zA-Z0-9_#\$\%&'*+/=?\^`{}~|\-]+))*)|(?:"(?:\\[^\r\n]|[^\\"])*")))\@(?:(?:(?:(?:[a-zA-Z0-9_#\$\%&'*+/=?\^`{}~|\-]+)(?:\.(?:[a-zA-Z0-9_#\$\%&'*+/=?\^`{}~|\-]+))*)|(?:\[(?:\\\S|[\x21-\x5a\x5e-\x7e])*\])))$)/;
+			const mailRx = /(^(mailto:|\uff4d\uff41\uff49\uff4c\uff54\uff4f\uff1a)(?:(?:(?:(?:[a-zA-Z0-9_#\$\%&'*+/=?\^`{}~|\-]+)(?:\.(?:[a-zA-Z0-9_#\$\%&'*+/=?\^`{}~|\-]+))*)|(?:"(?:\\[^\r\n]|[^\\"])*")))\@(?:(?:(?:(?:[a-zA-Z0-9_#\$\%&'*+/=?\^`{}~|\-]+)(?:\.(?:[a-zA-Z0-9_#\$\%&'*+/=?\^`{}~|\-]+))*)|(?:\[(?:\\\S|[\x21-\x5a\x5e-\x7e])*\])))$)/;
+
+			var arrUrl = allStr.match(urlRegex);
+			var i1, i2;
+			var doc;
+			if (arrUrl) {
+				i2 = 0;
+				for (var i = 0, len = arrUrl.length; i < len; i++) {
+					i1 = allStr.indexOf(arrUrl[i], i2);
+					i2 = i1 + arrUrl[i].length;
+					if (i1 <= si && ei <= i2) {
+						var url = arrUrl[i];
+						url = additionalFixUpURL(url);
+						url = /^(ftp|\uff46\uff54\uff50)/i.test(url) ? url.replace(urlRx1, '://') : url.replace(urlRx, 'http').replace(urlRx1, '://');
+						var URIFixup = Components.classes['@mozilla.org/docshell/urifixup;1'].getService(Components.interfaces.nsIURIFixup);
+						var uri = URIFixup.createFixupURI(url, URIFixup.FIXUP_FLAG_ALLOW_KEYWORD_LOOKUP);
+						if (!uri) return;
+						if (!isValidTld(uri))
+							return;
+						uri = ioService.newURI(uri.spec, null, null);
+						textlink(uri);
+						return;
+					}
+				}
+			}
+			if (!RELATIVE) return;
+			arrUrl = allStr.match(urlRegex1);
+			if (!arrUrl) return;
+			i2 = 0;
+			for (var i = 0, len = arrUrl.length; i < len; i++) {
+				i1 = allStr.indexOf(arrUrl[i], i2);
+				i2 = i1 + arrUrl[i].length;
+				if (i1 <= si && ei <= i2) {
+					if (/^\./.test(arrUrl[i]) && !/^[\.]+[/]/.test(arrUrl[i]))
+						return;
+					var url = arrUrl[i];
+					url = additionalFixUpURL(url);
+					if (/^ftp/.test(url)) {
+						url = "ftp://" + url;
+					}
+					if (/^irc/.test(url)) {
+						url = "irc://" + url;
+					}
+					if (mailRx1.test(url)) {
+						url = "mailto:" + url;
+					}
+					if (url.match(/^\.{1,}/)) {
+						var baseURI = ioService.newURI(win.document.documentURI, null, null);
+						url = ioService.newURI(url, null, baseURI).spec;
+					}
+					if (!mailRx.test(url) && url.indexOf(url.match(urlRegex)) > 1) return;
+					var URIFixup = Components.classes['@mozilla.org/docshell/urifixup;1']
+						.getService(Components.interfaces.nsIURIFixup);
+					try {
+						var uri = URIFixup.createFixupURI(
+							url,
+							URIFixup.FIXUP_FLAG_NONE);
+					} catch (e) {
+						return;
+					}
+					if (!uri) return;
+
+					if (!isValidTld(uri)) {
+						return;
+					}
+					uri = ioService.newURI(uri.spec, null, null);
+					textlink(uri);
+					return;
+				}
+			}
+
+			function additionalFixUpURL(url) {
+				url = url.replace(/\u301c/g, '\uff5e');
+				url = url.replace(/\uffe3/g, '\uff5e');
+				if (/^[:\uff1a;\uff1b,\uff0c]/.test(url)) {
+					url = url.replace(/^[:\uff1a;\uff1b,\uff0c]/, '');
+				}
+				if (/[:\uff1a]$/.test(url)) {
+					url = url.replace(/[:\uff1a]$/, '');
+				}
+				if (/[.,]$/.test(url)) {
+					url = url.replace(/[.,]$/, '');
+				}
+
+				if (/\)$/.test(url)) {
+					if (url.indexOf("(") == -1)
+						url = url.replace(/\)$/, '');
+				}
+				/*
+				if (/\]$/.test(url)) {
+				  if (url.indexOf("[") == -1)
+				    url = url.replace(/\]$/,'');
+				}
+				*/
+				return url;
+			}
+
+			function isValidTld(aURI) {
+				const regexpTLD = new RegExp("\\.(arpa|asia|int|nato|cat|com|net|org|info|biz|name|pro|mobi|museum|coop|aero|edu|gov|jobs|mil|tel|travel|xxx|ac|ad|ae|af|ag|ai|al|am|an|ao|aq|ar|as|at|au|aw|ax|az|ba|bb|bd|be|bf|bg|bh|bi|bj|bm|bn|bo|br|bs|bt|bu|bv|bw|by|bz|ca|canon|cc|cd|cf|cg|ch|ci|ck|cl|cm|cn|co|cp|cr|cs|sk|cu|cv|cx|cy|cz|dd|de|dg|dj|dk|dm|do|dz|ea|ec|ee|eg|eh|er|es|et|eu|fi|fj|fk|fm|fo|fr|fx|ga|gb|gd|ge|gf|gg|gh|gi|gl|gm|gn|gp|gq|gr|gs|gt|gu|gw|gy|hk|hm|hn|hr|ht|hu|ic|id|ie|il|im|in|io|iq|ir|is|it|je|jm|jo|jp|ke|kg|kh|ki|km|kn|kp|kr|kw|ky|kz|la|lb|lc|li|lk|lr|ls|lt|lu|lv|ly|ma|mc|me|md|mg|mh|mk|ml|mm|mn|mo|moe|mp|mq|mr|ms|mt|mu|mv|mw|mx|my|mz|na|nagoya|nc|ne|nf|ng|ni|nl|no|np|nr|nt|nu|nz|om|osaka|pa|pc|pe|pf|pg|ph|pk|pl|pm|pn|pr|ps|pt|pw|py|qa|re|ro|rs|ru|rw|sa|sb|sc|sd|se|sg|sh|si|sj|sk|sl|sm|sn|so|sr|ss|st|su|sv|sy|sz|ta|tc|td|tf|tg|th|tj|tk|tl|tm|tn|to|tokyo|toyota|tp|tr|tt|tv|tw|tz|ua|ug|uk|um|us|uy|uz|va|vc|ve|vg|vi|vn|vu|wf|wg|ws|yd|ye|yokohama|yt|yu|za|zm|zr|zw|localhost)\\.?$", "");
+				const regexpIP = new RegExp("^[1-2]?[0-9]?[0-9]\\.[1-2]?[0-9]?[0-9]\\.[1-2]?[0-9]?[0-9]\\.[1-2]?[0-9]?[0-9]$", "");
+				const idnService = Components.classes["@mozilla.org/network/idn-service;1"]
+					.getService(Components.interfaces.nsIIDNService);
+				var host, tlds;
+				try {
+					host = aURI.host.split('/')[0];
+					host = idnService.convertUTF8toACE(host);
+				} catch (e) {
+					if (aURI.spec.match(/^(.+?\/\/(?:[^\/]+@)?)([^\/]+)(:\d+)?(?:.*)$/)) {
+						host = RegExp.$2;
+					} else if (aURI.spec.match(/^(mailto:(?:[^\/]+@)?)([^\/]+)(:\d+)?(?:.*)$/)) {
+						host = RegExp.$2;
+					}
+				}
+				if (!host)
+					return false;
+				if (FeiRuoMouse.FFVer < 3.0) {
+					if (regexpTLD.test(host))
+						return true;
+					else
+						return (regexpIP.test(host));
+				} else {
+					var eTLDService = Components.classes["@mozilla.org/network/effective-tld-service;1"].getService(Components.interfaces.nsIEffectiveTLDService);
+					try {
+						var tld = eTLDService.getPublicSuffixFromHost(host);
+						return regexpTLD.test('.' + tld);
+					} catch (e) {
+						return (regexpIP.test(host));
+					}
+				}
+			}
+
+			function textlink(uri) {
+				if ("autoCopy" in window) {
+					autoCopy.forceDisable = true;
+					setTimeout(function() {
+						autoCopy.forceDisable = false;
+					}, 1500);
+				}
+				try {
+					openURL(uri);
+				} catch (e) {}
+				if ($('contentAreaContextMenu'))
+					$('contentAreaContextMenu').hidePopup();
+			}
+
+			function openURL(uri) {
+				if (/^chrome:\/\/messenger\/content\//.test(window.location.href)) {
+					const nsIScriptSecurityManager = Components.interfaces.nsIScriptSecurityManager;
+					var secMan = Components.classes["@mozilla.org/scriptsecuritymanager;1"]
+						.getService(nsIScriptSecurityManager);
+					try {
+						if (uri instanceof Components.interfaces.nsIURI)
+							secMan.checkLoadURIWithPrincipal(_unremotePrincipal(document.nodePrincipal), uri, nsIScriptSecurityManager.STANDARD);
+						else
+							secMan.checkLoadURIStrWithPrincipal(_unremotePrincipal(document.nodePrincipal), uri, nsIScriptSecurityManager.STANDARD);
+					} catch (e) {
+						throw "Load denied.";
+					}
+					var protocolSvc = Components.classes["@mozilla.org/uriloader/external-protocol-service;1"]
+						.getService(Components.interfaces.nsIExternalProtocolService);
+					protocolSvc.loadUrl(uri);
+					return;
+				}
+				var pribcipal;
+				try {
+					pribcipal = gBrowser.selectedBrowser.contentPrincipal;
+				} catch (ex) {}
+				urlSecurityCheck(uri.spec, pribcipal);
+				if ('TreeStyleTabService' in window) TreeStyleTabService.readyToOpenChildTab(activeBrowser().selectedTab);
+				openLinkIn(uri.spec, "tab", {
+					relatedToCurrent: true
+				});
+			}
+
+			function activeBrowser() {
+				return ('SplitBrowser' in window ? SplitBrowser.activeBrowser : null) || gBrowser;
+			}
 		},
 
 		/*****************************************************************************************/
@@ -923,10 +1350,259 @@
 			if (this.getWindow(0))
 				this.getWindow(0).focus();
 			else {
-				var OptionWin = this.OptionWin();
-				window.openDialog("data:application/vnd.mozilla.xul+xml;charset=UTF-8," + OptionWin, '', 'chrome,titlebar,toolbar,centerscreen,dialog=no');
+				window.openDialog("data:application/vnd.mozilla.xul+xml;charset=UTF-8," + this.OptionWin, '', 'chrome,titlebar,toolbar,centerscreen,dialog=no');
 			}
 		},
+
+		/******************************************************************/
+		get OptionWin() {
+			var xul = '<?xml version="1.0"?><?xml-stylesheet href="chrome://global/skin/" type="text/css"?>\
+                    <prefwindow xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"\
+                    id="FeiRuoMouse_Settings"\
+                    ignorekeys="true"\
+                    title="FeiRuoMouse 设置"\
+                    onload="opener.FeiRuoMouse.OptionScript.init();"\
+                    onunload="opener.FeiRuoMouse.UpdateFile(true);"\
+                    buttons="accept,cancel,extra1,extra2"\
+                    ondialogextra1="opener.FeiRuoMouse.OptionScript.Resets();"\
+                    ondialogextra2="opener.FeiRuoMouse.Edit();"\
+                    ondialogaccept="opener.FeiRuoMouse.OptionScript.Save();"\
+                    windowtype="FeiRuoMouse:Preferences">\
+                    <prefpane id="main" flex="1">\
+                        <preferences>\
+                            <preference id="EnableGes" type="bool" name="userChromeJS.FeiRuoMouse.EnableGes"/>\
+                            <preference id="EnableDrag" type="bool" name="userChromeJS.FeiRuoMouse.EnableDrag"/>\
+                            <preference id="EnableMove" type="bool" name="userChromeJS.FeiRuoMouse.EnableMove"/>\
+                            <preference id="EnableTextLink" type="bool" name="userChromeJS.FeiRuoMouse.EnableTextLink"/>\
+                            <preference id="isStatus" type="bool" name="userChromeJS.FeiRuoMouse.isStatus"/>\
+                            <preference id="GesTrailEnabel" type="bool" name="userChromeJS.FeiRuoMouse.GesTrailEnabel"/>\
+                            <preference id="GesIngBtn" type="int" name="userChromeJS.FeiRuoMouse.GesIngBtn"/>\
+                            <preference id="MoveBtn" type="int" name="userChromeJS.FeiRuoMouse.MoveBtn"/>\
+                            <preference id="StatusTime" type="int" name="userChromeJS.FeiRuoMouse.StatusTime"/>\
+                            <preference id="trailSize" type="int" name="userChromeJS.FeiRuoMouse.trailSize"/>\
+                            <preference id="trailColor" type="string" name="userChromeJS.FeiRuoMouse.trailColor"/>\
+                        </preferences>\
+                        <script>\
+                            function Change() {\
+                                opener.FeiRuoMouse.OptionScript.ChangeStatus();\
+                            }\
+                        </script>\
+                        <tabbox class="text">\
+                            <tabs>\
+                                <tab label="选项"/>\
+                                <tab label="规则"/>\
+                            </tabs>\
+                            <tabpanels flex="1">\
+                                <tabpanel orient="vertical" flex="1">\
+                                    <groupbox>\
+                                        <caption label="功能"/>\
+                                            <grid>\
+                                                <rows>\
+                                                    <row align="center">\
+                                                        <checkbox id="EnableDragr" label="拖拽手势" preference="EnableDrag" oncommand="Change();"/>\
+                                                        <checkbox id="EnableGesr" label="鼠标手势" preference="EnableGes" oncommand="Change();"/>\
+                                                        <checkbox id="EnableMover" label="窗口拖拽" preference="EnableMove" oncommand="Change();"/>\
+                                                        <checkbox id="EnableTextLinkr" label="TextLink" preference="EnableTextLink" oncommand="Change();"/>\
+                                                    </row>\
+                                                </rows>\
+                                            </grid>\
+                                    </groupbox>\
+                                    <groupbox>\
+                                        <caption label="窗口拖拽"/>\
+                                            <grid>\
+                                                <rows>\
+                                                    <row align="center" id="MoveWinSet">\
+                                                        <label value="触发按键："/>\
+                                                        <radiogroup id="MoveBtn" preference="MoveBtn">\
+                                                            <hbox>\
+                                                                <radio label="左键" id="MoveBtn_0" value="0"/>\
+                                                                <radio label="中键" id="MoveBtn_1" value="1"/>\
+                                                                <radio label="右键" id="MoveBtn_2" value="2"/>\
+                                                            </hbox>\
+                                                        </radiogroup>\
+                                                    </row>\
+                                                </rows>\
+                                            </grid>\
+                                    </groupbox>\
+                                    <groupbox>\
+                                        <caption label="鼠标手势"/>\
+                                            <grid>\
+                                                <rows>\
+                                                    <row align="center">\
+                                                        <checkbox id="GesTrailEnabelr" label="显示轨迹" preference="GesTrailEnabel" oncommand="Change();"/>\
+                                                    </row>\
+                                                    <row align="center">\
+                                                        <label value="轨迹尺寸："/>\
+                                                        <textbox id="trailSize" type="number" preference="trailSize" style="width:180px" tooltiptext="单位：像素(px)"/>\
+                                                    </row>\
+                                                    <row align="center">\
+                                                        <label value="轨迹颜色："/>\
+                                                        <textbox id="trailColor" preference="trailColor" tooltiptext="如：brown、#999、#FFFFFF 、rgba(153, 153, 153, 0) 等"/>\
+                                                    </row>\
+                                                    <row align="center">\
+                                                        <checkbox id="isStatusr" label="显示状态提示" preference="isStatus" oncommand="Change();"/>\
+                                                    </row>\
+                                                    <row align="center">\
+                                                        <label value="状态提示时间："/>\
+                                                        <textbox id="StatusTime" type="number" preference="StatusTime" tooltiptext="单位：毫秒"/>\
+                                                    </row>\
+                                                    <row align="center">\
+                                                        <label value="鼠标手势触发按键："/>\
+                                                        <radiogroup id="GesIngBtn" preference="GesIngBtn">\
+                                                            <hbox>\
+                                                                <radio label="左键" id="GesBtn_0" value="0"/>\
+                                                                <radio label="中键" id="GesBtn_1" value="1"/>\
+                                                                <radio label="右键" id="GesBtn_2" value="2"/>\
+                                                            </hbox>\
+                                                        </radiogroup>\
+                                                    </row>\
+                                                </rows>\
+                                            </grid>\
+                                    </groupbox>\
+                                </tabpanel>\
+                                <tabpanel orient="vertical" flex="1" style="width:500px">\
+                                    <vbox>\
+                                        <hbox id="listarea" flex="1">\
+                                            <tree id="ruleTree" seltype="single" flex="1" enableColumnDrag="true" class="tree" rows="15"\
+                                                onclick="opener.FeiRuoMouse.OptionScript.onTreeclick(event);"\
+                                                ondblclick="opener.FeiRuoMouse.OptionScript.onTreedblclick(event);">\
+                                                <treecols>\
+                                                    <treecol id="Command-col2" label="命令" flex="10" persist="width hidden ordinal" primary="true"/>\
+                                                    <splitter class="tree-splitter"/>\
+                                                    <treecol id="Type-col2" label="动作" flex="1" persist="width hidden ordinal"/>\
+                                                    <splitter class="tree-splitter"/>\
+                                                    <treecol id="Action-col2" label="目标" flex="1" persist="width hidden ordinal"/>\
+                                                    <splitter class="tree-splitter"/>\
+                                                    <treecol id="Keys-col2" label="键盘" flex="1" persist="width hidden ordinal" hidden="true"/>\
+                                                    <splitter class="tree-splitter"/>\
+                                                    <treecol id="TKeys-col2" label="辅助" flex="1" persist="width hidden ordinal" hidden="true"/>\
+                                                    <splitter class="tree-splitter"/>\
+                                                    <treecol id="Enable-col2" label="启用" flex="1" type="checkbox" persist="width hidden ordinal"/>\
+                                                </treecols>\
+                                                <treechildren id="treeroot"\
+                                                    ondragstart="opener.FeiRuoMouse.OptionScript.onDragstart(event);"\
+                                                    ondragover="opener.FeiRuoMouse.OptionScript.onDragover(event);"\
+                                                    ondrop="opener.FeiRuoMouse.OptionScript.onDrop(event);">\
+                                                    <treeitem container="true" open="true" nodelete="true">\
+                                                        <treerow>\
+                                                            <treecell label="拖拽规则" />\
+                                                        </treerow>\
+                                                        <treechildren id="TreeList0"/>\
+                                                    </treeitem>\
+                                                    <treeitem container="true" open="true" nodelete="true">\
+                                                        <treerow>\
+                                                            <treecell label="手势规则" />\
+                                                        </treerow>\
+                                                        <treechildren id="TreeList1" />\
+                                                    </treeitem>\
+                                                </treechildren>\
+                                            </tree>\
+                                        </hbox>\
+                                        <hbox>\
+                                            <spacer flex="1"/>\
+                                            <button label="添加" id="newButton" oncommand="opener.FeiRuoMouse.OptionScript.onNewButtonClick();"/>\
+                                            <button label="修改" id="editButton" oncommand="opener.FeiRuoMouse.OptionScript.onEditButtonClick();"/>\
+                                            <button label="移除" id="deleteButton" oncommand="opener.FeiRuoMouse.OptionScript.onDeleteButtonClick()"/>\
+                                        </hbox>\
+                                    </vbox>\
+                                </tabpanel>\
+                            </tabpanels>\
+                        </tabbox>\
+                        <hbox flex="1">\
+                            <button dlgtype="extra1" label="还原默认值"/>\
+                            <button dlgtype="extra2" label="自定义命令"/>\
+                            <spacer flex="1" />\
+                            <button label="应用" oncommand="opener.FeiRuoMouse.OptionScript.Save();"/>\
+                            <button dlgtype="accept"/>\
+                            <button dlgtype="cancel"/>\
+                        </hbox>\
+                    </prefpane>\
+                    </prefwindow>\
+                    ';
+			return encodeURIComponent(xul);
+		},
+
+		get DetaillWin() {
+			var xul = '<?xml version="1.0"?><?xml-stylesheet href="chrome://global/skin/" type="text/css"?>\
+                    <prefwindow xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"\
+                    id="FeiRuoMouse_Detail"\
+                    ignorekeys="true"\
+                    title="FeiRuoMouse 拖拽/手势"\
+                    onload="init();"\
+                    onunload="WindoFocus();"\
+                    buttons="accept, cancel, extra1"\
+                    ondialogextra1="opener.FeiRuoMouse.DetaillScript.Resets();"\
+                    ondialogaccept="Save();"\
+                    windowtype="FeiRuoMouse:DetailWindow">\
+                        <prefpane id="main" flex="1">\
+                        <script>\
+                            function init() {\
+                                var param=window.arguments[0];\
+                                opener.FeiRuoMouse.DetaillScript.init(param);\
+                            }\
+                            function Save() {\
+                                var retparam=window.arguments[1];\
+                                opener.FeiRuoMouse.DetaillScript.Save(retparam);\
+                            }\
+                            function WindoFocus(){\
+                                if (opener.FeiRuoMouse.getWindow(0))\
+                                    opener.FeiRuoMouse.getWindow(0).focus();\
+                            }\
+                        </script>\
+                            <vbox style = "width:400px; min-height:275px;">\
+                                <groupbox>\
+                                    <radiogroup id="MType">\
+                                        <rows>\
+                                            <row align="center">\
+                                                <radio label="鼠标手势" id="Ges" value="Ges" oncommand="opener.FeiRuoMouse.DetaillScript.MChanged();"/>\
+                                            </row>\
+                                            <row align="center">\
+                                                <radio label="拖拽" id="Drag" value="Drag" style="width:100px;" oncommand="opener.FeiRuoMouse.DetaillScript.MChanged();"/>\
+                                                <radiogroup id="DragType">\
+                                                    <hbox>\
+                                                        <radio label="图片" id="Drag_Image" value="Image" oncommand="opener.FeiRuoMouse.DetaillScript.CreateCommandMenu();"/>\
+                                                        <radio label="链接" id="Drag_Url" value="Url" oncommand="opener.FeiRuoMouse.DetaillScript.CreateCommandMenu();"/>\
+                                                        <radio label="文字" id="Drag_Text" value="Text" oncommand="opener.FeiRuoMouse.DetaillScript.CreateCommandMenu();"/>\
+                                                    </hbox>\
+                                                </radiogroup>\
+                                            </row>\
+                                        </rows>\
+                                    </radiogroup>\
+                                </groupbox>\
+                                <groupbox>\
+                                    <caption label="键盘辅助键"/>\
+                                        <row align="center">\
+                                            <checkbox label="Alt" id="Alt" oncommand="opener.FeiRuoMouse.DetaillScript.KChanged();"/>\
+                                            <label value="+"/>\
+                                            <checkbox label="Ctrl" id="Ctrl" oncommand="opener.FeiRuoMouse.DetaillScript.KChanged();"/>\
+                                            <label value="+"/>\
+                                            <checkbox label="Shift" id="Shift" oncommand="opener.FeiRuoMouse.DetaillScript.KChanged();"/>\
+                                            <spacer flex="1" />\
+                                            <checkbox label="作为排除键" id="TKey"/>\
+                                        </row>\
+                                </groupbox>\
+                                <groupbox>\
+                                    <caption label="命令"/>\
+                                        <menulist id="Command" style="width:400px;"/>\
+                                </groupbox>\
+                                <groupbox>\
+                                    <caption label="手势方向"/>\
+                                        <textbox id="Action" style="width:400px; height:25px;"/>\
+                                        <label value="U(上),D(下),L(左),R(右),Any(任意)"/>\
+                                        <label id="Action_Label" value=""/>\
+                                </groupbox>\
+                            </vbox>\
+                            <hbox flex="1">\
+                                <button dlgtype="extra1" label="重置" />\
+                                <spacer flex="1" />\
+                                <button dlgtype="accept"/>\
+                                <button dlgtype="cancel"/>\
+                            </hbox>\
+                        </prefpane>\
+                    </prefwindow>\
+                    ';
+			return encodeURIComponent(xul);
+		}
 	};
 
 	FeiRuoMouse.DragScript = {
@@ -985,15 +1661,15 @@
 			var checkboximg = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA0AAAAaCAYAAABsONZfAAABD0lEQVQ4je2TMa5FQBSGrUIURiURhVJH3BXYgg1IprYGHa1FCGtheslf0UgkFMZ51ZUn3rvkJvdVr/iLKb4z55z5Ronj+ME5p7uJ4/ihcM5pmiYQ0a9ZlgVEhGmawDknhXNOr4BxHBFFEYQQIKJraBgG+L4PxhjSNIWU8git6woiwrZteJ7DMISqqsiybC90gNq2RV3XO1gUBRhjSJJkL3SCgiCAYRioqgp938OyLLiui3meDy0foKZp4DgOGGPwPA+6rqMsy9Ocp0U0TQPbtqFpGhhj+5wvISKCEAKmaSLPc0gp70FSSggh0HXdj8+wQ1dGPLMb8ZZ7HxP21N6VsLe29w+9C33/bJ+56U+E/QKpA0b/pEOBQAAAAABJRU5ErkJggg==";
 
 			var cssStr = ('\
-					treechildren::-moz-tree-checkbox(unchecked){\
-						list-style-image: url(' + checkboximg + ');\
-						-moz-image-region: rect(13px 13px 26px 0px);\
-					}\
-					treechildren::-moz-tree-checkbox(checked){\
-						list-style-image: url(' + checkboximg + ');\
-						-moz-image-region: rect(0px 13px 13px 0px);\
-					}\
-					');
+                    treechildren::-moz-tree-checkbox(unchecked){\
+                        list-style-image: url(' + checkboximg + ');\
+                        -moz-image-region: rect(13px 13px 26px 0px);\
+                    }\
+                    treechildren::-moz-tree-checkbox(checked){\
+                        list-style-image: url(' + checkboximg + ');\
+                        -moz-image-region: rect(0px 13px 13px 0px);\
+                    }\
+                    ');
 			var doc = FeiRuoMouse.getWindow(0).document;
 			var style = doc.createProcessingInstruction('xml-stylesheet', 'type="text/css" href="data:text/css;utf-8,' + encodeURIComponent(cssStr) + '"');
 			doc.insertBefore(style, doc.documentElement);
@@ -1027,6 +1703,7 @@
 			_$("EnableGesr").value = true;
 			_$("EnableDragr").value = true;
 			_$("EnableMover").value = true;
+			_$("EnableTextLinkr").value = true;
 			_$("MoveBtn").value = 1;
 			_$("StatusTime").value = 3000;
 			_$("trailSize").value = 2;
@@ -1043,6 +1720,7 @@
 			FeiRuoMouse.Prefs.setBoolPref("EnableGes", _$("EnableGesr").checked);
 			FeiRuoMouse.Prefs.setBoolPref("EnableDrag", _$("EnableDragr").checked);
 			FeiRuoMouse.Prefs.setBoolPref("EnableMove", _$("EnableMover").checked);
+			FeiRuoMouse.Prefs.setBoolPref("EnableTextLink", _$("EnableTextLinkr").checked);
 			FeiRuoMouse.Prefs.setBoolPref("GesTrailEnabel", _$("GesTrailEnabelr").checked);
 			this.TreeSave("TreeList0", "DragCustom");
 			this.TreeSave("TreeList1", "GesCustom");
@@ -1325,8 +2003,7 @@
 			if (thisWindow) {
 				thisWindow.focus();
 			} else {
-				var detaill = FeiRuoMouse.DetaillWin();
-				thisWindow = window.openDialog("data:application/vnd.mozilla.xul+xml;charset=UTF-8," + detaill, win, "modal, chrome=yes,centerscreen", params, retParams);
+				thisWindow = window.openDialog("data:application/vnd.mozilla.xul+xml;charset=UTF-8," + FeiRuoMouse.DetaillWin, win, "modal, chrome=yes,centerscreen", params, retParams);
 			}
 			return thisWindow;
 		},
@@ -1458,172 +2135,7 @@
 				treeBoxObject.ensureRowIsVisible(currentIndex);
 			}
 			this.ChangeStatus();
-		},
-	};
-
-	FeiRuoMouse.OptionWin = function() {
-		var xul = '<?xml version="1.0"?><?xml-stylesheet href="chrome://global/skin/" type="text/css"?>\
-					<prefwindow xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"\
-					id="FeiRuoMouse_Settings"\
-					ignorekeys="true"\
-					title="FeiRuoMouse 设置"\
-					onload="opener.FeiRuoMouse.OptionScript.init();"\
-					onunload="opener.FeiRuoMouse.UpdateFile(true);"\
-					buttons="accept,cancel,extra1,extra2"\
-					ondialogextra1="opener.FeiRuoMouse.OptionScript.Resets();"\
-					ondialogextra2="opener.FeiRuoMouse.Edit();"\
-					ondialogaccept="opener.FeiRuoMouse.OptionScript.Save();"\
-					windowtype="FeiRuoMouse:Preferences">\
-					<prefpane id="main" flex="1">\
-						<preferences>\
-							<preference id="EnableGes" type="bool" name="userChromeJS.FeiRuoMouse.EnableGes"/>\
-							<preference id="EnableDrag" type="bool" name="userChromeJS.FeiRuoMouse.EnableDrag"/>\
-							<preference id="EnableMove" type="bool" name="userChromeJS.FeiRuoMouse.EnableMove"/>\
-							<preference id="isStatus" type="bool" name="userChromeJS.FeiRuoMouse.isStatus"/>\
-							<preference id="GesTrailEnabel" type="bool" name="userChromeJS.FeiRuoMouse.GesTrailEnabel"/>\
-							<preference id="GesIngBtn" type="int" name="userChromeJS.FeiRuoMouse.GesIngBtn"/>\
-							<preference id="MoveBtn" type="int" name="userChromeJS.FeiRuoMouse.MoveBtn"/>\
-							<preference id="StatusTime" type="int" name="userChromeJS.FeiRuoMouse.StatusTime"/>\
-							<preference id="trailSize" type="int" name="userChromeJS.FeiRuoMouse.trailSize"/>\
-							<preference id="trailColor" type="string" name="userChromeJS.FeiRuoMouse.trailColor"/>\
-						</preferences>\
-						<script>\
-							function Change() {\
-								opener.FeiRuoMouse.OptionScript.ChangeStatus();\
-							}\
-						</script>\
-						<tabbox class="text">\
-							<tabs>\
-								<tab label="一般选项"/>\
-								<tab label="拖拽/手势 规则"/>\
-							</tabs>\
-							<tabpanels flex="1">\
-								<tabpanel orient="vertical" flex="1">\
-									<groupbox>\
-										<caption label="功能开关"/>\
-											<grid>\
-												<rows>\
-													<row align="center">\
-														<checkbox id="EnableDragr" label="拖拽手势" preference="EnableDrag" oncommand="Change();"/>\
-														<checkbox id="EnableGesr" label="鼠标手势" preference="EnableGes" oncommand="Change();"/>\
-														<checkbox id="EnableMover" label="窗口拖拽" preference="EnableMove" oncommand="Change();"/>\
-													</row>\
-												</rows>\
-											</grid>\
-									</groupbox>\
-									<groupbox>\
-										<caption label="窗口拖拽自定义设置"/>\
-											<grid>\
-												<rows>\
-													<row align="center" id="MoveWinSet">\
-														<label value="窗口拖拽触发按键："/>\
-														<radiogroup id="MoveBtn" preference="MoveBtn">\
-															<hbox>\
-																<radio label="左键" id="MoveBtn_0" value="0"/>\
-																<radio label="中键" id="MoveBtn_1" value="1"/>\
-																<radio label="右键" id="MoveBtn_2" value="2"/>\
-															</hbox>\
-														</radiogroup>\
-													</row>\
-												</rows>\
-											</grid>\
-									</groupbox>\
-									<groupbox>\
-										<caption label="鼠标手势自定义设置"/>\
-											<grid>\
-												<rows>\
-													<row align="center">\
-														<checkbox id="GesTrailEnabelr" label="显示轨迹" preference="GesTrailEnabel" oncommand="Change();"/>\
-													</row>\
-													<row align="center">\
-														<label value="轨迹尺寸："/>\
-														<textbox id="trailSize" type="number" preference="trailSize" style="width:180px" tooltiptext="单位：像素(px)"/>\
-													</row>\
-													<row align="center">\
-														<label value="轨迹颜色："/>\
-														<textbox id="trailColor" preference="trailColor" tooltiptext="如：brown、#999、#FFFFFF 、rgba(153, 153, 153, 0) 等"/>\
-													</row>\
-													<row align="center">\
-														<checkbox id="isStatusr" label="显示状态提示" preference="isStatus" oncommand="Change();"/>\
-													</row>\
-													<row align="center">\
-														<label value="状态提示时间："/>\
-														<textbox id="StatusTime" type="number" preference="StatusTime" tooltiptext="单位：毫秒"/>\
-													</row>\
-													<row align="center">\
-														<label value="鼠标手势触发按键："/>\
-														<radiogroup id="GesIngBtn" preference="GesIngBtn">\
-															<hbox>\
-																<radio label="左键" id="GesBtn_0" value="0"/>\
-																<radio label="中键" id="GesBtn_1" value="1"/>\
-																<radio label="右键" id="GesBtn_2" value="2"/>\
-															</hbox>\
-														</radiogroup>\
-													</row>\
-												</rows>\
-											</grid>\
-									</groupbox>\
-								</tabpanel>\
-								<tabpanel orient="vertical" flex="1" style="width:500px">\
-									<vbox>\
-										<hbox id="listarea" flex="1">\
-											<tree id="ruleTree" seltype="single" flex="1" enableColumnDrag="true" class="tree" rows="15"\
-												onclick="opener.FeiRuoMouse.OptionScript.onTreeclick(event);"\
-												ondblclick="opener.FeiRuoMouse.OptionScript.onTreedblclick(event);">\
-												<treecols>\
-													<treecol id="Command-col2" label="命令" flex="10" persist="width hidden ordinal" primary="true"/>\
-													<splitter class="tree-splitter"/>\
-													<treecol id="Type-col2" label="动作" flex="1" persist="width hidden ordinal"/>\
-													<splitter class="tree-splitter"/>\
-													<treecol id="Action-col2" label="目标" flex="1" persist="width hidden ordinal"/>\
-													<splitter class="tree-splitter"/>\
-													<treecol id="Keys-col2" label="键盘" flex="1" persist="width hidden ordinal" hidden="true"/>\
-													<splitter class="tree-splitter"/>\
-													<treecol id="TKeys-col2" label="辅助" flex="1" persist="width hidden ordinal" hidden="true"/>\
-													<splitter class="tree-splitter"/>\
-													<treecol id="Enable-col2" label="启用" flex="1" type="checkbox" persist="width hidden ordinal"/>\
-												</treecols>\
-												<treechildren id="treeroot"\
-													ondragstart="opener.FeiRuoMouse.OptionScript.onDragstart(event);"\
-													ondragover="opener.FeiRuoMouse.OptionScript.onDragover(event);"\
-													ondrop="opener.FeiRuoMouse.OptionScript.onDrop(event);">\
-													<treeitem container="true" open="true" nodelete="true">\
-														<treerow>\
-															<treecell label="拖拽规则" />\
-														</treerow>\
-														<treechildren id="TreeList0"/>\
-													</treeitem>\
-													<treeitem container="true" open="true" nodelete="true">\
-														<treerow>\
-															<treecell label="手势规则" />\
-														</treerow>\
-														<treechildren id="TreeList1" />\
-													</treeitem>\
-												</treechildren>\
-											</tree>\
-										</hbox>\
-										<hbox>\
-											<spacer flex="1"/>\
-											<button label="添加" id="newButton" oncommand="opener.FeiRuoMouse.OptionScript.onNewButtonClick();"/>\
-											<button label="修改" id="editButton" oncommand="opener.FeiRuoMouse.OptionScript.onEditButtonClick();"/>\
-											<button label="移除" id="deleteButton" oncommand="opener.FeiRuoMouse.OptionScript.onDeleteButtonClick()"/>\
-										</hbox>\
-									</vbox>\
-								</tabpanel>\
-							</tabpanels>\
-						</tabbox>\
-						<hbox flex="1">\
-							<button dlgtype="extra1" label="还原默认值"/>\
-							<button dlgtype="extra2" label="自定义命令"/>\
-							<spacer flex="1" />\
-							<button label="应用" oncommand="opener.FeiRuoMouse.OptionScript.Save();"/>\
-							<button dlgtype="accept"/>\
-							<button dlgtype="cancel"/>\
-						</hbox>\
-					</prefpane>\
-					</prefwindow>\
-          			';
-		return encodeURIComponent(xul);
+		}
 	};
 
 	FeiRuoMouse.DetaillScript = {
@@ -1793,88 +2305,6 @@
 		},
 	};
 
-	FeiRuoMouse.DetaillWin = function() {
-		var xul = '<?xml version="1.0"?><?xml-stylesheet href="chrome://global/skin/" type="text/css"?>\
-					<prefwindow xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"\
-					id="FeiRuoMouse_Detail"\
-					ignorekeys="true"\
-					title="FeiRuoMouse 拖拽/手势"\
-					onload="init();"\
-					onunload="WindoFocus();"\
-					buttons="accept, cancel, extra1"\
-					ondialogextra1="opener.FeiRuoMouse.DetaillScript.Resets();"\
-					ondialogaccept="Save();"\
-					windowtype="FeiRuoMouse:DetailWindow">\
-						<prefpane id="main" flex="1">\
-						<script>\
-							function init() {\
-								var param=window.arguments[0];\
-								opener.FeiRuoMouse.DetaillScript.init(param);\
-							}\
-							function Save() {\
-								var retparam=window.arguments[1];\
-								opener.FeiRuoMouse.DetaillScript.Save(retparam);\
-							}\
-							function WindoFocus(){\
-								if (opener.FeiRuoMouse.getWindow(0))\
-									opener.FeiRuoMouse.getWindow(0).focus();\
-							}\
-						</script>\
-							<vbox style = "width:400px; min-height:275px;">\
-								<groupbox>\
-									<radiogroup id="MType">\
-										<rows>\
-											<row align="center">\
-												<radio label="鼠标手势" id="Ges" value="Ges" oncommand="opener.FeiRuoMouse.DetaillScript.MChanged();"/>\
-											</row>\
-											<row align="center">\
-												<radio label="拖拽" id="Drag" value="Drag" style="width:100px;" oncommand="opener.FeiRuoMouse.DetaillScript.MChanged();"/>\
-												<radiogroup id="DragType">\
-													<hbox>\
-														<radio label="图片" id="Drag_Image" value="Image" oncommand="opener.FeiRuoMouse.DetaillScript.CreateCommandMenu();"/>\
-														<radio label="链接" id="Drag_Url" value="Url" oncommand="opener.FeiRuoMouse.DetaillScript.CreateCommandMenu();"/>\
-														<radio label="文字" id="Drag_Text" value="Text" oncommand="opener.FeiRuoMouse.DetaillScript.CreateCommandMenu();"/>\
-													</hbox>\
-												</radiogroup>\
-											</row>\
-										</rows>\
-									</radiogroup>\
-								</groupbox>\
-								<groupbox>\
-									<caption label="键盘辅助键"/>\
-										<row align="center">\
-											<checkbox label="Alt" id="Alt" oncommand="opener.FeiRuoMouse.DetaillScript.KChanged();"/>\
-											<label value="+"/>\
-											<checkbox label="Ctrl" id="Ctrl" oncommand="opener.FeiRuoMouse.DetaillScript.KChanged();"/>\
-											<label value="+"/>\
-											<checkbox label="Shift" id="Shift" oncommand="opener.FeiRuoMouse.DetaillScript.KChanged();"/>\
-											<spacer flex="1" />\
-											<checkbox label="作为排除键" id="TKey"/>\
-										</row>\
-								</groupbox>\
-								<groupbox>\
-									<caption label="命令"/>\
-										<menulist id="Command" style="width:400px;"/>\
-								</groupbox>\
-								<groupbox>\
-									<caption label="手势方向"/>\
-										<textbox id="Action" style="width:400px; height:25px;"/>\
-										<label value="U(上),D(下),L(左),R(右),Any(任意)"/>\
-										<label id="Action_Label" value=""/>\
-								</groupbox>\
-							</vbox>\
-							<hbox flex="1">\
-								<button dlgtype="extra1" label="重置" />\
-								<spacer flex="1" />\
-								<button dlgtype="accept"/>\
-								<button dlgtype="cancel"/>\
-							</hbox>\
-						</prefpane>\
-					</prefwindow>\
-					';
-		return encodeURIComponent(xul);
-	};
-
 	/*****************************************************************************************/
 	function _$D(id) {
 		return FeiRuoMouse.getWindow(1).document.getElementById(id) || {};
@@ -1895,6 +2325,7 @@
 	}
 
 	function log() {
+		// Application.console.log("[FeiRuoMouse] " + Array.slice(arguments));
 		console.log("[FeiRuoMouse] " + Array.slice(arguments));
 	}
 
