@@ -1,0 +1,7 @@
+{
+    "CreatedBy": "FeiRuoNetAutoProxy",
+    "注释": "DisbledFilter并非白名单！！！仅为不代理效列表，可随时切换！",
+    "优先级": "GFWList白名单 >> DisbledFilter >> ProxyFilters & GFWList",
+    "DisbledFilter": [],
+    "ProxyFilters": []
+}

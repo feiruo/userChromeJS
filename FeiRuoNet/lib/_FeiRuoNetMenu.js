@@ -1,43 +1,4 @@
 /******************************************************************************************
- *这里是脚本中用到的各种图标设置。
- *******************************************************************************************/
-var Icons = {
-	//等待时国旗图标，预设Firefox内部图标【chrome://branding/content/icon16.png】。
-	DEFAULT_Flag: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAACG0lEQVQ4ja2TwW7aQBRF+ZDku0q/qChds5mxkDG2iY3H9jyTBFAWLAgRG7CwCawQi6BEQhgEFkiAuF3VaVXaSlWvdBazuGfx5r1c7n/H9/1rIvpCAUWS5E6S3FFAkU9+wff967+VP1FA6fPzMwaDAcbjMQaDAabTKSggEFEqpcxfLEvp5huNxnmxWGC73SIMQ9Tv6gjqAbrdLqT0Ub+rg4jOUro/S4QQV57nbZMkwel0wvF4xGazQafTgeu5GY1GA8PhEMITqRDiKhM4jnPTbrdxOBxwOByQJAlcz4UQ4heiKILruXAc52smsGzrpd/v4/X1FcPhEBQQ7Jp9kVarhdlsBsu2Xj4E1u3x/v4eRATLuv0tQT3AdDrFcrmEZd2eMoFZNXdm1cSP2DUbZtUEEYECglk1MRqNkKYp3t/fYZjGPhPohh7rhg7d0PH09IQ4jjGbzdBsNtHr9SBcAd3QMZlMMJ/PEYYhdEOPM0G5Ur7RKhoeHx+xWq2wXq+xXq/x9vaGVqsFraJBq2jQDT17l8vljyFyzq9UVd2qqoooirBarTLCMIRds6GqKgzTgOPUoKpqyjn/+MZcLpdTFCVfKpXOlm1huVwiSRIkSYLFYgGzauLh4QHNZhNaRTsrinJ5GxljeUVRUil99Ho9dLtduJ4LKX0QERRFSTnnny+Wv6dYLF4zxgqMsZhzvuec7xljMWOsUCwW/3xM/5JvTakQArDW8fcAAAAASUVORK5CYII=",
-
-	//未知的国旗图标，预设为上一个图标设置，如不喜欢内置默认，可以再这里修改。
-	Unknown_Flag: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABwUlEQVQ4jZWRMahScRjFL40REW9ojqaGhoaGprg0eL3//3fkj0pCDrYp2hARmRItjk4ND0EuSFMgSEQIiuMjEjdnwUGIvLdF+bxc/j6ut8X3eM9X7z3P+vE7nPMdw9gRgPdEdCSlPJRS3t+9Xyrbtp8A4FqtFmQyGQbARHRERAXLsg6uNADwMZ1O83q9jpbLZdjtdnW5XPa3Rksi+iqEeA7g5j8NFosFu64bRjuaz+dhu93WhULBB8AAXCll3TTNO6fweDx+qLWOwvACf06TySR0HCdQSjGAt2fjKwA8m83+6zCdTsNWqxXkcjkG4Nq2/ezUgIg+ZbNZ3mw25yDP88JOp6NLpdLJL/4AaAkhnu4+cFyv14MoiiJmjvr9vq5Wq34ikeBt7+8AXpimeevC8+Lx+D0APBgMdK/X08lk8gT6KaV8HYvF7l46nxDiJQD2PC+sVCo+Ef0A8ODK3c/0/5zP5/0gCCKlFBPRu2vD2/6/ms1mMBqNjgGwEOLxtWEhxCMAPBwOjx3H0UT02zCMG/vEf6OU4tVqFRWLRZ+IvuwVn4g+pFIpbjQawXbnV3sZWJZ1IKU8BDAhom+2bd/eh/8LEFU+M9Rx2boAAAAASUVORK5CYII=",
-
-	//本地文件图标，预设为上一个图标设置，如不喜欢内置默认，可以再这里修改。
-	File_Flag: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABYAAAAQCAYAAAAS7Y8mAAAB3ElEQVQ4jZ3QT2vTcBzH8YGPxpt4EHwmHoc+BRV8ADuu+8MG2w47DJINVkLHWDrFKXpYBtqmttl+JV3/Zk1/SX5pfklq09TCx8O0yLB/0g+8j9/X4bu09GB7ex9fHB8XqSgqVBQVKgj3iaJCj46+0f39r8Wtrezzh3czl0plXxUKLjj/BcuKYNv3MRbDMEKk0wWIonKTSp0+SwSvrmaXVdUGY33Uau64RsODrts4OVFhGH2I4tWPlZXTp4ngfN6C4/RBCEWp1IammSCEQtM6kKQcwnAEyxpCknLft7c/PJkbzuUoGIug6zYIoSiXKSoVB4RQCIICVTVAiAVFMbC7+/nq4ODL47lh141QrbrQdQeVioPbW4ZazYUsl5DJ5JHJqJDlIi4uGtjZ+fQuATxAvd5FtcrGNZscphnANAO02wE4j1Euc6ytya/nhj0vQqvlodHo/pM7rl53Yds9XF93k8IDGIaPVov/t2aTg7H+InCMdjvE3V0wMdeNksOcx+h0Qpjm5LrdwWKwZfVA6eQ8L4amLQDb9s+pcZ4QzucpfH8Ix+lPzfeHSV7x/mWhwBAEIzAWTy0IRiAkwMbG+duZ8OZmdjmdLoaHh5ehIFz2ZiVJWri+fvbmz/mjv85vk5TTd5np7HoAAAAASUVORK5CYII=",
-
-	//Base64编码地址图标，预设为上一个图标设置，如不喜欢内置默认，可以再这里修改。
-	Base64_Flag: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAANCAYAAACgu+4kAAABC0lEQVQokZXTTSvEcRDA8Q/ZcvBQLlIeXoCDUl6Aq4tQzm7egHZtCoUk70EOXEjC3UEuDk4uHo8ODkIu2l27Djubv4e1a2qa38PMd2b6zQ92kUPpn5rHjlhcYREZpDETtpouRExO0JZ8SgN61JbliFVCNnExjhtM1ABkfwN04CTOztGdCGiN6v4ETOMZ63gI24ghHGOsGmAWnbjAAVqwgscI2g+/S/RXA6Qj+3A4dOEsKnkK4DWO0Kb8YiV4xyZusYFUosxRvGIbzZjEC+YxVwEUIsM9Bn2VFEbQF/smrEZrp5FcIUhr6pN2HKJYAeSjtwFM+Tl1mW+axlYkzlOe5yx6cae+f1DEG/Y+AKR8auXF6Pi+AAAAAElFTkSuQmCC",
-
-	//LocalHOST【127.0.0.1】【::1】，预设为上一个图标设置，如不喜欢内置默认，可以再这里修改。
-	LocahHost_Flag: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABYAAAAQCAYAAAAS7Y8mAAABNklEQVQ4ja2UwUpCQRSGPwx9gyAfooVLF0GLXiFo5QsUlkHcUgjcCZVEqIueQGjlIqwWbXqAom2IVJu2Bobg4raYM93D8ard7IeBuf/85xtm7szApA6BUNq6eGfKC4GdmLq5CqS4It+nBurbdlJwFahL/0SBRkB7EfhKDDQENsU/WgRul79lxv8Er8+BepVNrvgf0Gnw/bjQeUKolz6eE/ALNTBMAPU6AMaKUQLYMzM2VMESkAHSBpQWP6W8O8PhWDpj4AuoqfAl0AeegWXxckBP/EBlO8BAgzNAAcgDL0BLhW/UpFnx1lRxU2UfgGtgg+jM/+jNgDsC+CS6OKvAI/AE7BrwrQV6vf4CPE0zwe9E7wTAlYAHuC2bpXvcD4xVH7fEAHc+e0T7WcNd5YppZcl+AF0P+gbk74HicL4aGwAAAABJRU5ErkJggg==",
-
-	//局域网【192.168.xxx.xxx】【169.254.xxx.xxx】，预设为上一个图标设置，如不喜欢内置默认，可以再这里修改。
-	LAN_Flag: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABYAAAAQCAYAAAAS7Y8mAAABLklEQVQ4jeXUO0vcURAF8F8pxDqdAdFCZLUQ/ARiZ6f4AjWua2dhq4IaNEWKgNjFSi3ED2AhmEKxUXw3PrBQQwQbI6SSiJhiR1nwv6uwlXhguJc5cw4zl3svhTGIM1ziV8RvXGD4BW1BfMFDnvhejPEo7hJM7/HtfRlPJpg+xlQxxhlsYEv2dpxjG5sYKMb4Az6hHEMYQSXKUPpakxI0II0efEYnmtGCH5hBW+Q6curSaIxGnuGj7LmNoxt96A9RGnOYj1xvrBl0YQzTMd0TqlGLJsyiHTWoQkXs6zCBr6iPXGXUpNAa2pbgUrCCfRzhCofYwWJMsIZd2Wd8gT2sR4cLUXsY2pMc3h/J1+kUP/EvgbvHKo7zaG/JfipJ5AGWcJPA/cVydJekvX57xv8BD7eoP535NRkAAAAASUVORK5CYII=",
-
-	//默认UA图标，预设为上一个图标设置，如不喜欢内置默认，可以再这里修改。
-	DEFAULT_UA: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAACKklEQVQ4jbWPT4gSURzHXzqDzr6ZgefD+fd0YJynjI62ghhqZApLdCnwkpAn87CXvO4SHTqKhw4JIl5aloiCIBChBTstHj10CXYpIRbSdXGLWDoG0ynZFSNY6Ae/y+/zPl++D4D/OBAAsHZZmfA8/7Lb7bKXskVRfCVJ0kQUxTbLsrssyz53uVxbAAD7n7IgCHcJIXPLsj7puj4lhEw0TZv6/f5TnuePGIZ5vFJkGOYGQui6JEm7lNJJPB4/jEaji7Us6yAUCn3GGJ95vd4ny74LQrgXDoergUBgn1I6Nk1zbJrmhFI6MQxjaprmOBKJ/AmZQAivLmxN03SE0FE2m70dCoXeKoryw7btj9Vq9VG9Xt8sl8sN27ZHuq6PDcM4VFX1FCG0tQgwDGMdY/w1nU7ngsHgu42NjdedTufa+Yq5XG5bVdUTXdcPFUU5lmW5tYCFQoH6fL4TVVU3W63WuuM4zPIfIYQNjPE3VVUP/H7/jBDydAF3dna8iqKMeJ7fd7vd95ZlSmkgkUi8CYfDQ4TQGCE0tyzr4YVHmUxmm+O4nyzLfgcA3D/P2u02P5/PBULIC0EQjjHGXyqVSuJCwHA4RJFI5D1CaFwoFBqWZeGlIh6O40Yej+csmUy2l1sCAADo9/t6Pp/fLZVKNx3HubKEH7jd7l+xWGyv1+vJKwMAAMBxHK7ZbGrnTi4I4S1Zlj8Ui8Vns9lM+qu8alKp1FqtVrszGAySq/hvbPGRIDMl+58AAAAASUVORK5CYII=",
-
-	//未知UA图标，预设为上一个图标设置，如不喜欢内置默认，可以再这里修改。
-	Unknown_UAImage: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAADM0lEQVQ4jW2T20tqeRzFf52nmIHzr5zmwjxLQzF2rLGHItCCqJAaa2Bnuywv263i/RKm0taEasc4D0USjGQQDELQUw8xWBuCEKGLWgfdiiLzW/MyRKdzPvB9+64Fi/X9EvIGjUbz3mKxfMzn83/e3NxIZ2dnBZ1OJ4yPj/f29/d/+3b/Ne84juu9urq6qFarnXq9jpOTE1QqFQQCAUQikVY+n8/Pz8//RAjp+kJsMBim7u/v5UajQTOZDC0UCojH4zSXy1Gn0wmbzUZ3d3fp+fl51WAw/PqZiU6n+/n6+lrudDpot9u0Wq3ScrmMbDZLfT4fdblc4Hme2mw2enFxgdPT00elUvkdIYQQpVL5XhTFi3a7jVarhWaziWKxiMPDQ2xubiIUCsHtdsNut8NqteLg4ADxeBxLS0tZhULRTbRa7cfj4+OOLMuo1+uQJAnpdBqiKCKRSGB9fR0ejwcOhwNWqxV2ux0PDw+4u7uTp6enfyALCwt/5HI5mk6nsb+/D1EUqSiKdHt7G4Ig0HA4TL1eLxwOBzWbzdTv96PRaKDZbFK73f47YVlWSqVS2NnZwdbWFgRBQCKRgCAI2NjYQDAYfIlgsVgQCoUgyzJqtRpisViMLC4u/uNwOJDJZBCJRBCNRhGNRhEOhxEIBOB2u/F/CzCZTPB4PKhUKigWi/D5fDEyNTUlcBxHnU4nXC4X9vb2aDKZpH6/Hy6XizqdTsrzPEwmE11ZWaGrq6uIRCKwWq3/jo2NLZCRkZFeo9HY4jgOwWAQ9Xod7XYbkiQhmUyC53lYLBasra3BaDS+DMMwn9RqdQ8ZHBz8Zm5u7m+z2YxkMonXdT49PSGVSsHtdn9hMDk5eaBQKLoJIYQMDAz8yDBM2Ww2o1AoUFmWaa1Ww/PzMy2Xy/T29hY8z1OWZanRaIRery+qVKoPr0+5a3h4WMUwzAPHcVSSJFqtVvH4+EhLpRLNZrNgWZayLEv1en1xaGjoF0LIu7f/0NXX19czMzPz19HRUb1UKtHLy0t4vV4sLy9ThmE+TUxMHKjV6p6viV9QKBTdWq32+9nZ2d+0Wq1Xo9F4R0dHZ1Qq1YeXzK/4Dz2YO52piHOZAAAAAElFTkSuQmCC",
-};
-/******************************************************************************************
- *这里是图标弹出TIP文字的自定义设置,可用于本地化，他国语言等
- *******************************************************************************************/
-var TipShow = { //图标显示顺序不会因这里而改变顺序
-	tipArrHost: "网站域名：", //域名文字：显示为 【网站域名：xxxx.xxx.xxx】
-	tipArrIP: "网站IP：", //IP文字：显示为 【网站IP：xxxx.xxx.xxx】
-	tipArrSepC: "--------------------------------", //分割线，留空表示不使用分割线
-	/*这里会显示 自定义查询信息*/
-	tipArrSepEnd: "--------------------------------", //分割线，留空表示不使用分割线
-	tipArrThanks: "Thx&From：", //信息来源文字：自动使用查询API的主域名，显示为 【Thx&From：xxxx.xxx ,xxxx.xxx ,xxxx.xxx】
-};
-/******************************************************************************************
 这里是菜单配置:
 配置与addmenu一样，但仅支持本脚本菜单位置，具体请参照；https://github.com/ywzhaiqi/userChromeJS/tree/master/addmenuPlus
 本脚本参数增加:
@@ -99,21 +60,21 @@ var Menus = [ //菜单设置
 					var Path = "C:\\Program Files\\Internet Explorer\\iexplore.exe";
 					switch (e.button) {
 						case 0:
-							FeiRuoNet_Menu.exec(Path, FeiRuoNet_Menu.convertText("%u"));
+							anoBtn.Exec(Path, anoBtn.ConvertText("%u"));
 							break;
 						case 1:
-							FeiRuoNet_Menu.exec(Path, "");
+							anoBtn.Exec(Path, "");
 							break;
 						case 2:
 							e.preventDefault();
-							FeiRuoNet_Menu.exec(Path, " -private " + FeiRuoNet_Menu.convertText("%u"));
+							anoBtn.Exec(Path, " -private " + anoBtn.ConvertText("%u"));
 							break;
 					}
 				}
 			}, {
 				label: "K-Meleon打开",
 				text: "%u",
-				exec: "D:\\Program Files\\K-Meleon\\k-meleon.exe"
+				exec: "D:\\Program Files\\Browser\\K-Meleon\\k-meleon.exe"
 			}
 		]
 	}, {
@@ -138,12 +99,12 @@ var Menus = [ //菜单设置
 				ExcludeDirs: /tmp|temp|msdll/i, //排除目录
 				label: "PingIP(aizhan)",
 				tooltiptext: 'http://ping.aizhan.com/', //提示文字
-				oncommand: "FeiRuoNet_Menu.OpenAction(this.tooltipText, 'site','%HOST%', null,'btn02')", //执行命令
+				oncommand: "anoBtn.OpenAction(this.tooltipText, 'site','%HOST%', null,'btn02')", //执行命令
 				image: "http://www.aizhan.com/favicon.ico", //图标
 			}, {
 				label: "PingIP(17ce)",
 				tooltiptext: 'http://www.17ce.com/site/ping',
-				oncommand: "FeiRuoNet_Menu.OpenAction(this.tooltipText, 'url','%HOST%', 'su')",
+				oncommand: "anoBtn.OpenAction(this.tooltipText, 'url','%HOST%', 'su')",
 				image: "http://www.17ce.com/smedia/images/favicon.ico"
 			}, {
 				label: "PingIP(chinaz)",
@@ -187,7 +148,7 @@ var Menus = [ //菜单设置
 				tooltiptext: 'http://who.cndns.com/',
 				image: "http://www.cndns.com/favicon.ico",
 				oncommand: function() {
-					FeiRuoNet_Menu.OpenAction(this.tooltipText, 'textDomain', "%BASEDOMAIN%", 'linkWhois')
+					anoBtn.OpenAction(this.tooltipText, 'textDomain', "%BASEDOMAIN%", 'linkWhois')
 				}
 			}, {
 				label: "Whois(aizhan)",
@@ -225,7 +186,7 @@ var Menus = [ //菜单设置
 				tooltiptext: 'https://www.virustotal.com/#url',
 				image: "https://www.virustotal.com/static/img/favicon.ico",
 				oncommand: function() {
-					FeiRuoNet_Menu.OpenAction(this.tooltipText, 'url', gBrowser.selectedBrowser.currentURI.spec, 'btn-scan-url')
+					anoBtn.OpenAction(this.tooltipText, 'url', gBrowser.selectedBrowser.currentURI.spec, 'btn-scan-url')
 				}
 			}, {
 				label: "WOT Scorecard",
@@ -264,6 +225,10 @@ var Menus = [ //菜单设置
 			}, {
 				label: "相似页面",
 				url: 'http://www.google.com/search?q=related:%URL%'
+			}, {
+				label: "相似页面2",
+				url: 'http://www.similarsitesearch.com/s.php?URL=%URL%&src=bmt',
+				image: "http://www.similarsitesearch.com/favicon.ico"
 			}, {
 				label: "反向链接",
 				url: 'http://www.google.com/search?q=link:%HOST%'
@@ -397,7 +362,7 @@ var Menus = [ //菜单设置
 	}, {
 		label: "整页截图",
 		oncommand: function() {
-			var cont = FeiRuoNet.Content;
+			var cont = window.content || gBrowser.selectedBrowser._contentWindow || gBrowser.selectedBrowser.contentWindowAsCPOW;
 			var canvas = cont.document.createElementNS("http://www.w3.org/1999/xhtml", "canvas");
 			canvas.width = cont.document.documentElement.scrollWidth;
 			canvas.height = cont.document.documentElement.scrollHeight;
