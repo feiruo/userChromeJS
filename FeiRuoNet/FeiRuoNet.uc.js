@@ -23,6 +23,7 @@
 // @note            左键点击图标查看详细信息，中键打开GET/POST界面，右键弹出菜单。
 // @note            更多功能需要【_FeiRuoNet.js】、【_FeiRuoNetMenu.js】、【FeiRuoNetLib.js】、【QQWry.dat】、【ip4.cdb】、【ip6.cdb】、【_FeiRuoNetProxy.json】、【_GFWList.txt】配置文件。
 // @note            仅供个人测试、研究，不得用于商业或非法用途，作者不承担因使用此脚本对自己和他人造成任何形式的损失或伤害之任何责任。
+// @version         0.0.8     2016.08.03 15:30    修改代理机制，兼容其他代理功能扩展脚本(Autoproxy、pan扩展等)。
 // @version         0.0.7     2016.04.11 16:00    优化IP数据库读取缓存机制，国旗和地址使用同源，添加状态提示，自定义图标格式，自定义图标条件。
 // @version         0.0.6     2016.04.09 15:00    菜单部分不再内置，需要Anobtn支持，增加家在状态，优化Tip逻辑，多窗口逻辑，减少资源消耗。
 // @version         0.0.5     2016.03.20 15:00    增加GFWlist支持，优化加速智能代理逻辑，直接监听请求结果，错误直接代理。
@@ -1917,25 +1918,33 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
         onSecurityChange: function(aWebProgress, aRequest, aState) {},
         ProxyFilter: {
             applyFilter: function(ProxySrv, uri, aProxy) {
-                if (!/^(http|https|ftp|wss)$/i.test(uri.scheme)) return null;
-                if (!FeiRuoNet.ProxyMode) return FeiRuoNet.DirectProxy;
-                if (FeiRuoNet.ProxyMode == 2) return FeiRuoNet.ProxyServers[FeiRuoNet.DefaultProxy].ProxyServer;
-                var splttag = uri.spec.indexOf("?"),
-                    match;
-                if (splttag > 20) match = FeiRuoNet.AutoProxy.DefaultMatcher.matchesAny(uri.spec.substring(0, splttag), uri.host);
-                else {
-                    splttag = uri.spec.indexOf("=");
-                    if (splttag > 20) match = FeiRuoNet.AutoProxy.DefaultMatcher.matchesAny(uri.spec.substring(0, splttag), uri.host);
-                    else match = FeiRuoNet.AutoProxy.DefaultMatcher.matchesAny(uri.spec, uri.host);
-                }
-                if (match && !FeiRuoNet.CanNotProxy(match)) return FeiRuoNet.ProxyServers[FeiRuoNet.DefaultProxy].ProxyServer;
-                else return FeiRuoNet.DirectProxy;
+                if (FeiRuoNet.ProxyMode != 0 && /^(http|https|ftp|wss)$/i.test(uri.scheme)) {
+                    if (FeiRuoNet.ProxyMode == 2)
+                        return FeiRuoNet.ProxyServers[FeiRuoNet.DefaultProxy].ProxyServer;
+                    var splttag = uri.spec.indexOf("?"),
+                        match;
+                    if (splttag > 20)
+                        match = FeiRuoNet.AutoProxy.DefaultMatcher.matchesAny(uri.spec.substring(0, splttag), uri.host);
+                    else {
+                        splttag = uri.spec.indexOf("=");
+                        if (splttag > 20) match = FeiRuoNet.AutoProxy.DefaultMatcher.matchesAny(uri.spec.substring(0, splttag), uri.host);
+                        else match = FeiRuoNet.AutoProxy.DefaultMatcher.matchesAny(uri.spec, uri.host);
+                    }
+                    if (match && !FeiRuoNet.CanNotProxy(match))
+                        return FeiRuoNet.ProxyServers[FeiRuoNet.DefaultProxy].ProxyServer;
+                } else
+                    return ProxySrv;
             },
             getFailoverForProxy: function(aProxyInfo, aURI, aReason) {
-                var ProxyServer;
-                if (FeiRuoNet.DefaultProxy != FeiRuoNet.ProxyServers.length) ProxyServer = FeiRuoNet.ProxyServers[FeiRuoNet.DefaultProxy + 1].ProxyServer;
-                else ProxyServer = FeiRuoNet.ProxyServers[0].ProxyServer || ProxySrv.newProxyInfo('direct', '', -1, 0, 0, null) || null;
-                return ProxyServer;
+                if (FeiRuoNet.ProxyMode != 0) {
+                    var ProxyServer;
+                    if (FeiRuoNet.DefaultProxy != FeiRuoNet.ProxyServers.length)
+                        ProxyServer = FeiRuoNet.ProxyServers[FeiRuoNet.DefaultProxy + 1].ProxyServer;
+                    else
+                        ProxyServer = FeiRuoNet.ProxyServers[0].ProxyServer || aProxyInfo || ProxySrv.newProxyInfo('direct', '', -1, 0, 0, null) || null;
+                    return ProxyServer;
+                } else
+                    return aProxyInfo;
             },
         }
     };
