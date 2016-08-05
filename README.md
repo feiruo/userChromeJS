@@ -50,3 +50,9 @@ https://github.com/ywzhaiqi/userChromeJS/tree/master/userChromeJS_Mix.xpi
 		#bookmarks-menu-button > dropmarker {display: none !important;}
 		
 
+#####FeiRuoBackup.uc.js
+- 备份、整合和还原配置文件。
+- 需要在脚本内自行参照示例设置。
+- 暂只支持文本形式文件的备份、整合和还原。
+- FeiRuoBackup.Toggle() 可以实时开启或关闭。
+- 菜单栏 → 工具 → 备份还原文件 可查看启用状态，实时开启或关闭
