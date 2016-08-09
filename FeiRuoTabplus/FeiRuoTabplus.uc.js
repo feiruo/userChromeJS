@@ -14,6 +14,7 @@
 // @homepageURL		https://github.com/feiruo/userChromeJS/tree/master/FeiRuoTabplus
 // @downloadURL		https://github.com/feiruo/userChromeJS/raw/master/FeiRuoTabplus/FeiRuoTabplus.uc.js
 // @note            Begin 	2015-04-01
+// @version      	0.5.4 	2016.08.09	09:20 	地址栏新标签打开兼容FF50，48以上标签，标签栏滚动事件支持。
 // @version      	0.5.3 	2016.03.22	21:00 	Fix loadInBackgroundn & Function;
 // @version      	0.5.2 	2015.05.20	23:00 	Fix bookmarkmenu。
 // @version      	0.5.1 	2015.05.20	23:00 	Fix dead object&GoHome。
@@ -53,13 +54,15 @@
 	}
 
 	var FeiRuoTabplus = {
-		Default_gURLBar: gURLBar.handleCommand.toString().replace("!mayInheritPrincipal", "0").replace("var url = this.value;", "var url = this.value;" + "if(url.indexOf('chromejs:') == 0) return eval(url.slice(9));"),
-		Default_whereToOpenLink: whereToOpenLink.toString(),
-		Default_BookmarksEventHandler: BookmarksEventHandler.onClick.toString(),
-		Default_checkForMiddleClick: checkForMiddleClick.toString(),
-		Default_gBrowser: gBrowser.mTabProgressListener.toString(),
-		Default_openNodeWithEvent: PlacesUIUtils.openNodeWithEvent.toString(),
-		Default_BrowserGoHome: BrowserGoHome.toString(),
+		Default_gURLBar: (gURLBar && gURLBar.handleCommand) ? gURLBar.handleCommand.toString().replace("!mayInheritPrincipal", "0").replace("var url = this.value;", "var url = this.value; if(url.indexOf('chromejs:') == 0) return eval(url.slice(9));") : false,
+		Default_gURLBar_loadURL: (gURLBar && gURLBar._loadURL) ? gURLBar._loadURL.toString().replace("!mayInheritPrincipal", "0").replace("this.value = url;", "this.value = url; if(url.indexOf('chromejs:') == 0) return eval(url.slice(9));") : false,
+		Default_whereToOpenLink: whereToOpenLink ? whereToOpenLink.toString() : false,
+		Default_BookmarksEventHandler: (BookmarksEventHandler && BookmarksEventHandler.onClick) ? BookmarksEventHandler.onClick.toString() : false,
+		Default_checkForMiddleClick: checkForMiddleClick ? checkForMiddleClick.toString() : false,
+		Default_gBrowser: (gBrowser && gBrowser.mTabProgressListener) ? gBrowser.mTabProgressListener.toString() : false,
+		Default_openNodeWithEvent: (PlacesUIUtils && PlacesUIUtils.openNodeWithEvent) ? PlacesUIUtils.openNodeWithEvent.toString() : false,
+		Default_BrowserGoHome: BrowserGoHome ? BrowserGoHome.toString() : false,
+		FireFoxVer: (parseInt(Cc["@mozilla.org/xre/app-info;1"].getService(Ci.nsIXULAppInfo).version.substr(0, 3) * 10, 10) / 10),
 
 		get prefs() {
 			delete this.prefs;
@@ -325,7 +328,7 @@
 
 		loadSetting: function(type) {
 			if (!type || type === "Custom") {
-				var Custom = this.getPrefs(2, "Custom", "1|mTabContainer|dblclick|Tab|0|CloseTargetTab||,1|mTabContainer|click|Tab|2|CloseTargetTab|1|Ctrl,1|mTabContainer|MouseScrollUp|Tab|1|MouseScrollTabL||,1|mTabContainer|MouseScrollDown|Tab|1|MouseScrollTabR||,1|mTabContainer|MouseScrollUp|TabBar|1|MouseScrollTabL||,1|mTabContainer|MouseScrollUp|TabBar|1|MouseScrollTabR||");
+				var Custom = this.getPrefs(2, "Custom", "");
 				if (this.Custom != Custom) {
 					if (this.UCustom)
 						this.CustomListen(false, this.UCustom);
@@ -459,19 +462,31 @@
 				case "NewTabUrlbar":
 					setTimeout(function() {
 						var that = FeiRuoTabplus;
+						var _loadURL = that.Default_gURLBar_loadURL;
 						var OmnibarStatus = that.OmnibarStatus;
 						if (OmnibarStatus) {
 							if (!that.intercepted_handleCommand)
 								that.intercepted_handleCommand = gURLBar.intercepted_handleCommand.toString().replace("!mayInheritPrincipal", "0").replace("var url = this.value;", "var url = this.value;" + "if(url.indexOf('chromejs:') == 0) return eval(url.slice(9));");
 							location == "chrome://browser/content/browser.xul" && eval("gURLBar.intercepted_handleCommand=" + that.intercepted_handleCommand);
 						} else {
-							location == "chrome://browser/content/browser.xul" && eval("gURLBar.handleCommand=" + that.Default_gURLBar);
+							if (!_loadURL)
+								location == "chrome://browser/content/browser.xul" && eval("gURLBar.handleCommand=" + that.Default_gURLBar);
+							else {
+								location == "chrome://browser/content/browser.xul" && eval("gURLBar.handleCommand=" + that.Default_gURLBar);
+								location == "chrome://browser/content/browser.xul" && eval("gURLBar._loadURL=" + that.Default_gURLBar_loadURL);
+							}
 						}
 						if (!val) return;
 						if (OmnibarStatus)
 							location == "chrome://browser/content/browser.xul" && eval("gURLBar.intercepted_handleCommand=" + that.intercepted_handleCommand.replace(/^\s*(load.+);/gm, "if(isTabEmpty(gBrowser.selectedTab) || FeiRuoTabplus.IsInNewTab(0, url, aTriggeringEvent)){loadCurrent();}else{this.handleRevert();gBrowser.loadOneTab(url, {postData: postData, inBackground: false, allowThirdPartyFixup: true});}"));
-						else
-							location == "chrome://browser/content/browser.xul" && eval("gURLBar.handleCommand=" + that.Default_gURLBar.replace(/^\s*(load.+);/gm, "if(isTabEmpty(gBrowser.selectedTab) || FeiRuoTabplus.IsInNewTab(0, url, aTriggeringEvent)){loadCurrent();}else{this.handleRevert();gBrowser.loadOneTab(url, {postData: postData, inBackground: false, allowThirdPartyFixup: true});}"));
+						else {
+							if (!_loadURL)
+								location == "chrome://browser/content/browser.xul" && eval("gURLBar.handleCommand=" + that.Default_gURLBar.replace(/^\s*(load.+);/gm, "if(isTabEmpty(gBrowser.selectedTab) || FeiRuoTabplus.IsInNewTab(0, url, aTriggeringEvent)){loadCurrent();}else{this.handleRevert();gBrowser.loadOneTab(url, {postData: postData, inBackground: false, allowThirdPartyFixup: true});}"));
+							else {
+								location == "chrome://browser/content/browser.xul" && eval("gURLBar.handleCommand=" + that.Default_gURLBar.replace(/^\s*(matchLastLocationChange.+);/gm, "matchLastLocationChange, mayInheritPrincipal,event);"));
+								location == "chrome://browser/content/browser.xul" && eval("gURLBar._loadURL=function _loadURL(url, postData, openUILinkWhere, openUILinkParams, matchLastLocationChange, mayInheritPrincipal,event) {" + that.Default_gURLBar_loadURL.replace(/^function.*{|}$/g, "").replace(/if \(openUILinkWhere != "current"\)/, 'if (openUILinkWhere == "current" && !isTabEmpty(gBrowser.selectedTab) && !FeiRuoTabplus.IsInNewTab(0, url, event)) openUILinkWhere = "tab"; if (openUILinkWhere != "current")') + '}');
+							}
+						}
 					}, 100);
 					break;
 				case "OpenLinkIn":
@@ -557,7 +572,7 @@
 
 				if (action != "click" && action != "dblclick") {
 					btn = action;
-					action = "DOMMouseScroll";
+					action = FeiRuoTabplus.FireFoxVer < 48 ? "DOMMouseScroll" : "wheel";
 				}
 
 				try {
@@ -591,20 +606,21 @@
 		},
 
 		Listener: function(e, tag, btn, command, tkey, keys, CN) {
-			if (btn == 'MouseScrollUp' && e.detail < 0) {
-				if (tag === "Tab" && e.target.localName == "tab")
+			console.log((e.detail || e.deltaY) < 0, btn, e)
+			if (btn == 'MouseScrollUp' && (e.detail || e.deltaY) < 0) {
+				if (tag === "Tab" && (e.target.localName == "tab" || (e.target.localName == "tabs" && !e.target.id)))
 					FeiRuoTabplus.Listen_AidtKey(e, command, tkey, keys, CN);
-				if (tag === 'TabBar' && e.target.localName != "tab")
+				if (tag === 'TabBar' && e.target.localName != "tab" && !!e.target.id)
 					FeiRuoTabplus.Listen_AidtKey(e, command, tkey, keys, CN);
-			} else if (btn == 'MouseScrollDown' && e.detail > 0) {
-				if (tag === "Tab" && e.target.localName == "tab")
+			} else if (btn == 'MouseScrollDown' && (e.detail || e.deltaY) > 0) {
+				if (tag === "Tab" && (e.target.localName == "tab" || (e.target.localName == "tabs" && !e.target.id)))
 					FeiRuoTabplus.Listen_AidtKey(e, command, tkey, keys, CN);
-				if (tag === 'TabBar' && e.target.localName != "tab")
+				if (tag === 'TabBar' && e.target.localName != "tab" && !!e.target.id)
 					FeiRuoTabplus.Listen_AidtKey(e, command, tkey, keys, CN);
 			} else {
-				if (tag === "Tab" && e.target.localName == "tab" && e.button == btn)
+				if (tag === "Tab" && (e.target.localName == "tab" || (e.target.localName == "tabs" && !e.target.id)) && e.button == btn)
 					FeiRuoTabplus.Listen_AidtKey(e, command, tkey, keys, CN);
-				if (tag === 'TabBar' && e.target.localName != "tab" && e.button == btn)
+				if (tag === 'TabBar' && e.target.localName != "tab" && !!e.target.id && e.button == btn)
 					FeiRuoTabplus.Listen_AidtKey(e, command, tkey, keys, CN);
 			}
 		},
@@ -990,182 +1006,12 @@
 					uriObj = Services.io.newURI(url, null, null);
 				} catch (e) {}
 			}
-
-			if (where == "current" && w.gBrowser.selectedTab.pinned &&
-				!aAllowPinnedTabHostChange) {
+			// if (where == "current" && (!w.isTabEmpty(w.gBrowser.selectedTab) || w.gBrowser.selectedTab.pinned) && !aAllowPinnedTabHostChange) {
+			if (where == "current" && w.gBrowser.selectedTab.pinned && !aAllowPinnedTabHostChange) {
 				try {
 					// nsIURI.host can throw for non-nsStandardURL nsIURIs.
-					if (!uriObj || (!uriObj.schemeIs("javascript") &&
-							w.gBrowser.currentURI.host != uriObj.host)) {
-						where = "tab";
-						loadInBackground = false;
-					}
-				} catch (err) {
-					where = "tab";
-					loadInBackground = false;
-				}
-			}
-
-			// Raise the target window before loading the URI, since loading it may
-			// result in a new frontmost window (e.g. "javascript:window.open('');").
-			w.focus();
-
-			switch (where) {
-				case "current":
-					let flags = Ci.nsIWebNavigation.LOAD_FLAGS_NONE;
-
-					if (aAllowThirdPartyFixup) {
-						flags |= Ci.nsIWebNavigation.LOAD_FLAGS_ALLOW_THIRD_PARTY_FIXUP;
-						flags |= Ci.nsIWebNavigation.LOAD_FLAGS_FIXUP_SCHEME_TYPOS;
-					}
-
-					// LOAD_FLAGS_DISALLOW_INHERIT_OWNER isn't supported for javascript URIs,
-					// i.e. it causes them not to load at all. Callers should strip
-					// "javascript:" from pasted strings to protect users from malicious URIs
-					// (see stripUnsafeProtocolOnPaste).
-					if (aDisallowInheritPrincipal && !(uriObj && uriObj.schemeIs("javascript")))
-						flags |= Ci.nsIWebNavigation.LOAD_FLAGS_DISALLOW_INHERIT_OWNER;
-
-					w.gBrowser.loadURIWithFlags(url, {
-						flags: flags,
-						referrerURI: aNoReferrer ? null : aReferrerURI,
-						referrerPolicy: aReferrerPolicy,
-						postData: aPostData,
-					});
-					break;
-				case "tabshifted":
-					loadInBackground = !loadInBackground;
-					// fall through
-				case "tab":
-					w.gBrowser.loadOneTab(url, {
-						referrerURI: aReferrerURI,
-						referrerPolicy: aReferrerPolicy,
-						charset: aCharset,
-						postData: aPostData,
-						inBackground: loadInBackground,
-						allowThirdPartyFixup: aAllowThirdPartyFixup,
-						relatedToCurrent: aRelatedToCurrent,
-						skipAnimation: aSkipTabAnimation,
-						allowMixedContent: aAllowMixedContent,
-						noReferrer: aNoReferrer
-					});
-					break;
-			}
-
-			w.gBrowser.selectedBrowser.focus();
-
-			if (!loadInBackground && w.isBlankPageURL(url)) {
-				w.focusAndSelectUrlBar();
-			}
-		},
-
-		openLinkIn: function(url, where, params) {
-			if (!where || !url)
-				return;
-			const Cc = Components.classes;
-			const Ci = Components.interfaces;
-
-			var aFromChrome = params.fromChrome;
-			var aAllowThirdPartyFixup = params.allowThirdPartyFixup;
-			var aPostData = params.postData;
-			var aCharset = params.charset;
-			var aReferrerURI = params.referrerURI;
-			var aReferrerPolicy = ('referrerPolicy' in params ?
-				params.referrerPolicy : Ci.nsIHttpChannel.REFERRER_POLICY_DEFAULT);
-			var aRelatedToCurrent = params.relatedToCurrent;
-			var aAllowMixedContent = params.allowMixedContent;
-			var aInBackground = params.inBackground;
-			var aDisallowInheritPrincipal = params.disallowInheritPrincipal;
-			var aInitiatingDoc = params.initiatingDoc;
-			var aIsPrivate = params.private;
-			var aSkipTabAnimation = params.skipTabAnimation;
-			var aAllowPinnedTabHostChange = !!params.allowPinnedTabHostChange;
-			var aNoReferrer = params.noReferrer;
-
-			if (where == "save") {
-				if (!aInitiatingDoc) {
-					Components.utils.reportError("openUILink/openLinkIn was called with " +
-						"where == 'save' but without initiatingDoc.  See bug 814264.");
-					return;
-				}
-				// TODO(1073187): propagate referrerPolicy.
-				saveURL(url, null, null, true, null, aNoReferrer ? null : aReferrerURI, aInitiatingDoc);
-				return;
-			}
-
-			var w = getTopWin();
-			if ((where == "tab" || where == "tabshifted") &&
-				w && !w.toolbar.visible) {
-				w = getTopWin(true);
-				aRelatedToCurrent = false;
-			}
-
-			if (!w || where == "window") {
-				// This propagates to window.arguments.
-				var sa = Cc["@mozilla.org/supports-array;1"].
-				createInstance(Ci.nsISupportsArray);
-
-				var wuri = Cc["@mozilla.org/supports-string;1"].
-				createInstance(Ci.nsISupportsString);
-				wuri.data = url;
-
-				let charset = null;
-				if (aCharset) {
-					charset = Cc["@mozilla.org/supports-string;1"]
-						.createInstance(Ci.nsISupportsString);
-					charset.data = "charset=" + aCharset;
-				}
-
-				var allowThirdPartyFixupSupports = Cc["@mozilla.org/supports-PRBool;1"].
-				createInstance(Ci.nsISupportsPRBool);
-				allowThirdPartyFixupSupports.data = aAllowThirdPartyFixup;
-
-				var referrerURISupports = null;
-				if (aReferrerURI && !aNoReferrer) {
-					referrerURISupports = Cc["@mozilla.org/supports-string;1"].
-					createInstance(Ci.nsISupportsString);
-					referrerURISupports.data = aReferrerURI.spec;
-				}
-
-				var referrerPolicySupports = Cc["@mozilla.org/supports-PRUint32;1"].
-				createInstance(Ci.nsISupportsPRUint32);
-				referrerPolicySupports.data = aReferrerPolicy;
-
-				sa.AppendElement(wuri);
-				sa.AppendElement(charset);
-				sa.AppendElement(referrerURISupports);
-				sa.AppendElement(aPostData);
-				sa.AppendElement(allowThirdPartyFixupSupports);
-				sa.AppendElement(referrerPolicySupports);
-
-				let features = "chrome,dialog=no,all";
-				if (aIsPrivate) {
-					features += ",private";
-				}
-
-				Services.ww.openWindow(w || window, getBrowserURL(), null, features, sa);
-				return;
-			}
-
-			let loadInBackground = where == "current" ? false : aInBackground;
-			if (loadInBackground == null) {
-				loadInBackground = aFromChrome ?
-					false :
-					getBoolPref("browser.tabs.loadInBackground");
-			}
-
-			let uriObj;
-			if (where == "current") {
-				try {
-					uriObj = Services.io.newURI(url, null, null);
-				} catch (e) {}
-			}
-
-			if (where == "current" && (!w.isTabEmpty(w.gBrowser.selectedTab) || w.gBrowser.selectedTab.pinned) &&
-				!aAllowPinnedTabHostChange) {
-				try {
-					// nsIURI.host can throw for non-nsStandardURL nsIURIs.
-					if (!uriObj || (!uriObj.schemeIs("javascript"))) {
+					// if (!uriObj || (!uriObj.schemeIs("javascript"))) {
+					if (!uriObj || (!uriObj.schemeIs("javascript") && w.gBrowser.currentURI.host != uriObj.host)) {
 						where = "tab";
 						loadInBackground = false;
 					}
