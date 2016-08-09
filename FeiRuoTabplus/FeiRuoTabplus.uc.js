@@ -606,7 +606,6 @@
 		},
 
 		Listener: function(e, tag, btn, command, tkey, keys, CN) {
-			console.log((e.detail || e.deltaY) < 0, btn, e)
 			if (btn == 'MouseScrollUp' && (e.detail || e.deltaY) < 0) {
 				if (tag === "Tab" && (e.target.localName == "tab" || (e.target.localName == "tabs" && !e.target.id)))
 					FeiRuoTabplus.Listen_AidtKey(e, command, tkey, keys, CN);
