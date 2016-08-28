@@ -1798,11 +1798,14 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
             gURLBar.classList.remove('FeiRuoNetSSLlow');
             gURLBar.classList.remove('FeiRuoNetSSLbroken');
             if (!records || !FeiRuoNet.UrlbarSafetyLevel) return;
-            var className = records[0].target.className;
-            if (className.match(/mixed/)) return gURLBar.classList.add('FeiRuoNetSSLbroken');
-            if (className.match(/weakCipher/)) return gURLBar.classList.add('FeiRuoNetSSLlow');
-            else if (className == "verifiedDomain") return gURLBar.classList.add('FeiRuoNetSSLmid');
-            else if (className == "verifiedIdentity") return gURLBar.classList.add('FeiRuoNetSSLhigh');
+            var cls = "",
+                classList = records[0].target.classList;
+            if (classList.contains("mixedDisplayContent")) cls = "FeiRuoNetSSLbroken";
+            if (classList.contains("weakCipher")) cls = "FeiRuoNetSSLlow";
+            // if (classList.contains("verifiedDomain") || classList.contains("grantedPermissions")) cls = "FeiRuoNetSSLmid";
+            if (classList.contains("verifiedDomain")) cls = "FeiRuoNetSSLmid";
+            if (classList.contains("verifiedIdentity")) cls = "FeiRuoNetSSLhigh";
+            cls && gURLBar.classList.add(cls);
         },
         UAIndex: function(url) {
             if (!FeiRuoNet.EnableUAChanger || !url || !FeiRuoNet.UARules) return;
