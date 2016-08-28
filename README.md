@@ -43,11 +43,13 @@ https://github.com/ywzhaiqi/userChromeJS/tree/master/userChromeJS_Mix.xpi
 - userChromeJS.starClickMod.isLastFolder; 是否自动定位到上次使用的文件夹
 
 #####StarUrlicon.uc.js
-- 新版UI移动整个书签按钮到地址栏；
-- 添加右键 显示/隐藏 书签侧栏，中键删除当前页面书签；
-- 推荐和bookmarkBtn.uc.js同时使用，并使用CSS：
+- UI移动整个书签按钮到地址栏；
+- 推荐和bookmarkBtn.uc.js同时使用
+- 有以下 about:config 开关参数；
+userChromeJS.StarUrlicon.Assistant    //右键 显示/隐藏 书签侧栏，中键删除当前页面书签
+userChromeJS.StarUrlicon.CSS    //自带的css样式
+userChromeJS.StarUrlicon.Dropmarker    //隐藏Dropmarker
 
-		#bookmarks-menu-button > dropmarker {display: none !important;}
 		
 
 #####FeiRuoBackup.uc.js
