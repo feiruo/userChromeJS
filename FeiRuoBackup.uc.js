@@ -78,13 +78,15 @@
 					FileData = JSON.parse(FileData || '{"nextId": 1,"logins": [],"disabledHosts": [],"version": 1}');
 					BackData = JSON.parse(BackData || '{"nextId": 1,"logins": [],"disabledHosts": [],"version": 1}');
 					var NextId = FileData.nextId > BackData.nextId ? FileData.nextId : (BackData.nextId || FileData.nextId);
-					var Logins = FeiRuoBackup.CheckDuplicate(FileData.logins.concat(BackData.logins));
-					var DisabledHosts = FeiRuoBackup.CheckDuplicate(FileData.disabledHosts.concat(BackData.disabledHosts));
+					var Logins = FileData.logins || BackData.logins || [];
+					FileData.logins && (Logins = FeiRuoBackup.CheckDuplicate(FileData.logins.concat(BackData.logins)));
+					var DisabledHosts = FileData.disabledHosts || BackData.disabledHosts || [];
+					FileData.disabledHosts && (DisabledHosts = FeiRuoBackup.CheckDuplicate(FileData.disabledHosts.concat(BackData.disabledHosts)));
 					return JSON.stringify({
 						nextId: NextId,
 						logins: Logins,
 						disabledHosts: DisabledHosts,
-						version: 1
+						version: FileData.version || 1
 					});
 				}
 			}
@@ -141,7 +143,7 @@
 				var Rule = this.BackList[i];
 
 				OrgFile = FileUtils.getFile(Rule.Path, [Rule.File]);
-				BackFile = FileUtils.getFile("UChrm", ["lib", Rule.File]);
+				BackFile = FileUtils.getFile("UChrm", ["Backups", Rule.File]);
 
 				FileData = this.LoadFile(OrgFile, Rule.Type, Rule.ReadFunc);
 				BackData = this.LoadFile(BackFile, Rule.Type, Rule.ReadFunc);
