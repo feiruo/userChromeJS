@@ -13,6 +13,7 @@
 // @homepageURL		https://github.com/feiruo/userchromejs/
 // @downloadURL		https://github.com/feiruo/userChromeJS/blob/master/bookmarkBtn.uc.js
 // @note			可移动书签菜单按钮。
+// @version			0.3 	2016.08.24 16:00	随Firefox版本更新;
 // @version			0.2 	2015.04.18 10:00	随Firefox版本更新;
 // @version			0.1
 // ==/UserScript==
@@ -163,19 +164,20 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 			let menupopup = $C("menupopup", {
 				id: "BookmarkBtn_Popup",
 				//class: "cui-widget-panel cui-widget-panelview cui-widget-panelWithFooter PanelUI-subView",
-				placespopup: "true",
+				placespopup: true,
 				context: "placesContext",
 				openInTabs: "children",
 				oncommand: "BookmarksEventHandler.onCommand(event, this.parentNode._placesView);",
 				onclick: "BookmarksEventHandler.onClick(event, this.parentNode._placesView);",
-				onpopupshowing: "BookmarkingUI.onPopupShowing(event); BookmarkingUI.attachPlacesView(event, this);",
+				onpopupshowing: "BookmarkingUI.onPopupShowing(event);BookmarkingUI.attachPlacesView(event, this);",
 				tooltip: "bhTooltip",
 				popupsinherittooltip: "true",
 				flip: "both",
 				side: "top",
 				position: "bottomcenter topright",
+				style: "",
 				arrowposition: "after_end",
-				disablepointereventsfortransition: "false"
+				disablepointereventsfortransition: "false",
 			});
 
 			menupopup.appendChild($C("menuitem", {
@@ -194,23 +196,23 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 
 			menupopup.appendChild($C("menuseparator"));
 
-			menupopup.appendChild($C("menuitem", {
-				id: "BMB_subscribeToPageMenuitem",
-				class: "menuitem-iconic subviewbutton",
-				oncommand: "return FeedHandler.subscribeToFeed(null, event);",
-				onClick: "checkForMiddleClick(this, event);",
-				observes: "singleFeedMenuitemState",
-				label: $('BMB_subscribeToPageMenuitem').label,
-			}));
+			// menupopup.appendChild($C("menuitem", {
+			// 	id: "BMB_subscribeToPageMenuitem",
+			// 	class: "menuitem-iconic subviewbutton",
+			// 	oncommand: "return FeedHandler.subscribeToFeed(null, event);",
+			// 	onClick: "checkForMiddleClick(this, event);",
+			// 	observes: "singleFeedMenuitemState",
+			// 	label: $('BMB_subscribeToPageMenuitem').label,
+			// }));
 
-			menupopup.appendChild($C("menu", {
-				id: "BMB_subscribeToPageMenupopup",
-				class: "menu-iconic subviewbutton",
-				observes: "multipleFeedsMenuState",
-				label: $('BMB_subscribeToPageMenupopup').label,
-			}));
+			// menupopup.appendChild($C("menu", {
+			// 	id: "BMB_subscribeToPageMenupopup",
+			// 	class: "menu-iconic subviewbutton",
+			// 	observes: "multipleFeedsMenuState",
+			// 	label: $('BMB_subscribeToPageMenupopup').label,
+			// }));
 
-			menupopup.appendChild($C("menuseparator"));
+			// menupopup.appendChild($C("menuseparator"));
 
 			menupopup.appendChild(this.AC($C("menu", {
 				id: "BMB_bookmarksToolbar",
@@ -247,23 +249,19 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
 
 			menupopup.appendChild($C("menuseparator"));
 
-			menupopup.appendChild(this.AC($C("menu", {
-				id: "BMB_readingList",
-				class: "menu-iconic bookmark-item subviewbutton",
-				label: $('BMB_readingList').label,
-				container: "true",
-			}), this.AC($C("menupopup", {
-				id: "BMB_readingListPopup",
-				onpopupshowing: "ReadingListUI.onReadingListPopupShowing(this);",
-				placespopup: "true",
-			}), $C("menuitem", {
-				id: "BMB_viewReadingListSidebar",
-				//class: "subviewbutton panel-subview-footer",
-				oncommand: "SidebarUI.show('readingListSidebar');",
-				label: $('BMB_viewReadingListSidebar').label,
-			}))));
+			// menupopup.appendChild(this.AC(
+			// 	, this.AC($C("menupopup", {
+			// 	id: "BMB_readingListPopup",
+			// 	onpopupshowing: "ReadingListUI.onReadingListPopupShowing(this);",
+			// 	placespopup: "true",
+			// }), $C("menuitem", {
+			// 	id: "BMB_viewReadingListSidebar",
+			// 	//class: "subviewbutton panel-subview-footer",
+			// 	oncommand: "SidebarUI.show('readingListSidebar');",
+			// 	label: $('BMB_viewReadingListSidebar').label,
+			// }))));
 
-			menupopup.appendChild($C("menuseparator"));
+			// menupopup.appendChild($C("menuseparator"));
 
 			/*===================================================*/
 			menupopup.appendChild($C("menuseparator", {
