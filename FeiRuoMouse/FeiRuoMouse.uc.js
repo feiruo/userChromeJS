@@ -17,6 +17,7 @@
 // @downloadURL     https://github.com/feiruo/userChromeJS/raw/master/FeiRuoMouse/FeiRuoMouse.uc.js
 // @note            Begin 2015.04.23
 // @note            手势与拖拽。
+// @version         0.1.4   2016.10.13  20:30   Fix object embed and contains。
 // @version         0.1.3   2016.05.08  14:30   Fix assist keys rlues,add "Any" and assist keys for Ges。
 // @version         0.1.2.2 2016.05.07  17:00   Fix assist Keys。
 // @version         0.1.2.1 2016.04.23  17:00   Fix Ges disable on some page ex http://news.qq.com/a/20160423/019405.htm。
@@ -497,7 +498,7 @@
 				case "mousedown":
 					if (gInPrintPreviewMode) return;
 					if (event.target instanceof HTMLCanvasElement && event.target.parentNode instanceof Ci.nsIDOMXULElement) return;
-					// if (/object|embed/i.test(event.target.localName)) return;
+					if (/^(object|embed)$/i.test(event.target.localName)) return;
 					// if (/scrollbarbutton|slider|thumb/i.test(event.originalTarget.localName)) return;
 					if (event.button == FeiRuoMouse.GesIngBtn) {
 						event.preventDefault();
@@ -647,9 +648,9 @@
 						event.stopPropagation();
 						that.lastPoint = "";
 						var type;
-						if (event.dataTransfer.types.contains("application/x-moz-file-promise-url"))
+						if (this.contains(event.dataTransfer.types, "application/x-moz-file-promise-url"))
 							type = "Image";
-						else if (event.dataTransfer.types.contains("text/x-moz-url"))
+						else if (this.contains(event.dataTransfer.types, "text/x-moz-url"))
 							type = "Url";
 						else
 							type = "Text";
@@ -745,7 +746,7 @@
 				obj = this[Rlue + "_Any"];
 				if (obj) obj = obj[EventKey || "Org"];
 			}
-			console.log(obj)
+			//console.log(obj)
 			if (!obj)
 				return this.ActionStaus(event, dChain);
 
@@ -826,10 +827,10 @@
 			var drag = event.dataTransfer;
 			if (!drag) return "";
 			var type = {};
-			if (drag.types.contains("application/x-moz-file-promise-url")) {
+			if (this.contains(drag.types, "application/x-moz-file-promise-url")) {
 				type.en = "Image";
 				type.cn = "图片";
-			} else if (drag.types.contains("text/x-moz-url")) {
+			} else if (this.contains(drag.types, "text/x-moz-url")) {
 				type.en = "Url";
 				type.cn = "链接";
 			} else {
@@ -1201,6 +1202,16 @@
 		},
 
 		/*****************************************************************************************/
+		contains: function(arr, obj) {
+			var index = arr.length;
+			while (index--) {
+				if (arr[index] === obj) {
+					return true;
+				}
+			}
+			return false;
+		},
+
 		obj2str: function(o) {
 			var r = [];
 			if (typeof o == 'string')
