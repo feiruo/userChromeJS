@@ -23,6 +23,7 @@
 // @note            左键点击图标查看详细信息，中键打开GET/POST界面，右键弹出菜单。
 // @note            更多功能需要【_FeiRuoNet.js】、【_FeiRuoNetMenu.js】、【FeiRuoNetLib.js】、【QQWry.dat】、【ip4.cdb】、【ip6.cdb】、【_FeiRuoNetProxy.json】、【_GFWList.txt】配置文件。
 // @note            仅供个人测试、研究，不得用于商业或非法用途，作者不承担因使用此脚本对自己和他人造成任何形式的损失或伤害之任何责任。
+// @version         0.0.9     2016.10.13 20:30    Fix for more。
 // @version         0.0.8     2016.08.03 15:30    修改代理机制，兼容其他代理功能扩展脚本(Autoproxy、pan扩展等)。
 // @version         0.0.7     2016.04.11 16:00    优化IP数据库读取缓存机制，国旗和地址使用同源，添加状态提示，自定义图标格式，自定义图标条件。
 // @version         0.0.6     2016.04.09 15:00    菜单部分不再内置，需要Anobtn支持，增加家在状态，优化Tip逻辑，多窗口逻辑，减少资源消耗。
@@ -389,11 +390,10 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
             }
             var aLocation = FeiRuoNet.CurrentURI,
                 TipShow = FeiRuoNet.TipShow,
-                ConvertStr = FeiRuoNet.ConvertStr(aLocation.scheme);
-            if (!ConvertStr) {
+                conv = FeiRuoNet.ConvStr(aLocation.scheme);
+            if (!conv) {
                 var host = aLocation.asciiHostPort || aLocation.HostPort || aLocation.hostPort || aLocation.host;
                 var obj = FeiRuoNet.Caches.Query[host] || {};
-                if (obj.Unknown && obj.Unknown !== "") addLabeledLine(obj.Unknown);
                 if (obj.Host && obj.Host != obj.IP) addLabeledLine(TipShow.Host, host);
                 addLabeledLine(TipShow.IP, obj.IP);
                 var ServerInfo = FeiRuoNet.GetHeaders(host);
@@ -433,7 +433,7 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
                 }
             } else {
                 addLabeledLine(TipShow.Host, aLocation.spec);
-                addLabeledLine(ConvertStr.str);
+                addLabeledLine(conv.str);
             }
             grid.appendChild(rows);
             FeiRuoNet.Tooltip.appendChild(grid);
@@ -1050,7 +1050,16 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
             FeiRuoNet.AutoProxy.FilterIsReady = true;
         },
         /*****************************************************************************************/
-        ConvertStr: function(str, host) {
+        contains: function(arr, obj) {
+            var index = arr.length;
+            while (index--) {
+                if (arr[index] === obj) {
+                    return true;
+                }
+            }
+            return false;
+        },
+        ConvStr: function(str, host) {
             switch (true) {
                 case null:
                 case /^(Unknown|0|iana|-\?\?)$/i.test(str):
@@ -1078,7 +1087,8 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
                         src: this.LocahHost_Flag,
                         str: '回送地址：本机[服务器]'
                     };
-                case /^(LAN|-A|-B|-C|192\.168\.|169\.254\.)/i.test(str):
+                    // case /^(LAN|-A|-B|-C)|^(10|172|192)\.([0-1][0-9]{0,2}|[2][0-5]{0,2}|[3-9][0-9]{0,1})\.([0-1][0-9]{0,2}|[2][0-5]{0,2}|[3-9][0-9]{0,1})\.([0-1][0-9]{0,2}|[2][0-5]{0,2}|[3-9][0-9]{0,1})/i.test(str):
+                case /^(LAN|-A|-B|-C)|^((192\.168|172\.([1][6-9]|[2]\d|3[01]))(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){2}|10(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){3})$/i.test(str):
                     return {
                         src: this.LAN_Flag,
                         str: '本地局域网服务器'
@@ -1726,6 +1736,48 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
                     break;
             }
         },
+        loadContextGoodies: function(httpChannel) {
+            //httpChannel must be the subject of http-on-modify-request QI'ed to nsiHTTPChannel as is done on line 8 "httpChannel = subject.QueryInterface(Ci.nsIHttpChannel);"
+            //start loadContext stuff
+            var loadContext;
+            try {
+                var interfaceRequestor = httpChannel.notificationCallbacks.QueryInterface(Ci.nsIInterfaceRequestor);
+                //var DOMWindow = interfaceRequestor.getInterface(Components.interfaces.nsIDOMWindow); //not to be done anymore because: [url]https://developer.mozilla.org/en-US/docs/Updating_extensions_for_Firefox_3.5#Getting_a_load_context_from_a_request[/url] //instead do the loadContext stuff below
+                try {
+                    loadContext = interfaceRequestor.getInterface(Ci.nsILoadContext);
+                } catch (ex) {
+                    try {
+                        loadContext = subject.loadGroup.notificationCallbacks.getInterface(Ci.nsILoadContext);
+                    } catch (ex2) {}
+                }
+            } catch (ex0) {}
+
+            //no load context so dont do anything although you can run this, which is your old code
+            //this probably means that its loading an ajax call or like a google ad thing
+            if (!loadContext) return null;
+
+            var contentWindow = loadContext.associatedWindow;
+            //this channel does not have a window, its probably loading a resource
+            //this probably means that its loading an ajax call or like a google ad thing
+            if (!contentWindow) return null;
+            var aDOMWindow = contentWindow.top.QueryInterface(Ci.nsIInterfaceRequestor)
+                .getInterface(Ci.nsIWebNavigation)
+                .QueryInterface(Ci.nsIDocShellTreeItem)
+                .rootTreeItem
+                .QueryInterface(Ci.nsIInterfaceRequestor)
+                .getInterface(Ci.nsIDOMWindow);
+            var gBrowser = aDOMWindow.gBrowser;
+            var aTab = gBrowser._getTabForContentWindow(contentWindow.top); //this is the clickable tab xul element, the one found in the tab strip of the firefox window, aTab.linkedBrowser is same as browser var above //can stylize tab like aTab.style.backgroundColor = 'blue'; //can stylize the tab like aTab.style.fontColor = 'red';
+            var browser = aTab.linkedBrowser; //this is the browser within the tab //this is where the example in the previous section ends
+            return {
+                aDOMWindow: aDOMWindow,
+                gBrowser: gBrowser,
+                aTab: aTab,
+                browser: browser,
+                contentWindow: contentWindow
+            };
+            //end loadContext stuff
+        },
         NetStatus: function(request, context, status) {
             // console.log(request, context, status)
             if ((status & 0xff0000) === 0x5a0000) {
@@ -1800,11 +1852,11 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
             if (!records || !FeiRuoNet.UrlbarSafetyLevel) return;
             var cls = "",
                 classList = records[0].target.classList;
-            if (classList.contains("mixedDisplayContent")) cls = "FeiRuoNetSSLbroken";
-            if (classList.contains("weakCipher")) cls = "FeiRuoNetSSLlow";
+            if (FeiRuoNet.contains(classList, "mixedDisplayContent") || FeiRuoNet.contains(classList, "mixedActiveContent")) cls = "FeiRuoNetSSLbroken";
+            if (FeiRuoNet.contains(classList, "weakCipher")) cls = "FeiRuoNetSSLlow";
             // if (classList.contains("verifiedDomain") || classList.contains("grantedPermissions")) cls = "FeiRuoNetSSLmid";
-            if (classList.contains("verifiedDomain")) cls = "FeiRuoNetSSLmid";
-            if (classList.contains("verifiedIdentity")) cls = "FeiRuoNetSSLhigh";
+            if (FeiRuoNet.contains(classList, "verifiedDomain")) cls = "FeiRuoNetSSLmid";
+            if (FeiRuoNet.contains(classList, "verifiedIdentity")) cls = "FeiRuoNetSSLhigh";
             cls && gURLBar.classList.add(cls);
         },
         UAIndex: function(url) {
@@ -1859,8 +1911,9 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
             return true;
         },
         AdjustUserAgent: function(aSubject) {
-            var aChannel = aSubject.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIWebNavigation).QueryInterface(Ci.nsIDocShell).currentDocumentChannel;
-            if (!aChannel || !(aChannel instanceof Ci.nsIHttpChannel)) return;
+            var aChannel;
+            if (aSubject) aChannel = aSubject.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIWebNavigation).QueryInterface(Ci.nsIDocShell).currentDocumentChannel;
+            if (!aChannel || !(aChannel instanceof Ci.nsIHttpChannel)) return false;
             var navigator = aSubject.navigator;
             var userAgent = aChannel.getRequestHeader('User-Agent') || null;
             if (userAgent && navigator.userAgent != userAgent) {
@@ -1883,6 +1936,7 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
                     enumerable: true
                 });
             }
+            return true;
         },
         UaAppVersion: function(idx) {
             if (!idx) return;
@@ -1897,15 +1951,42 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
         },
         getPlatformString: function(userAgent) {
             if (!userAgent) return;
-            var platform = "";
-            var lowerUserAgent = userAgent.toLowerCase();
-            if (lowerUserAgent.indexOf("windows") > -1) platform = "Win32";
-            else if (lowerUserAgent.indexOf("android") > -1) platform = "Linux armv7l";
-            else if (lowerUserAgent.indexOf("linux") > -1) platform = "Linux i686";
-            else if (lowerUserAgent.indexOf("iphone") > -1) platform = "iPhone";
-            else if (lowerUserAgent.indexOf("ipad") > -1) platform = "iPad";
-            else if (lowerUserAgent.indexOf("mac os x") > -1) platform = "MacIntel";
-            return platform;
+            var p = "";
+            var s = userAgent.toLowerCase();
+            switch (true) {
+                case s.indexOf("Win64") > -1:
+                    p = "Win64";
+                    break;
+                case s.indexOf("windows") > -1:
+                    p = "Win32";
+                    break;
+                case s.indexOf("android") > -1:
+                    p = "Linux armv7l";
+                    break;
+                case s.indexOf("linux") > -1:
+                    p = "Linux i686";
+                    break;
+                case s.indexOf("iphone") > -1:
+                    p = "iPhone";
+                    break;
+                case s.indexOf("ipad") > -1:
+                    p = "iPad";
+                    break;
+                case s.indexOf("ipad") > -1:
+                    p = "iPad";
+                    break;
+                case s.indexOf("mac os x") > -1:
+                    p = "MacIntel";
+                    break;
+            }
+            // if (s.indexOf("windows") > -1) p = "Win32";
+            // else if (s.indexOf("Win64") > -1) p = "Win64";
+            // else if (s.indexOf("android") > -1) p = "Linux armv7l";
+            // else if (s.indexOf("linux") > -1) p = "Linux i686";
+            // else if (s.indexOf("iphone") > -1) p = "iPhone";
+            // else if (s.indexOf("ipad") > -1) p = "iPad";
+            // else if (s.indexOf("mac os x") > -1) p = "MacIntel";
+            return p;
         },
         onLocationChange: function(aProgress, aRequest, aURI, aFlags) {
             FeiRuoNet.ShowFlag.LocationChange(null, aURI);
@@ -1974,9 +2055,9 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
             var scheme = aLocation.scheme || (aLocation.protocol && aLocation.protocol.substring(0, aLocation.protocol.length - 1)),
                 hostname = aLocation.asciiHost || aLocation.hostname;
             scheme = /^(about:blank)$/i.test(aLocation.spec) ? 'blank' : scheme;
-            if (FeiRuoNet.ConvertStr(scheme)) return this.ChangeIcon(scheme);
+            if (FeiRuoNet.ConvStr(scheme)) return this.LoadIcon(scheme);
             if (!hostname) return this.ChangeIcon(FeiRuoNet.Unknown_Flag);
-            if (!window.navigator.onLine) return this.ChangeIcon('offline');
+            if (!window.navigator.onLine) return this.LoadIcon('offline');
             var host = aLocation.asciiHostPort || aLocation.HostPort || aLocation.hostPort || aLocation.host;
             FeiRuoNet.Caches.Query[host] || (FeiRuoNet.Caches.Query[host] = {});
             FeiRuoNet.Caches.Query[host].Host = hostname;
@@ -2023,10 +2104,10 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
             this.SameHostHandle(host);
             FeiRuoNet.Caches.IPInfo[FeiRuoNet.Caches.Query[host].IP] || (FeiRuoNet.Caches.IPInfo[FeiRuoNet.Caches.Query[host].IP] = {});
             FeiRuoNet.Caches.HostInfo[FeiRuoNet.Caches.Query[host].Host] || (FeiRuoNet.Caches.HostInfo[FeiRuoNet.Caches.Query[host].Host] = {});
-            var ConvertStr = FeiRuoNet.ConvertStr(ip);
-            if (!ip || ConvertStr) {
-                FeiRuoNet.Caches.Query[host].IPAddrInfo = ConvertStr.str;
-                return this.ChangeIcon(ConvertStr.src || FeiRuoNet.LocahHost_Flag);
+            var ConvStr = FeiRuoNet.ConvStr(ip);
+            if (!ip || ConvStr) {
+                FeiRuoNet.Caches.Query[host].IPAddrInfo = ConvStr.str;
+                return this.ChangeIcon(ConvStr.src || FeiRuoNet.LocahHost_Flag);
             }
             FeiRuoNet.Caches.Query[host].IsProxy && FeiRuoNet.icon.classList.add('Proxy');
             FeiRuoNet.Caches.Query[host].IsError && FeiRuoNet.icon.classList.add('Error');
@@ -2055,7 +2136,7 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
         },
         /*****************************************************************************************/
         LookUp_Flag: function(checkCache, host) {
-            if (checkCache && FeiRuoNet.Caches.Query[host].FlagHash) return this.ChangeIcon(FeiRuoNet.Caches.Query[host].FlagHash);
+            if (checkCache && FeiRuoNet.Caches.Query[host].FlagHash) return this.LoadIcon(FeiRuoNet.Caches.Query[host].FlagHash);
             if (FeiRuoNet.DataBase.QQwryDate.IsReady) return;
             if (FeiRuoNet.DataBase.FlagFoxDB.IsReady) {
                 var IP = FeiRuoNet.Caches.Query[host].IP;
@@ -2088,7 +2169,7 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
             if (checkCache && FeiRuoNet.Caches.Query[host].IPAddrInfoHash) return;
             if (FeiRuoNet.DataBase.QQwryDate.IsReady) {
                 var Code, IPAddrInfo = FeiRuoNet.DataBase.QQwryDate.SearchIP(FeiRuoNet.Caches.Query[host].IP);
-                if (FeiRuoNet.ConvertStr(IPAddrInfo.Country)) {
+                if (FeiRuoNet.ConvStr(IPAddrInfo.Country)) {
                     Code = IPAddrInfo.Country;
                 } else {
                     var Code, CountryName = FeiRuoNet.DataBase.CountryName;
@@ -2204,7 +2285,7 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
                 }
             }, error => {
                 if (type == "Flag" || type == "All") this.UpdateIcon(host, this.Unknown);
-                FeiRuoNet.Caches.Query[host].Unknown = '无法获取国家代码，请刷新！';
+                // FeiRuoNet.Caches.Query[host].Unknown = '无法获取国家代码，请刷新！';
             });
         },
         /*****************************************************************************************/
@@ -2214,7 +2295,8 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
             FeiRuoNet.Caches.Query[host] || (FeiRuoNet.Caches.Query[host] = {});
             var obj = FeiRuoNet.Caches.Query[host];
             FeiRuoNet.Caches.HostInfo[obj.Host].CustomInfo = obj.CustomInfo || {};
-            if (obj.IPAddrInfo && obj.IPAddrInfo !== "") {
+            if (!obj.IPAddrInfo || obj.IPAddrInfo == "") FeiRuoNet.Caches.IPInfo[obj.IP].IPAddrInfo = '无法获取国家代码，请刷新！';
+            else {
                 FeiRuoNet.Caches.IPInfo[obj.IP].IPAddrInfo = obj.IPAddrInfo;
                 FeiRuoNet.Caches.IPInfo[obj.IP].IPAddrInfoHash = true;
                 FeiRuoNet.Caches.Query[host].IPAddrInfoHash = true;
@@ -2225,20 +2307,22 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
             Code = FeiRuoNet.Caches.Query[host].FlagHash || Code;
             FeiRuoNet.Caches.Query[host].FlagHash = Code;
             FeiRuoNet.Caches.IPInfo[FeiRuoNet.Caches.Query[host].IP].FlagHash = Code;
-            this.ChangeIcon(Code);
+            this.LoadIcon(Code);
         },
-        ChangeIcon: function(Code) {
-            if (!Code) {
+        LoadIcon: function(code) {
+            var conv = FeiRuoNet.ConvStr(code);
+            code = conv ? conv.src : this.SetIcon(code);
+            this.ChangeIcon(code);
+        },
+        ChangeIcon: function(src) {
+            if (!src) {
                 FeiRuoNet.icon.src = "";
                 FeiRuoNet.icon.image = "";
                 return;
             }
-            var ConvertStr = FeiRuoNet.ConvertStr(Code);
-            Code = ConvertStr ? ConvertStr.src : this.SetIcon(Code);
             FeiRuoNet.icon.hidden = false;
-            // if (FeiRuoNet.icon.src == Code || FeiRuoNet.icon.image == Code) return;
-            FeiRuoNet.icon.src = Code;
-            FeiRuoNet.icon.image = Code;
+            FeiRuoNet.icon.src = src;
+            FeiRuoNet.icon.image = src;
             if (FeiRuoNet.Icon_Pos === 0) {
                 var IconHide, scheme = FeiRuoNet.CurrentURI.scheme;
                 (/^about:(newtab)$/i.test(FeiRuoNet.CurrentURI.spec)) && (IconHide = true);
