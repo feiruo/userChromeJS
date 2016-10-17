@@ -14,6 +14,7 @@
 // @homepageURL		https://github.com/feiruo/userChromeJS/tree/master/FeiRuoTabplus
 // @downloadURL		https://github.com/feiruo/userChromeJS/raw/master/FeiRuoTabplus/FeiRuoTabplus.uc.js
 // @note            Begin 	2015-04-01
+// @version      	0.5.5 	2016.10.06	13:30 	Fix newtab。
 // @version      	0.5.4 	2016.08.09	09:20 	地址栏新标签打开兼容FF50，48以上标签，标签栏滚动事件支持。
 // @version      	0.5.3 	2016.03.22	21:00 	Fix loadInBackgroundn & Function;
 // @version      	0.5.2 	2015.05.20	23:00 	Fix bookmarkmenu。
@@ -69,7 +70,7 @@
 			return this.prefs = Services.prefs.getBranch("userChromeJS.FeiRuoTabplus.");
 		},
 		get file() {
-			let aFile;
+			var aFile;
 			aFile = Services.dirsvc.get("UChrm", Ci.nsILocalFile);
 			aFile.appendRelativePath("lib");
 			aFile.appendRelativePath("_FeiRuoTabplus.js");
@@ -80,8 +81,7 @@
 			return this.file = aFile;
 		},
 		get currentURI() {
-			var windowMediator = Cc["@mozilla.org/appshell/window-mediator;1"]
-				.getService(Ci.nsIWindowMediator);
+			var windowMediator = Cc["@mozilla.org/appshell/window-mediator;1"].getService(Ci.nsIWindowMediator);
 			var topWindowOfType = windowMediator.getMostRecentWindow("navigator:browser");
 			if (topWindowOfType)
 				return topWindowOfType.document.getElementById("content").currentURI;
@@ -484,7 +484,7 @@
 								location == "chrome://browser/content/browser.xul" && eval("gURLBar.handleCommand=" + that.Default_gURLBar.replace(/^\s*(load.+);/gm, "if(isTabEmpty(gBrowser.selectedTab) || FeiRuoTabplus.IsInNewTab(0, url, aTriggeringEvent)){loadCurrent();}else{this.handleRevert();gBrowser.loadOneTab(url, {postData: postData, inBackground: false, allowThirdPartyFixup: true});}"));
 							else {
 								location == "chrome://browser/content/browser.xul" && eval("gURLBar.handleCommand=" + that.Default_gURLBar.replace(/^\s*(matchLastLocationChange.+);/gm, "matchLastLocationChange, mayInheritPrincipal,event);"));
-								location == "chrome://browser/content/browser.xul" && eval("gURLBar._loadURL=function _loadURL(url, postData, openUILinkWhere, openUILinkParams, matchLastLocationChange, mayInheritPrincipal,event) {" + that.Default_gURLBar_loadURL.replace(/^function.*{|}$/g, "").replace(/if \(openUILinkWhere != "current"\)/, 'if (openUILinkWhere == "current" && !isTabEmpty(gBrowser.selectedTab) && !FeiRuoTabplus.IsInNewTab(0, url, event)) openUILinkWhere = "tab"; if (openUILinkWhere != "current")') + '}');
+								location == "chrome://browser/content/browser.xul" && eval("gURLBar._loadURL=" + that.Default_gURLBar_loadURL.replace(/mayInheritPrincipal/, "$&\, event").replace(/if \(openUILinkWhere != "current"\)/, 'if (openUILinkWhere == "current" && !isTabEmpty(gBrowser.selectedTab) && !FeiRuoTabplus.IsInNewTab(0, url, event)) openUILinkWhere = "tab"; if (openUILinkWhere != "current")'));
 							}
 						}
 					}, 100);
@@ -745,9 +745,13 @@
 		},
 
 		NoShowBorder: function(e) {
+			if (!e) return;
 			setTimeout(function() {
-				document.documentElement.setAttribute("chromemargin", FeiRuoTabplus.ShowBorder);
-			}, 1);
+				var doc = document.documentElement;
+				if (doc.getAttribute("chromemargin") == FeiRuoTabplus.ShowBorder || (FeiRuoTabplus.ShowBorderTimer && (new Date() - FeiRuoTabplus.ShowBorderTimer < 1000))) return;
+				doc.setAttribute("chromemargin", FeiRuoTabplus.ShowBorder);
+				FeiRuoTabplus.ShowBorderTimer = new Date();
+			}, 500);
 		},
 
 		OpenFilesWhenDrop: function(event) {
@@ -1868,8 +1872,7 @@
 			var row = {};
 			var col = {};
 			var obj = {};
-			_$("ruleTree")
-				.treeBoxObject.getCellAt(event.clientX, event.clientY, row, col, obj);
+			_$("ruleTree").treeBoxObject.getCellAt(event.clientX, event.clientY, row, col, obj);
 
 			if (col.value == null || row.value == null || obj.value == null) return null;
 			else return row.value;
