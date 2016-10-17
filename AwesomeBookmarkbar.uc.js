@@ -17,6 +17,7 @@
 // @note         	点击地址栏显示书签工具栏。
 // @note         	地址栏任意按键，地址栏失去焦点后自动隐藏书签工具栏。
 // @note       		左键点击书签后自动隐藏书签工具栏。
+// @version      	0.3.3	2016.10.15 14:00 	增加“页面内双击”。
 // @version      	0.3.2	2015.10.11 17:00 	地址栏只在输入框生效，“地址栏失去焦点”修改“页内点击”。
 // @version      	0.3.1	2015.04.17 10:00 	更多功能，表达能力略微提升.
 // @version      	0.3		2015.04.11 20:00 	绘制UI设置界面.
@@ -70,6 +71,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			this.AddListener(false, 2, "dblclick", "UDblclick_S", "Show");
 			this.AddListener(false, 2, "dblclick", "UDblclick_H", "Hide");
 			this.AddListener(false, 2, "blur", "UBlur_H", "Hide");
+			this.AddListener(false, 2, "blur", "UBlur_HH", "Hide");
 			this.AddListener(false, 2, "keydown", "UKey_H", "keyHide");
 			this.AddListener(false, 2, "mouseover", "UMove_S", "MShow");
 			this.AddListener(false, 2, "mouseout", "UMouseout_H", "MHide");
@@ -95,6 +97,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 					case 'UMouseout_H':
 					case 'UKey_H':
 					case 'UBlur_H':
+					case 'UBlur_HH':
 					case 'UDblclick_S':
 					case 'UDblclick_H':
 					case 'UClick_S':
@@ -137,6 +140,10 @@ location == "chrome://browser/content/browser.xul" && (function() {
 			if (!type || type === "UBlur_H") {
 				//this.AddListener(this.getPrefs(0, "UBlur_H"), 2, "blur", "UBlur_H", "Hide");
 				this.AddListener(this.getPrefs(0, "UBlur_H"), 3, "click", "UBlur_H", "Hide");
+			}
+
+			if (!type || type === "UBlur_HH") {
+				this.AddListener(this.getPrefs(0, "UBlur_HH"), 3, "dblclick", "UBlur_HH", "Hide");
 			}
 
 			if (!type || type === "UKey_H")
@@ -298,6 +305,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 							<preference id="UMouseout_H" type="bool" name="userChromeJS.AwesomeBookmarkbar.UMouseout_H"/>\
 							<preference id="UKey_H" type="bool" name="userChromeJS.AwesomeBookmarkbar.UKey_H"/>\
 							<preference id="UBlur_H" type="bool" name="userChromeJS.AwesomeBookmarkbar.UBlur_H"/>\
+							<preference id="UBlur_HH" type="bool" name="userChromeJS.AwesomeBookmarkbar.UBlur_HH"/>\
 							<preference id="UDblclick_S" type="bool" name="userChromeJS.AwesomeBookmarkbar.UDblclick_S"/>\
 							<preference id="UDblclick_H" type="bool" name="userChromeJS.AwesomeBookmarkbar.UDblclick_H"/>\
 							<preference id="UClick_S" type="bool" name="userChromeJS.AwesomeBookmarkbar.UClick_S"/>\
@@ -315,6 +323,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 								$("UMouseout_H").value = false;\
 								$("UKey_H").value = false;\
 								$("UBlur_H").value = false;\
+								$("UBlur_HH").value = false;\
 								$("UDblclick_S").value = false;\
 								$("UClick_S").value = false;\
 								$("UDblclick_H").value = false;\
@@ -342,6 +351,7 @@ location == "chrome://browser/content/browser.xul" && (function() {
 									<checkbox id="UDblclick_H" label="地址栏双击" preference="UDblclick_H"/>\
 									<checkbox id="UKey_H" label="地址栏任意按键" preference="UKey_H"/>\
 									<checkbox id="UBlur_H" label="页面内点击" preference="UBlur_H"/>\
+									<checkbox id="UBlur_HH" label="页面内双击" preference="UBlur_HH"/>\
 									<checkbox id="UMouseout_H" label="鼠标移出地址栏" preference="UMouseout_H"/>\
 									<checkbox id="PMouseout_H" label="鼠标移出书签工具栏" preference="PMouseout_H"/>\
 									<checkbox id="PClick_H" label="书签工具栏点击书签之后" preference="PClick_H"/>\
