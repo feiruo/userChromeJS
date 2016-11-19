@@ -11,6 +11,7 @@
 // @downloadURL		https://raw.githubusercontent.com/feiruo/userChrome/master/QrCreator.uc.js
 // @reviewURL		http://bbs.kafan.cn/thread-1525489-1-1.html
 // @note            生成二维码。
+// @version        2016.03.15 - 0.4 mody feiruo ff47+ & Suppout more & Fix sth & E10S.
 // @version        2015.10.30 - 0.3 mody feiruo QRreader
 // @version        2015.05.30 - 0.2 mody feiruo E10s
 // @version        2013.06.13 - 0.1 first release
@@ -18,12 +19,17 @@
 (function() {
 	userChrome.import("lib/jsqrcode.min.js", "UChrm");
 	var QrCreator = {
-		debug: true,
+		ImageHeight: 320, //二维码高度 px
+		ImageWidth: 320, //二维码宽度 px
+		QRCodeImage: null,
 		init: function(isAlert) {
 			if ($("QRCodeDecode_Menu"))
 				$("QRCodeDecode_Menu").parentNode.removeChild($("QRCodeDecode_Menu"));
 			if ($("QRCreator_Menu"))
 				$("QRCreator_Menu").parentNode.removeChild($("QRCreator_Menu"));
+			try {
+				$("contentAreaContextMenu").removeEventListener("popupshowing", this.QRoptionsChangeLabel, false);
+			} catch (ex) {}
 			if (!isAlert) return;
 			var ins = $("context-openlinkintab");
 			ins.parentNode.insertBefore($C("menuitem", {
@@ -47,55 +53,54 @@
 		},
 
 		QRCodeDecode_MenuClick: function(event) {
-			var src
+			var src;
 			if (gContextMenu.target.nodeName == 'CANVAS' || gContextMenu.target.localName == "canvas")
 				src = gContextMenu.target.toDataURL();
 			else
 				src = gContextMenu.imageURL || gContextMenu.bgImageURL;
-			qrcode.decode(src);
-			qrcode.callback = QrCreator.QRCodeDecode_Func;
-		},
 
-		QRCodeDecode_Func: function(data) {
-			if (/^(https?|ftp|file):\/\/[-_.~*'()|a-zA-Z0-9;:\/?,@&=+$%#]*[-_.~*)|a-zA-Z0-9;:\/?@&=+$%#]$/.test(data)) {
-				var f = confirm("QR码为网络地址，确认打开?" + '\n\n' + data);
-				if (f == true)
-					return gBrowser.selectedTab = gBrowser.addTab(data);
-			} else if (data == "error decoding QR Code") {
-				var canvas = document.createElementNS("http://www.w3.org/1999/xhtml", "canvas");
-				var ctx = canvas.getContext('2d');
-				var img = new Image();
-				img.onload = function() {
-					canvas.width = img.width;
-					canvas.height = img.height;
-					ctx.drawImage(img, 0, 0);
-					var imagedata = ctx.getImageData(0, 0, canvas.width, canvas.height);
-					var Decode = new QRCodeDecode();
-					try {
-						var decoded = Decode.decodeImageData(imagedata, canvas.width, canvas.height);
-						QrCreator.QRCodeDecode_Func(decoded);
-					} catch (e) {
-						alert("该图像不包含有效的QR码或无法读取它。 :(");
-					}
-				};
-				img.src = src;
-			} else {
-				var r = confirm("QR代码值（按OK键将其复制到剪贴板）：" + '\n\n' + data);
-				if (r == true) {
-					try {
-						Components.classes["@mozilla.org/widget/clipboardhelper;1"].getService(Components.interfaces.nsIClipboardHelper).copyString(data);
-					} catch (e) {
-						alert(e);
-						console.log(e)
+			function QRCodeDecode_Func(data) {
+				if (/^(https?|ftp|file):\/\/[-_.~*'()|a-zA-Z0-9;:\/?,@&=+$%#]*[-_.~*)|a-zA-Z0-9;:\/?@&=+$%#]$/.test(data)) {
+					var f = confirm("QR码为网络地址，确认打开?" + '\n\n' + data);
+					if (f == true)
+						return gBrowser.selectedTab = gBrowser.addTab(data);
+				} else if (data == "error decoding QR Code") {
+					var canvas = document.createElementNS("http://www.w3.org/1999/xhtml", "canvas");
+					var ctx = canvas.getContext('2d');
+					var img = new Image();
+					img.onload = function() {
+						canvas.width = img.width;
+						canvas.height = img.height;
+						ctx.drawImage(img, 0, 0);
+						var imagedata = ctx.getImageData(0, 0, canvas.width, canvas.height);
+						var Decode = new QRCodeDecode();
+						try {
+							var decoded = Decode.decodeImageData(imagedata, canvas.width, canvas.height);
+							QRCodeDecode_Func(decoded);
+						} catch (e) {
+							alert("该图像不包含有效的QR码或无法读取它。 :(");
+						}
+					};
+					// img.src = src;
+					img.src = data;
+				} else {
+					var r = confirm("QR代码值（按OK键将其复制到剪贴板）：" + '\n\n' + data);
+					if (r == true) {
+						try {
+							Components.classes["@mozilla.org/widget/clipboardhelper;1"].getService(Components.interfaces.nsIClipboardHelper).copyString(data);
+						} catch (e) {
+							alert(e);
+							console.log(e)
+						}
 					}
 				}
 			}
+			qrcode.decode(src);
+			qrcode.callback = QRCodeDecode_Func;
 		},
 
 		QRCreator_MenuClick: function(event) {
-			var cont = window.content || gBrowser.selectedBrowser.contentWindowAsCPOW;
-			if (cont.document.getElementById('qrCreatorimageboxid'))
-				return;
+			var cont = window.content || gBrowser.selectedBrowser.contentWindow || gBrowser.selectedBrowser.contentWindowAsCPOW || gBrowser.selectedBrowser._contentWindow;
 			var target_data = '';
 			var altText = "QR码内容[网址]";
 
@@ -108,7 +113,7 @@
 						target_data = gContextMenu.linkURL;
 					} else if (gContextMenu.onImage) {
 						target_data = gContextMenu.target.src;
-					} else if ((cont.document.location == "about:blank" || cont.document.location == "about:newtab")) {
+					} else if (/^about:(newtab|blank)$/i.test(cont.document.location)) {
 						altText = "QR码内容[文本]";
 						target_data = prompt("请输入文本创建一个QR码（长度不超过250字节）：", "");
 					} else {
@@ -121,7 +126,123 @@
 				event.stopPropagation();
 				event.preventDefault();
 			}
-			this.QRCommand(target_data, altText);
+			if (!QrCreator.QRcheckLength(target_data)) return;
+
+			var src = QrCreator.CreateQR(target_data);
+			var alt = altText + ': ' + target_data;
+			try {
+				QrCreator.QRCodeImage.parentNode.removeChild(QrCreator.QRCodeImage);
+				QrCreator.QRCodeImage = null;
+			} catch (ex) {}
+			QrCreator.QRCodeImage = document.createElement("hbox");
+			var img_node = document.createElementNS("http://www.w3.org/1999/xhtml", "img");
+			img_node.setAttribute('style', '-moz-box-shadow: 0 0 4px #000000');
+			with(img_node.style) {
+				position = 'fixed';
+				left = '-moz-calc(50% - 183px)';
+				top = '-moz-calc(50% - 183px)';
+				zIndex = 99999;
+				width = QrCreator.ImageWidth + "px";
+				height = QrCreator.ImageHeight + "px";
+				border = '1px solid rgba(0,0,0,.5)';
+				borderRadius = '3px';
+				background = 'white';
+			}
+			img_node.setAttribute('id', 'QrCreator_QRCodeImage');
+			img_node.setAttribute('src', src);
+			img_node.setAttribute('alt', alt || "");
+			img_node.setAttribute('title', img_node.getAttribute('alt'));
+			img_node.setAttribute('tooltiptext', img_node.getAttribute('alt'));
+
+			if (window.content)
+				QrCreator.QRPopupImage(img_node);
+			else
+				QrCreator.QRPopupImageE10s(img_node);
+
+			img_node && img_node.parentNode && img_node.parentNode.addEventListener('click', function(e) {
+				if (img_node && e.button == 0 && e.target != img_node) {
+					img_node.parentNode.removeChild(img_node);
+					try {
+						QrCreator.QRCodeImage.parentNode.removeChild(QrCreator.QRCodeImage);
+					} catch (ex) {}
+					QrCreator.QRCodeImage = null;
+					this.removeEventListener("click", arguments.callee, true);
+				}
+			}, true);
+		},
+
+		QRPopupImageE10s: function(img_node) {
+			this.QRCodeImage.style.cssText = "display: -moz-box !important;" + "box-sizing: border-box !important;" + "width:100% !important;" + "height:100% !important;" + "opacity:.9 !important;";
+			this.QRCodeImage.appendChild(img_node);
+
+			function ImgDrag(node) {
+				var IsMousedown,
+					LEFT,
+					TOP,
+					layerX,
+					layerY,
+					img_node = node;
+				img_node.onmousedown = function(e) {
+					e.stopPropagation();
+					e.preventDefault();
+					if (e.button == 0) {
+						IsMousedown = true;
+						e = e || event;
+						layerX = e.layerX;
+						layerY = e.layerY;
+					} else if (e.button == 2) {
+						saveImageURL(img_node.getAttribute('src'), gBrowser.selectedBrowser.contentTitle, null, null, null, null, img_node);
+					}
+					return false;
+				}
+
+				img_node.parentNode.addEventListener("mousemove", function(e) {
+					if (IsMousedown) {
+						e = e || event;
+						img_node.style.left = e.clientX - layerX + "px";
+						img_node.style.top = e.clientY - layerY + "px";
+					}
+				}, false);
+
+				img_node.parentNode.addEventListener("mouseup", function() {
+					IsMousedown = false;
+				}, false);
+			}
+			ImgDrag(img_node);
+			var browser = gBrowser.selectedBrowser;
+			browser.parentNode.insertBefore(this.QRCodeImage, browser.nextSibling);
+		},
+
+		QRPopupImage: function(img_node) {
+			this.QRCodeImage = img_node;
+			content.document.body.appendChild(this.QRCodeImage);
+
+			function ImgDrag(node) {
+				var IsMousedown,
+					LEFT,
+					TOP,
+					img_node = node;
+				img_node.onmousedown = function(e) {
+					IsMousedown = true;
+					e = e || event;
+					LEFT = e.clientX - img_node.offsetLeft;
+					TOP = e.clientY - img_node.offsetTop;
+					return false;
+				}
+
+				img_node.parentNode.addEventListener("mousemove", function(e) {
+					e = e || event;
+					if (IsMousedown) {
+						img_node.style.left = e.clientX - LEFT + "px";
+						img_node.style.top = e.clientY - TOP + "px";
+					}
+				}, false);
+
+				img_node.parentNode.addEventListener("mouseup", function() {
+					IsMousedown = false;
+				}, false);
+			}
+			ImgDrag(this.QRCodeImage);
 		},
 
 		QRconvertFromUnicode: function(charset, str) {
@@ -167,80 +288,10 @@
 			}
 		},
 
-		QRPopupImage: function(src, alt) {
-			var imgnode = content.document.getElementById('qrCreatorimageboxid');
-			if (imgnode) {
-				imgnode.parentNode.removeChild(imgnode);
-			}
-
-			var img_node = content.document.createElement("img");
-			img_node.setAttribute('style', '-moz-box-shadow: 0 0 4px #000000');
-			with(img_node.style) {
-				position = 'fixed';
-				left = '-moz-calc(50% - 183px)';
-				top = '-moz-calc(50% - 183px)';
-				zIndex = 99999;
-				width = "160px";
-				height = "160px";
-				border = '1px solid rgba(0,0,0,.5)';
-				borderRadius = '3px';
-				background = 'white';
-			}
-			img_node.setAttribute('id', 'qrCreatorimageboxid');
-			img_node.setAttribute('src', src);
-			img_node.setAttribute('alt', alt || "");
-			img_node.setAttribute('title', img_node.getAttribute('alt'));
-
-			content.document.body.appendChild(img_node);
-
-			function ImgDrag(node) {
-				var IsMousedown,
-					LEFT,
-					TOP,
-					img_node = node;
-				img_node.onmousedown = function(e) {
-					IsMousedown = true;
-					e = e || event;
-					LEFT = e.clientX - img_node.offsetLeft;
-					TOP = e.clientY - img_node.offsetTop;
-					return false;
-				}
-
-				content.document.addEventListener("mousemove", function(e) {
-					e = e || event;
-					if (IsMousedown) {
-						img_node.style.left = e.clientX - LEFT + "px";
-						img_node.style.top = e.clientY - TOP + "px";
-					}
-				}, false);
-
-				content.document.addEventListener("mouseup", function() {
-					IsMousedown = false;
-				}, false);
-			}
-			ImgDrag(img_node);
-			content.document.addEventListener('click', function(e) {
-				if (img_node && e.button == 0 && e.target != img_node) {
-					img_node.parentNode.removeChild(img_node);
-					this.removeEventListener("click", arguments.callee, true);
-				}
-			}, true);
-		},
-
-		QRCommand: function(target_data, altText) {
-			if (!this.QRcheckLength(target_data)) return;
-			var src = this.CreateQR(target_data);
-			var alt = altText + ': ' + target_data;
-			if (window.content)
-				this.QRPopupImage(src, alt);
-			else {
-				var E10SFunc = this.QRPopupImage.toString().replace(/^function.*{|}$/g, "");
-				gBrowser.selectedBrowser.messageManager.loadFrameScript("data:application/x-javascript;charset=UTF-8,(function(src, alt){" + escape(E10SFunc) + "})('" + src + "','" + alt + "');", true);
-			}
-		},
-
 		QRoptionsChangeLabel: function(event) {
-			var url = window.content ? content.document.location : gBrowser.selectedBrowser.contentWindowAsCPOW.document.location;
+			var doc = gContextMenu.ownerDoc;
+			var win = doc.defaultView;
+			var url = win.document.location;
 			var labelText;
 			if (gContextMenu) {
 				$('QRCodeDecode_Menu').hidden = !(gContextMenu.onImage || gContextMenu.bgImageURL || gContextMenu.target.nodeName == 'CANVAS' || gContextMenu.target.localName == "canvas");
@@ -1734,7 +1785,7 @@
 			var tp1;
 			var genpoly;
 
-			// multiply (x + a^n) for n = 1 to nbytes 
+			// multiply (x + a^n) for n = 1 to nbytes
 
 			tp1 = this.zeroPoly();
 			tp1[0] = 1;
@@ -1742,7 +1793,7 @@
 			var i;
 			for (i = 0; i < nbytes; i++) {
 				tp = this.zeroPoly();
-				tp[0] = this.gexp[i]; // set up x+a^n 
+				tp[0] = this.gexp[i]; // set up x+a^n
 				tp[1] = 1;
 				genpoly = this.multPolys(tp, tp1);
 				tp1 = this.copyPoly(genpoly);
@@ -3208,7 +3259,7 @@
 					}
 				}
 
-				// quiet area 
+				// quiet area
 				for (i = 0; i <= 6; i++) {
 					if (!qr.isDarkWithSize(x + quiet_x, y + i, module_size)) {
 						n = n + 1;
@@ -3675,7 +3726,7 @@
 
 
 			/* **************************************************
-			 * findModuleSize 
+			 * findModuleSize
 			 */
 
 			var best_match_so_far = [0, 0];
@@ -3923,7 +3974,7 @@
 			}
 
 			/* **************************************************
-			 * extractData 
+			 * extractData
 			 */
 
 			var bytes = this.bytes;
