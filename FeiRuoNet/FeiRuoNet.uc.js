@@ -23,6 +23,7 @@
 // @note            左键点击图标查看详细信息，中键打开GET/POST界面，右键弹出菜单。
 // @note            更多功能需要【_FeiRuoNet.js】、【_FeiRuoNetMenu.js】、【FeiRuoNetLib.js】、【QQWry.dat】、【ip4.cdb】、【ip6.cdb】、【_FeiRuoNetProxy.json】、【_GFWList.txt】配置文件。
 // @note            仅供个人测试、研究，不得用于商业或非法用途，作者不承担因使用此脚本对自己和他人造成任何形式的损失或伤害之任何责任。
+// @version         0.1.0     2016.10.31 10:30    Add Proxy Local and Refresh DNS, Fix for E10S and more。
 // @version         0.0.9     2016.10.13 20:30    Fix for more。
 // @version         0.0.8     2016.08.03 15:30    修改代理机制，兼容其他代理功能扩展脚本(Autoproxy、pan扩展等)。
 // @version         0.0.7     2016.04.11 16:00    优化IP数据库读取缓存机制，国旗和地址使用同源，添加状态提示，自定义图标格式，自定义图标条件。
@@ -83,12 +84,15 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
     if (!window.XPCOMUtils) Cu.import("resource://gre/modules/XPCOMUtils.jsm");
     if (!window.Promise) Cu.import("resource://gre/modules/Promise.jsm");
     if (!window.NetUtil) Cu.import("resource://gre/modules/NetUtil.jsm");
+    if (!window.Downloads) Cu.import("resource://gre/modules/Downloads.jsm");
+    // 刷新dns： FeiRuoNet.RefreshDNS();
     // 当前页启用/禁用代理： FeiRuoNet.SetNewProxy();
     // 全局禁用/智能/开启：  FeiRuoNet.ProxyModeSwitch();
     if (window.FeiRuoNet) {
         window.FeiRuoNet.onDestroy();
         delete window.FeiRuoNet;
     }
+
     const IoSrv = Cc['@mozilla.org/network/io-service;1'].getService(Ci.nsIIOService);
     const WinM = Cc["@mozilla.org/appshell/window-mediator;1"].getService(Ci.nsIWindowMediator);
     const HttpSrv = Cc['@mozilla.org/network/protocol;1?name=http'].getService(Ci.nsIHttpProtocolHandler);
@@ -157,8 +161,8 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
                 }
                 // var script = "data:application/javascript," + encodeURIComponent('sendAsyncMessage("FeiRuoNet:FeiRuoNet-e10s-content-message", {}, {cont: content,})');
                 var script = "data:application/javascript," + encodeURIComponent('sendAsyncMessage("FeiRuoNet:FeiRuoNet-e10s-content-message", {}, {cont: content,})');
-                gBrowser.selectedBrowser.messageManager.loadFrameScript(script, true);
                 gBrowser.selectedBrowser.messageManager.addMessageListener("FeiRuoNet:FeiRuoNet-e10s-content-message", listener);
+                gBrowser.selectedBrowser.messageManager.loadFrameScript(script, true);
                 // gBrowser.selectedBrowser.messageManager.broadcastAsyncMessage("FeiRuoNet:FeiRuoNet-e10s-content-message", listener);
                 // gBrowser.selectedBrowser.messageManager.removeMessageListener("FeiRuoNet:FeiRuoNet-e10s-content-message", listener);
                 // gBrowser.selectedBrowser.messageManager.removeDelayedFrameScript(script);
@@ -252,14 +256,14 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
                 });
                 if (!isAlert) return;
                 var LibData = FeiRuoNet.LoadFile(FileUtils.getFile("UChrm", ["lib", 'FeiRuoNetLib.js']));
-                this.DataBase.CountryName = LibData.CountryName || {};
-                this.DataBase.CountryFlag = LibData.CountryFlag || {};
+                this.DataBase.CountryName = (LibData && LibData.CountryName) || {};
+                this.DataBase.CountryFlag = (LibData && LibData.CountryFlag) || {};
                 var QQWryFile = FileUtils.getFile("UChrm", ["lib", 'QQWry.dat']);
-                if (QQWryFile && QQWryFile.exists() && QQWryFile.isFile()) {
+                if (QQWryFile && QQWryFile.exists() && QQWryFile.isFile() && LibData) {
                     this.DataBase.QQwryDate = new QQwryDate(LibData.GBKCode, QQWryFile);
                 }
-                var IPDBmetadata = LibData.IPDBmetadata || {};
-                IPDBmetadata.countryIDs = IPDBmetadata.countryIDs.match(new RegExp(".{1," + 2 + "}", "g"));
+                var IPDBmetadata = (LibData && LibData.IPDBmetadata) || {};
+                IPDBmetadata.countryIDs = (IPDBmetadata.countryIDs || "").match(new RegExp(".{1," + 2 + "}", "g"));
                 this.DataBase.FlagFoxDB = new FlagFoxDB(IPDBmetadata);
             }
         },
@@ -309,12 +313,21 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
             this.Popup.appendChild($C("menuitem", {
                 id: "FeiRuoNet_Copy",
                 label: "复制信息",
-                oncommand: "FeiRuoNet.CopyStr();"
+                oncommand: "FeiRuoNet.CopyStr();",
+                image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAyklEQVQ4jZ3TQW7CMBCF4e8OlbKqwpKL9CBcBMVcqmuUHiAnQEKQrto70IUnKIAJSUeahT32b795No9RocNlRv4U9lvhjBYNUiEb7ANSBPSxcCqaZ4B3HLB9AUgDoIpTV6ixxgYfMR5qb88Anay5H+URp7u5zzvIFXCRG5awK2TCF77jJkVAM0NvPwVILwC7ANSjuasLcwEnubHbWN8uBRxldw5xm7NswCIJa/mdDNZWSwF1qfhfF24Ae9Mfp5U1FwG/5n3dTmgexx+GCF9o0H+IuAAAAABJRU5ErkJggg=="
             }));
             this.Popup.appendChild($C("menuitem", {
                 id: "FeiRuoNet_Rebuild",
                 label: "刷新信息",
-                oncommand: "FeiRuoNet.ShowFlag.LocationChange(true);"
+                oncommand: "FeiRuoNet.ShowFlag.LocationChange(true);",
+                image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAA/ElEQVQ4jZXTMU5CQRDG8R8WFCAdvXAGb0IDB/AE9tDQeAIaO5tXcwAOYIiJtvR4ASKJCQSLnZcsz6fJfsm84s3Mf3e+3eW3uphigxeMWmr+VA9POOIV45JmeMQZ35iUNo+wwwXvGJYCpjgFoEKnpeY+4koDafZlNF+wQh+3GWiMt4grb9aSYfsM8IktnjNQleWr+AcecMiSdXxhFjULydw6d8YcN+IzbylYRPMsYM0FDrE4/2yxH2NsY6w6v4+x17kXbSZ1MtAqAyzD+IGGWo8pQPUOT9KRF2mIjwDscFcKmEjX+yxd9yKNJcOO0kPrlTSPpCe9kebuNgt+AGaeUCmcWxTfAAAAAElFTkSuQmCC"
+            }));
+            this.Popup.appendChild($C("menuitem", {
+                id: "FeiRuoNet_RefreshDNS",
+                label: "刷新DNS缓存",
+                onclick: "FeiRuoNet.RefreshDNS(event);",
+                tooltiptext: "左键：同时刷新页面。\n右键：仅刷新DNS缓存。",
+                image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABZElEQVQ4jXXSPUhXYRQG8J9fKSGFQzgYIggiGCUo6ZKBIkI0RQq5tRUViOCkg5tgoItGY9jSlhAtYeEQKLkEbuqgjWqgVoMfqcM9f7le7v+BA5fnfc7znue9h3y0oAv38QzP8QJ9KCnSc4FebGAPn/ALp1GbuB26XKMaLOIsagvv8D/FzaMHpXkGr1LCM3xAI36kuF3cKzb+I6yGcBsdMeprHEZNBncRoRK30Im7aMMERkN0NYx6JA/binEMFgxKMYwD/MMsKlCeM+EAfsaEqxHPNXxMZfyDBznNJZjOvNGMEP9Nkct4HFNk0YT1lHYN6rESxL5kD7Kows34fhkXHmCqIBjEEb5gKGoYT1CGh5iTbOMYPuMtagsG1XiDr5mMK2jAQoY/iQsuoQ7fM8JldON3hl/CjZyonkp2f0/yN76F8D2OI/cO+vOaSXaiUbJMbWgOvh0jkkW7gyvFDIqhDNfzDs4BDaxkbFlpu6cAAAAASUVORK5CYII="
             }));
             this.ProxyMenuitem = $C("menuitem", {
                 id: "FeiRuoNet_AutoProxy_Config",
@@ -443,7 +456,7 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
             var URI = FeiRuoNet.CurrentURI;
             var URL = URI.spec;
             var UAItem = $("FeiRuoNet_UserAgent_Config");
-            UAItem.hidden = !FeiRuoNet.EnableUAChanger;
+            UAItem.hidden = !FeiRuoNet.EnableUAChanger || !FeiRuoNet.UARules;
             if (FeiRuoNet.UARules) {
                 $$(".FeiRuoNet_UsingUA").forEach(function(e) {
                     e.classList.remove('FeiRuoNet_UsingUA')
@@ -475,7 +488,7 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
                 if (!this.PopupBuild) this.PopupBuild = new AnoBtn_BuildPopup('FeiRuoNet');
                 this.PopupBuild.Remove();
                 $("FeiRuoNet_Sepalator2").hidden = true;
-                if (!!this.MenuData) {
+                if (!!this.MenuData && this.MenuData.Menus && this.MenuData.Menus.length > 0) {
                     $("FeiRuoNet_Sepalator2").hidden = false;
                     this.PopupBuild.Build(this.MenuData.Menus);
                     this.MenuCreated = true;
@@ -487,10 +500,13 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
             if (FeiRuoNet.ProxyMode == 0) {
                 ProxyItem.setAttribute("label", "代理功能关闭");
                 return;
-            } else if (!/^(http|https|ftp)$/.test(URI.scheme)) {
+            } else if (!FeiRuoNet.ProxyScheme.test(URI.scheme)) {
                 ProxyItem.setAttribute("label", "此处禁用代理");
                 return;
             } else {
+                var obj = FeiRuoNet.Caches.Query[URI.asciiHostPort || URI.HostPort || URI.hostPort || URI.host] || {};
+                if (!FeiRuoNet.ProxyLocal && /^((192\.168|172\.([1][6-9]|[2]\d|3[01]))(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){2}|10(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){3})$/i.test(obj.IP))
+                    return ProxyItem.setAttribute("label", "局域网禁用代理");
                 var topDomain = FeiRuoNet.GetDomain(URL);
                 var matchs = FeiRuoNet.AutoProxy.DefaultMatcher.matchesAny(URL, topDomain);
                 if (matchs && matchs instanceof FeiRuoNet.AutoProxy.WhitelistFilter) {
@@ -524,7 +540,7 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
                 var ApiIdx = this.GetPrefs(1, "ApiIdx");
                 if (this.ApiIdx == ApiIdx) return;
                 FeiRuoNet.ApiIdx = ApiIdx;
-                if (type) FeiRuoNet.ShowFlag.LocationChange('Flags');
+                if (!!type) FeiRuoNet.ShowFlag.SetApi(this.Interfaces[FeiRuoNet.ApiIdx]) && FeiRuoNet.ShowFlag.LocationChange('Flags');
             }
             if (!type || type === "Inquiry_Delay") this.Inquiry_Delay = this.GetPrefs(1, "Inquiry_Delay", 1000);
             if (!type || type === "BAK_FLAG_PATH") this.BAK_FLAG_PATH = this.GetPrefs(2, "BAK_FLAG_PATH", this.DBAK_FLAG_PATH);
@@ -537,9 +553,11 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
             if (!type || type === "EnableUAChanger") this.EnableUAChanger = this.GetPrefs(0, "EnableUAChanger", true);
             if (!type || type === "EnableRefChanger") this.EnableRefChanger = this.GetPrefs(0, "EnableRefChanger", true);
             if (!type || type === "EnableProxyByError") this.EnableProxyByError = this.GetPrefs(0, "EnableProxyByError", true);
+            if (!type || type === "ProxyLocal") this.ProxyLocal = this.GetPrefs(0, "ProxyLocal", false);
             if (!type || type === "ProxyTimes") this.ProxyTimes = this.GetPrefs(1, "ProxyTimes", 5);
             if (!type || type === "ProxyTimer") this.ProxyTimer = this.GetPrefs(1, "ProxyTimer", 3500);
             if (!type || type === "GFWListUrl") this.GFWListUrl = unescape(this.GetPrefs(2, "GFWListUrl", "https://raw.githubusercontent.com/gfwlist/gfwlist/master/gfwlist.txt"));
+            if (!type || type === "ProxyScheme") this.ProxyScheme = new RegExp(this.GetPrefs(2, "ProxyScheme", '^(http|https|ftp|wss)$'), 'i');
             if (!type || type === "ProxyServers") {
                 var ProxyServers = unescape(this.GetPrefs(2, "ProxyServers", "ShadowSocks|127.0.0.1|1080|socks|1;GoAgent|127.0.0.1|8087|http|1")).split(";");
                 if (!ProxyServers[0]) return;
@@ -568,8 +586,8 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
         /*****************************************************************************************/
         Rebuild: function(isAlert) {
             this.MenuCreated = false;
-            this.MenuData = this.LoadFile(this.MenuFile, isAlert);
-            var ConfData = this.LoadFile(this.ConfFile, isAlert);
+            this.MenuData = this.LoadFile(this.MenuFile, isAlert) || [];
+            var ConfData = this.LoadFile(this.ConfFile, isAlert) || {};
             this.Icons = ConfData.Icons || {};
             this.ServerInfo = ConfData.ServerInfo || [];
             this.HeadRules = ConfData.HeadRules || {};
@@ -696,7 +714,7 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
             event.preventDefault();
             switch (event.button) {
                 case 0:
-                    if (/^(http|https|ftp)$/.test(FeiRuoNet.CurrentURI.scheme) && FeiRuoNet.ProxyMode != 0) FeiRuoNet.SetUrlProxy(event);
+                    if (FeiRuoNet.ProxyScheme.test(FeiRuoNet.CurrentURI.scheme) && FeiRuoNet.ProxyMode != 0) FeiRuoNet.SetUrlProxy(event);
                     break;
                 case 1:
                     break;
@@ -764,6 +782,24 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
             setTimeout(function() {
                 ShowStatus(ProxyItem.getAttribute("tooltiptext"));
             }, 100)
+        },
+        RefreshDNS: function(event) {
+            Downloads.getSummary(Downloads.ALL).then(summary => {
+                if (summary.allHaveStopped || confirm("有下载目前正在进行中。\n如果你刷新DNS现在下载会中断！你想继续吗？")) {
+                    try {
+                        IoSrv.offline = true;
+                        Services.cache2.clear();
+                        IoSrv.offline = false;
+                        this.ShowFlag.LocationChange(true);
+                        if (!event || (event && event.button != 2))
+                            WinM.getMostRecentWindow("navigator:browser").getBrowser().reload();
+                    } catch (e) {
+                        ShowStatus("Error flushing DNS: " + e);
+                    }
+                }
+            }).catch(exception => {
+                ShowStatus(exception);
+            })
         },
         /*****************************************************************************************/
         UpdateGFWList: function() {
@@ -947,9 +983,12 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
         SetUrlProxy: function(event) {
             var URI = FeiRuoNet.CurrentURI;
             var tag = (event && event.target);
-            if ((URI.scheme != "http" && URI.scheme != "https" && URI.scheme != "ftp") || FeiRuoNet.ProxyMode == 0) {
+            if (!FeiRuoNet.ProxyScheme.test(URI.scheme) || FeiRuoNet.ProxyMode == 0) {
                 return ShowStatus('不可代理！');
             }
+            var obj = FeiRuoNet.Caches.Query[URI.asciiHostPort || URI.HostPort || URI.hostPort || URI.host] || {};
+            if (!FeiRuoNet.ProxyLocal && /^((192\.168|172\.([1][6-9]|[2]\d|3[01]))(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){2}|10(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){3})$/i.test(obj.IP))
+                return ShowStatus("局域网禁用代理");
             if (!tag) return FeiRuoNet.SetNewProxy(URI.spec);
             if (!tag) tag = $('FeiRuoNet_AutoProxy_Config');
             if (tag.value != "blocked") {
@@ -1168,7 +1207,7 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
             }
         },
         GetHeaders: function(host) {
-            if (!this.ServerInfo) return;
+            if (!this.ServerInfo || !this.ServerInfo[0]) return;
             host = host || this.CurrentURI.asciiHostPort || this.CurrentURI.hostPort;
             var Cache, ServerInfo = this.ServerInfo,
                 Info = [];
@@ -1422,6 +1461,7 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
                             <preference id="EnableRefChanger" type="bool" name="userChromeJS.FeiRuoNet.EnableRefChanger"/>\
                             <preference id="EnableUAChanger" type="bool" name="userChromeJS.FeiRuoNet.EnableUAChanger"/>\
                             <preference id="EnableProxyByError" type="bool" name="userChromeJS.FeiRuoNet.EnableProxyByError"/>\
+                            <preference id="ProxyLocal" type="bool" name="userChromeJS.FeiRuoNet.ProxyLocal"/>\
                         </preferences>\
                         <script>\
                             function Change() {\
@@ -1463,17 +1503,10 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
                                                         <checkbox id="UrlbarSafetyLevel" label="HTTPS等级高亮" preference="UrlbarSafetyLevel" />\
                                                     </row>\
                                                     <row align="center">\
-                                                        <checkbox id="EnableProxyByError" label="网络错误时代理" tooltiptext="智能代理模式下，遇到网络错误问题时，将该域名加入代理规则列表，错误率较大！" preference="EnableProxyByError" />\
+                                                        <checkbox id="EnableProxyByError" label="网络错误时代理" ' + (gMultiProcessBrowser ? "disabled=\"true\" tooltiptext=\"E10S下禁用此功能！\"" : "tooltiptext=\"智能代理模式下，遇到网络错误问题时，将该域名加入代理规则列表，错误率较大！\"") + ' preference="EnableProxyByError" />\
                                                     </row>\
                                                     <row align="center">\
-                                                        <label value="代理模式选择：" />\
-                                                        <menulist preference="ProxyMode" id="ProxyMode" style="width:100px">\
-                                                            <menupopup id="ProxyMode_Popup">\
-                                                                <menuitem label="禁用代理" value="0"/>\
-                                                                <menuitem label="智能代理" value="1"/>\
-                                                                <menuitem label="全局代理" value="2"/>\
-                                                            </menupopup>\
-                                                        </menulist>\
+                                                        <checkbox id="ProxyLocal" label="代理对局域网生效" preference="ProxyLocal" />\
                                                     </row>\
                                                 </rows>\
                                             </grid>\
@@ -1512,6 +1545,16 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
                                                     <row align="center">\
                                                         <label value="默认代理："/>\
                                                         <menulist preference="DefaultProxy" id="DefaultProxy1" style="width:100px;"/>\
+                                                    </row>\
+                                                    <row align="center">\
+                                                        <label value="代理模式选择：" />\
+                                                        <menulist preference="ProxyMode" id="ProxyMode" style="width:100px">\
+                                                            <menupopup id="ProxyMode_Popup">\
+                                                                <menuitem label="禁用代理" value="0"/>\
+                                                                <menuitem label="智能代理" value="1"/>\
+                                                                <menuitem label="全局代理" value="2"/>\
+                                                            </menupopup>\
+                                                        </menulist>\
                                                     </row>\
                                                 </rows>\
                                                 </grid>\
@@ -1659,9 +1702,11 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
             switch (topic.toLowerCase()) {
                 case "http-on-modify-request":
                     var httpChannel = subject.QueryInterface(Ci.nsIHttpChannel);
-                    var Tracing = httpChannel.QueryInterface(Ci.nsITraceableChannel);
-                    var NewListener = new TracingListener();
-                    NewListener.originalListener = Tracing.setNewListener(NewListener);
+                    if (!gMultiProcessBrowser) {
+                        var Tracing = httpChannel.QueryInterface(Ci.nsITraceableChannel);
+                        var NewListener = new TracingListener();
+                        NewListener.originalListener = Tracing.setNewListener(NewListener);
+                    }
                     var Rules = {};
                     if (FeiRuoNet.ModifyHeader && FeiRuoNet.HeadRules) {
                         for (var i in FeiRuoNet.HeadRules) {
@@ -1728,6 +1773,8 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
                         case 'ProxyServers':
                         case 'DefaultProxy':
                         case 'ProxyMode':
+                        case 'ProxyScheme':
+                        case 'ProxyLocal':
                         case 'ProxyTimes':
                         case 'ProxyTimer':
                             FeiRuoNet.LoadSetting(data);
@@ -1735,48 +1782,6 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
                     }
                     break;
             }
-        },
-        loadContextGoodies: function(httpChannel) {
-            //httpChannel must be the subject of http-on-modify-request QI'ed to nsiHTTPChannel as is done on line 8 "httpChannel = subject.QueryInterface(Ci.nsIHttpChannel);"
-            //start loadContext stuff
-            var loadContext;
-            try {
-                var interfaceRequestor = httpChannel.notificationCallbacks.QueryInterface(Ci.nsIInterfaceRequestor);
-                //var DOMWindow = interfaceRequestor.getInterface(Components.interfaces.nsIDOMWindow); //not to be done anymore because: [url]https://developer.mozilla.org/en-US/docs/Updating_extensions_for_Firefox_3.5#Getting_a_load_context_from_a_request[/url] //instead do the loadContext stuff below
-                try {
-                    loadContext = interfaceRequestor.getInterface(Ci.nsILoadContext);
-                } catch (ex) {
-                    try {
-                        loadContext = subject.loadGroup.notificationCallbacks.getInterface(Ci.nsILoadContext);
-                    } catch (ex2) {}
-                }
-            } catch (ex0) {}
-
-            //no load context so dont do anything although you can run this, which is your old code
-            //this probably means that its loading an ajax call or like a google ad thing
-            if (!loadContext) return null;
-
-            var contentWindow = loadContext.associatedWindow;
-            //this channel does not have a window, its probably loading a resource
-            //this probably means that its loading an ajax call or like a google ad thing
-            if (!contentWindow) return null;
-            var aDOMWindow = contentWindow.top.QueryInterface(Ci.nsIInterfaceRequestor)
-                .getInterface(Ci.nsIWebNavigation)
-                .QueryInterface(Ci.nsIDocShellTreeItem)
-                .rootTreeItem
-                .QueryInterface(Ci.nsIInterfaceRequestor)
-                .getInterface(Ci.nsIDOMWindow);
-            var gBrowser = aDOMWindow.gBrowser;
-            var aTab = gBrowser._getTabForContentWindow(contentWindow.top); //this is the clickable tab xul element, the one found in the tab strip of the firefox window, aTab.linkedBrowser is same as browser var above //can stylize tab like aTab.style.backgroundColor = 'blue'; //can stylize the tab like aTab.style.fontColor = 'red';
-            var browser = aTab.linkedBrowser; //this is the browser within the tab //this is where the example in the previous section ends
-            return {
-                aDOMWindow: aDOMWindow,
-                gBrowser: gBrowser,
-                aTab: aTab,
-                browser: browser,
-                contentWindow: contentWindow
-            };
-            //end loadContext stuff
         },
         NetStatus: function(request, context, status) {
             // console.log(request, context, status)
@@ -2002,7 +2007,10 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
         onSecurityChange: function(aWebProgress, aRequest, aState) {},
         ProxyFilter: {
             applyFilter: function(ProxySrv, uri, aProxy) {
-                if (FeiRuoNet.ProxyMode != 0 && /^(http|https|ftp|wss)$/i.test(uri.scheme)) {
+                if (FeiRuoNet.ProxyMode != 0 && FeiRuoNet.ProxyScheme.test(uri.scheme)) {
+                    var obj = FeiRuoNet.Caches.Query[uri.asciiHostPort || uri.HostPort || uri.hostPort || uri.host] || {};
+                    if (!FeiRuoNet.ProxyLocal && /^((192\.168|172\.([1][6-9]|[2]\d|3[01]))(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){2}|10(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){3})$/i.test(obj.IP))
+                        return ProxySrv;
                     if (FeiRuoNet.ProxyMode == 2)
                         return FeiRuoNet.ProxyServers[FeiRuoNet.DefaultProxy].ProxyServer;
                     var splttag = uri.spec.indexOf("?"),
@@ -2137,22 +2145,7 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
         /*****************************************************************************************/
         LookUp_Flag: function(checkCache, host) {
             if (checkCache && FeiRuoNet.Caches.Query[host].FlagHash) return this.LoadIcon(FeiRuoNet.Caches.Query[host].FlagHash);
-            if (FeiRuoNet.DataBase.QQwryDate.IsReady) return;
-            if (FeiRuoNet.DataBase.FlagFoxDB.IsReady) {
-                var IP = FeiRuoNet.Caches.Query[host].IP;
-                var Code = FeiRuoNet.DataBase.FlagFoxDB.LookupIP(IP);
-                if (IP.match(/:/g)) {
-                    var str, CountryName = FeiRuoNet.DataBase.CountryName;
-                    if (code && CountryName) {
-                        for (var i in CountryName) {
-                            if (!new RegExp(CountryName[i], "i").test(code)) continue;
-                            str = String(i);
-                        }
-                    }
-                    if (str) FeiRuoNet.Caches.Query[host].IPAddrInfo = str;
-                }
-                return this.UpdateIcon(host, Code);
-            }
+            if (FeiRuoNet.DataBase.QQwryDate.IsReady || FeiRuoNet.DataBase.FlagFoxDB.IsReady) return;
             if (this.FlagApi == this.InfoApi) return;
             if (!this.FlagApi) return this.LookupIP_taobao(host, "Flag");
             FeiRuoNet.XRequest({
@@ -2181,6 +2174,21 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
                     Code = Code || "CN";
                 }
                 FeiRuoNet.Caches.Query[host].IPAddrInfo = IPAddrInfo.Country + '\n' + IPAddrInfo.Area;
+                return this.UpdateIcon(host, Code);
+            }
+            if (FeiRuoNet.DataBase.FlagFoxDB.IsReady) {
+                var IP = FeiRuoNet.Caches.Query[host].IP;
+                var Code = FeiRuoNet.DataBase.FlagFoxDB.LookupIP(IP);
+                if (!IP.match(/:/g)) {
+                    var str, CountryName = FeiRuoNet.DataBase.CountryName;
+                    if (Code && CountryName) {
+                        for (var i in CountryName) {
+                            if (!new RegExp(CountryName[i], "i").test(Code)) continue;
+                            str = String(i);
+                        }
+                    }
+                    if (str) FeiRuoNet.Caches.Query[host].IPAddrInfo = str;
+                }
                 return this.UpdateIcon(host, Code);
             }
             if (!this.InfoApi) return this.LookupIP_taobao(host, "All");
@@ -2270,18 +2278,20 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
             FeiRuoNet.XRequest({
                 url: 'http://ip.taobao.com/service/getIpInfo.php?ip=' + FeiRuoNet.Caches.Query[host].IP,
             }).then(request => {
-                if (request.status === 200) var responseObj = JSON.parse(request.response);
-                if (responseObj && responseObj.code == 0) resolve(responseObj);
-                else reject();
-            }).then(responseObj => {
-                var country_id = responseObj.data.country_id.toLocaleLowerCase();
-                var addr = responseObj.data.country + responseObj.data.area;
-                if (responseObj.data.region || responseObj.data.city || responseObj.data.county || responseObj.data.isp) addr = addr + '\n' + responseObj.data.region + responseObj.data.city + responseObj.data.county + responseObj.data.isp;
-                if (type == "Flag" || type == "All") this.UpdateIcon(host, country_id || responseObj.data.country);
-                if (type == "Tip" || type == "All") {
-                    FeiRuoNet.Caches.Query[host].IPAddrInfo = addr;
-                    FeiRuoNet.Caches.Query[host].IPAddrInfoThx = 'http://ip.taobao.com/service/getIpInfo.php?ip=';
-                    this.UpdateTooltipText(host);
+                var obj;
+                if (request.status === 200) obj = JSON.parse(request.response);
+                if (obj && obj.code == 0) {
+                    var country_id = obj.data.country_id.toLocaleLowerCase();
+                    var addr = obj.data.country + obj.data.area;
+                    if (obj.data.region || obj.data.city || obj.data.county || obj.data.isp) addr = addr + '\n' + obj.data.region + obj.data.city + obj.data.county + obj.data.isp;
+                    if (type == "Flag" || type == "All") this.UpdateIcon(host, country_id || obj.data.country);
+                    if (type == "Tip" || type == "All" || !this.InfoApi) {
+                        FeiRuoNet.Caches.Query[host].IPAddrInfo = addr;
+                        FeiRuoNet.Caches.Query[host].IPAddrInfoThx = 'http://ip.taobao.com/service/getIpInfo.php?ip=';
+                        this.UpdateTooltipText(host);
+                    }
+                } else {
+                    if (type == "Flag" || type == "All") this.UpdateIcon(host, this.Unknown);
                 }
             }, error => {
                 if (type == "Flag" || type == "All") this.UpdateIcon(host, this.Unknown);
@@ -2378,7 +2388,7 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
             }
             var src = this.GetIconPath(code) || (FeiRuoNet.DataBase.CountryFlag && (code.toLowerCase() in FeiRuoNet.DataBase.CountryFlag) ? FeiRuoNet.DataBase.CountryFlag[code.toLowerCase()] : null);
             if (!src || code == this.Unknown) {
-                src = FeiRuoNet.BAK_FLAG_PATH + code + FeiRuoNet.BAK_FLAG_PATH_Format;
+                src = FeiRuoNet.BAK_FLAG_PATH + code + "." + FeiRuoNet.BAK_FLAG_PATH_Format;
                 var img = new Image();
                 img.src = src;
                 if (img.height == 100 && img.height == img.height) {
@@ -2447,7 +2457,7 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
             _$("ApiIdx1").selectedIndex = 0;
             _$("Inquiry_Delay").value = 1000;
             _$("ProxyMode").value = 0;
-            // _$("ProxyPath").value = "";
+            _$("ProxyLocal").value = false;
             _$("ProxyTimes").value = 5;
             _$("ProxyTimer").value = 3500;
             _$("EnableRefChanger").value = false;
@@ -2473,6 +2483,7 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
             FeiRuoNet.Prefs.setBoolPref("EnableRefChanger", _$("EnableRefChanger").value);
             FeiRuoNet.Prefs.setBoolPref("EnableUAChanger", _$("EnableUAChanger").value);
             FeiRuoNet.Prefs.setBoolPref("EnableProxyByError", _$("EnableProxyByError").value);
+            FeiRuoNet.Prefs.setBoolPref("ProxyLocal", _$("ProxyLocal").value);
             FeiRuoNet.Prefs.setCharPref("IconShow", _$("IconShow").value);
             this.TreeSave();
         },
@@ -2620,21 +2631,20 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
         },
         AddCSS: function() {
             var css = ('\
-            menuseparator{margin-top:10px;}\
-            textbox.proxyName{width:100px;}\
-            .proxyHost{width:100px;}\
-            .proxyPort{width:50px;}\
+            textbox.proxyName { width: 100px; }\
+            .proxyHost { width: 100px; }\
+            .proxyPort { width: 50px; }\
             #note,\
-            #warning{color:red;}\
-            #tip{color:green;}\
+            #warning { color: red; }\
+            #tip { color: green; }\
             #tip,\
             #note,\
-            #warning{font-weight:bold;margin-top:20px;}\
-            radiogroup > .proxyHttp{margin-left:10px !important;}\
-            radiogroup > .proxyHttps{margin-left:0px !important;}\
-            radiogroup > .proxySocks4{margin-left:10px !important;}\
-            radiogroup > .proxySocks5{margin-left:15px !important;}\
-            .remoteBox{margin-left:15px !important;}\
+            #warning { font-weight: bold; margin-top: 20px; }\
+            radiogroup > .proxyHttp { margin-left: 10px !important; }\
+            radiogroup > .proxyHttps { margin-left: 0px !important; }\
+            radiogroup > .proxySocks4 { margin-left: 10px !important; }\
+            radiogroup > .proxySocks5 { margin-left: 15px !important; }\
+            .remoteBox { margin-left: 15px !important; }\
             '.replace(/\n|\t/g, ''));
             var pi = FeiRuoNet.GetWindow('Preferences').document.createProcessingInstruction('xml-stylesheet', 'type="text/css" href="data:text/css;utf-8,' + encodeURIComponent(css) + '"');
             FeiRuoNet.GetWindow('Preferences').document.insertBefore(pi, FeiRuoNet.GetWindow('Preferences').document.documentElement);
@@ -2823,29 +2833,24 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
             db.loadState = 0;
             if (!this.IPDBmetadata) throw "IPDB metadata file failed to load";
             db.loadState = 1;
-            var Reader = new Promise(function(resolve, reject) {
-                var reader = new FileReader();
-                reader.onload = function(f) {
-                    resolve(reader);
-                }
-                reader.onerror = function(event) {
-                    reject(event);
-                }
-                reader.readAsArrayBuffer(new File(FileUtils.getFile("UChrm", ["lib", db.filename])));
-            });
-            Reader.then(reader => {
+            var request = new XMLHttpRequest();
+            request.open("GET", "file:///" + FileUtils.getFile("UChrm", ["lib", db.filename]).path);
+            request.responseType = "arraybuffer";
+            request.onerror = event => {
+                this.Clear();
+            };
+            request.onload = event => {
                 if (db.loadState != 1) return;
                 try {
                     db.loadState = 2;
-                    this.LoadCompressedIPDBdata(db, reader.result);
+                    this.LoadCompressedIPDBdata(db, request.response);
                     db.loadState = 3;
                     this.IsReady = true;
                 } catch (e) {
-                    this.HandleIPDBLoadError(db, "FeiRuoNet_Flag ERROR attempting to load " + db.type + " DB data: " + e);
+                    throw "FeiRuoNet_Flag ERROR attempting to load " + db.type + " DB data: " + e;
                 }
-            }, error => {
-                this.HandleIPDBLoadError(db, "FeiRuoNet_Flag ERROR attempting to load " + db.type + " DB file from: " + db.path + " Error Msg : " + error);
-            });
+            };
+            request.send();
         },
         HandleIPDBLoadError: function(db, msg) {
             this.CloseIPDBfile(db);
@@ -2894,27 +2899,23 @@ location == "chrome://browser/content/browser.xul" && (function(CSS) {
     function QQwryDate(Code, file) {
         this.Clear();
         if (!Code || !file) return;
-        var Reader = new Promise(function(resolve, reject) {
-            var reader = new FileReader();
-            reader.onload = function(f) {
-                resolve(reader.result);
-            }
-            reader.onerror = function(event) {
-                reject(event);
-            }
-            reader.readAsArrayBuffer(new File(file));
-        });
-        Reader.then(result => {
+        var request = new XMLHttpRequest();
+        request.open("GET", "file:///" + file.path);
+        request.responseType = "arraybuffer";
+        request.onerror = event => {
+            this.Clear();
+        };
+        request.onload = event => {
+            var result = request.response;
             this.IPFileBuffer = new DataView(result);
             this.Uint8Array = new Uint8Array(result);
             this.IPBegin = this.IPFileBuffer.getUint32(0, true); //索引的开始位置;
             this.IPEnd = this.IPFileBuffer.getUint32(4, true); //索引的结束位置;
             this.GBKCode = Code;
             this.IsReady = true;
-        }, error => {
-            this.Clear();
-        });
-        if (this.IsReady) return this;
+        };
+        request.send();
+        return this;
     }
     QQwryDate.prototype = {
         IsReady: false,

@@ -95,11 +95,15 @@ var HeadRules = { //Http Head Rules
  *这里是UA自动切换规则列表。
  *******************************************************************************************/
 var UASites = { //UA自动规则列表
+	"http://www\\.apple\\.com/": "Chrome-Win7",
+	"https?://(?:mybank.*|b2c.*)\\.icbc\\.com\\.cn/": "Firefox20", //工商銀行
 	"^https?://([a-zA-Z]+)\\.?kankan.com.*$": "Safari-Mac", //直接可以看kankan视频，无需高清组件
 	"^https?://wap.*": "UCBrowser", //WAP用UC浏览器
+	"^https?://([a-zA-Z]+)?\\.?bihawa.com.*$": "UCBrowser", //WAP用UC浏览器
 	"^https?://([a-zA-Z]+)\\.?uc.cn.*$": "UCBrowser", //WAP用UC浏览器
-	"^https?://([a-zA-Z]+).qq.com.*$": "Chrome-Win7",
-	"^https?://(pcs\\.baidu\\.com|baidupcs\\.com).*$": "BaiduYunGuanJia",
+	// "^https?://([a-zA-Z]+).qq.com.*$": "Chrome-Win7",
+	"^https?://(pcs|pan)\\.baidu\\.com.*$": "Safari-Mac",
+	"^https?://baidupcs\\.com.*$": "BaiduYunGuanJia",
 	"^https?://([a-zA-Z]+)\\.115\\.com.*$": "115Browser",
 	"^https?://([a-zA-Z]+)\\.myip\\.cn.*$": "Chrome-Win7",
 	"^http://mmbiz.qpic.cn.*$": "QQWEIXIN"
@@ -109,23 +113,26 @@ var UASites = { //UA自动规则列表
  *@FORGE：发送根站点referer
  *@BLOCK : 发送空referer
  *******************************************************************************************/
-var RefererChange = { //RefererChange 来源伪造 
-	// 'qpic.cn': 'http://user.qzone.qq.com',
-	'www.economist.com': 'https://www.google.com/', //突破每週3篇限制  
+var RefererChange = { //RefererChange 来源伪造
+	//*目标网址类
+	'tu11.com': '@FORGE',
+	'economist.com': 'https://www.google.com/', //突破每週3篇限制
 	'wsj.com': 'https://www.google.com/', //免登陆或订阅看全文
+	'wsj.net': 'https://www.google.com/', //免登陆或订阅看全文
 	'img.liufen.com': 'http://www.liufen.com.cn/',
-	't4.mangafiles.com': 'http://www.imanhua.com/',
-	't5.mangafiles.com': 'http://www.imanhua.com/',
+	'mangafiles.com': 'http://www.imanhua.com/',
 	'douban.com': 'http://www.douban.com',
 	'yyets.com': 'http://www.yyets.com/',
 	'space.wenxuecity.com': 'http://bbs.wenxuecity.com/',
-	'www.autoimg.cn': 'http://club.autohome.com.cn/',
+	'autoimg.cn': 'http://club.autohome.com.cn/',
 	'kkkmh.com': 'http://www.kkkmh.com/',
 	'nonie.1ting.com': 'http://www.1ting.com/',
 	'img.knb.im': 'http://www.kenengba.com/',
 	'xici.net': 'http://www.xici.net/',
 	'media.chinagate.com': 'http://www.wenxuecity.com/',
+	'jdstatic.tankr.net': 'http://jandan.net/',
 	'sankakustatic.com': 'http://chan.sankakucomplex.com/',
+
 	// baidu 相关网站
 	'hiphotos.baidu.com': '@FORGE',
 	'hiphotos.bdimg.com': '@FORGE',
@@ -237,8 +244,8 @@ var UAList = [ //自定义UA列表
 		ua: "Mozilla/5.0 (X11; Linux i586; rv:31.0) Gecko/20100101 Firefox/31.0",
 		image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAB1UlEQVQ4jW2SO2hUYRCFJ7qIGGOhorig2WLZu9f/3vmOvaDBwsbGB4Eoltbx2aaJBLExpBAtDGJhI0hstbBQtPBBBImwCRLQzseCaLESXZt/w+V6fzjVnDP/zJlj9v+rAcHdJ9x9MmICCGa2sYJvQ+12e4eZ1UII+4FpSXclzbr7ZeASMAc8BKbzPG+b2dC6OkmSEeCapHOSFtz9KnBB0uHSVMeBj8AH4Gyz2dxmZmYhBID3wE9JHUmPJT0IIewrjhk/Gpf0Gvgu6War1dppwBjwSVJ/AOAtcDBJkpHyvsABSe+ArrufNOCOpLVig4hl4Gi5gbvvAp5L6rv7dZP0tSwG/kqaCSFsLTdI03QP8CZyV03SSkn8Q9KTPM9PV50sz/NDkl4M+CZpuTTBF+CEuw9nWbbb3ZMQwqaCBxej4X3gs0laqti/A9wDnklaBI5F/QZ3v1HgLZik+xUNBqu8knQ+y7K9jUZjc8xKJ9Z77j5pwDjQLYl7wDwwFkLYnqbpKDAFfCtwXoYQmoOAzFdM0JO0BDyVtCjpd6HWlXRm3VlJDUmPgD9V65TwC5iq1+tbyvcdBW7FmFaKY2KvVOVjkLJhdz8VjV2NwjVJK8Btdz9iZrWi5h+UYfMbxqhMHAAAAABJRU5ErkJggg=="
 	}, {
-		label: "Firefox33-Mac",
-		ua: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10; rv:33.0) Gecko/20100101 Firefox/33.0",
+		label: "Firefox48-Mac",
+		ua: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10;  rv:48.0) Gecko/20100101 Firefox/48.0",
 		image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABaElEQVQ4jX3Sz0vUURQF8M/MYDWRCS2arIgiIZEEXQQSSBFBm6BFC4kKIkjEQCmFaGUUGSoo9GNqkVNBm6AW0a6/I/p7WnzPyJcnduDC495zzn3vvkuFAXTQwDk8xTZ6+JR4gjP2wDV8wU28xlt0Y3YAJ3EbP8Jt1MUtvMQ3/MVHvMd3HCsaLeMPbqHZTx7CBkZxKTGSm1zH/prBqTynm5uAE9jCUNHtCn7iaC3XxDPciKYDd/CwEJ/FemZSYiHmc7gLm7hQIxzBm5AapRqLuIzJaG2rptxHBx9wP10WMJ7aAF6pfud4tHoYLrqM52n38Eu1FzCFtRgN9w26GCsMJvAVv7GE05gOdzKcMbyDx5gpDPZlBs/TcQMrMe5jJlrnM4zDdqOh2sSDaosT7ma0YD5RJ+2FZo2/g0G8wCza/xG38SDcwbI4hEeqN19VfWc70UluLZxya3fQwkWs4rNq73s5r6bWqgv+AYBxON0vXviZAAAAAElFTkSuQmCC"
 	}
 ];
@@ -463,6 +470,7 @@ var CustomInfos = [
 
 var Interfaces = [ //网站IP信息查询源
 	{
+		//此为示例，这个查询源已经挂了
 		label: "纯真 查询源", //菜单中显示的文字
 		isFlag: false, //是否作为国旗图标的查询源,所有自定义项目中，只能有一个设为true，其余可删除该项或为false,当你没有设定的时候会使用脚本预设
 		isJustFlag: false, //是否仅作为国旗图标的查询源,如果有此项，就不会创建此项的菜单，也不会作为信息查询源使用。该项为false的时候可删除或注释掉
@@ -552,22 +560,6 @@ var Interfaces = [ //网站IP信息查询源
 					return obj || null;
 				} else return null;
 			} else return null;
-		}
-	}, {
-		label: "波士顿大学",
-		Api: "http://phyxt8.bu.edu/iptool/qqwry.php?ip=",
-		Func: function(docum) {
-			if (docum) {
-				var s_local = docum;
-				s_local = s_local.replace(/ +CZ88.NET ?/g, "");
-
-				var obj = {};
-				obj.IPAddrInfo = s_local || null;
-				obj.CountryCode = null;
-				obj.CountryName = null;
-				return obj || null;
-			} else return null;
-
 		}
 	}, {
 		label: "淘宝 查询源",
