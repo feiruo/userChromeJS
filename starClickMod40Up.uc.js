@@ -13,6 +13,7 @@
 // @note      		  	参考star Click（http://g.mozest.com/viewthread.php?tid=41377）
 // @note      		 	为编辑面板增加更多功能
 // @note      		 	左键弹出书签添加编辑面板，中键打开书签侧栏，右键删除当前书签
+// @version    		    1.8.5 	兼容至53。
 // @version    		    1.8.4 	全面修复，仅支持40Up。设置放入about:config中，即时生效。
 // @version    		    1.8.3 	40Up。
 // @version    		    1.8.2 	building 部分功能可以自定义。
@@ -25,7 +26,7 @@
 // @version      		1.3 	修复了可能出现的文件夹列表不能自动展开和获取上次文件夹的问题.
 // @version      		1.2 	修正因 firefox 26 添加了 bookmarks-menu-button 导致的判断出错.
 // @version      		1.1 	修正因 Nightly Australis 没有删除 star-button 导致的判断出错.
-// ==/UserScript== 
+// ==/UserScript==
 location == "chrome://browser/content/browser.xul" && (function() {
 
 	if (window.starClick) {
@@ -34,22 +35,24 @@ location == "chrome://browser/content/browser.xul" && (function() {
 	}
 
 	var starClick = {
+		version: Services.appinfo.version.split(".")[0],
 		Default_PlacesCommandHook_bookmarkCurrentPage: PlacesCommandHook.bookmarkCurrentPage.toString(),
 		get prefs() {
 			delete this.prefs;
 			return this.prefs = Services.prefs.getBranch("userChromeJS.starClickMod.");
 		},
 		get StarBtn() {
-			var version = Services.appinfo.version.split(".")[0];
-			if (version < 29)
+			if (this.version < 29)
 				return $('star-button');
 			else {
-				var NodeList = document.getAnonymousNodes($('bookmarks-menu-button'));
-				for (var i in NodeList) {
-					if (!NodeList[i].className) continue;
-					if (NodeList[i].className != "box-inherit toolbarbutton-menubutton-button") continue;
-					return NodeList[i];
-				}
+				return $('bookmarks-menu-button');
+				// var NodeList = document.getAnonymousNodes($('bookmarks-menu-button'));
+				// var NodeList = document.getAnonymousNodes($('bookmarks-menu-button'));
+				// for (var i in NodeList) {
+				// 	if (!NodeList[i].className) continue;
+				// 	if (NodeList[i].className != "box-inherit toolbarbutton-menubutton-button") continue;
+				// 	return NodeList[i];
+				// }
 			}
 		},
 
@@ -142,22 +145,34 @@ location == "chrome://browser/content/browser.xul" && (function() {
 		},
 
 		Click: function(event) {
-			if (event.button == 0) {
-
-			} else if (event.button == 1) {
-				toggleSidebar('viewBookmarksSidebar');
-				event.stopPropagation();
-			} else if (event.button == 2) {
-				var uri = gBrowser.selectedBrowser.currentURI;
-				var itemId = PlacesUtils.getMostRecentBookmarkForURI(uri);
-				if (itemId == -1) return;
-				event.preventDefault();
-				try {
-					Cc["@mozilla.org/browser/nav-bookmarks-service;1"].getService(Ci.nsINavBookmarksService).removeItem(itemId);
-				} catch (ex) {
-					console.log(ex)
+			if (starClick.version > 29) {
+				var Btn;
+				var NodeList = document.getAnonymousNodes($('bookmarks-menu-button'));
+				for (var i in NodeList) {
+					if (!NodeList[i].className) continue;
+					if (NodeList[i].className != "box-inherit toolbarbutton-menubutton-button") continue;
+					Btn = NodeList[i];
 				}
-				event.stopPropagation();
+				if (event.originalTarget != Btn) return;
+			}
+			switch (event.button) {
+				case 0:
+					break;
+				case 1:
+					toggleSidebar('viewBookmarksSidebar');
+					event.stopPropagation();
+					break;
+				case 2:
+					var itemId = PlacesUtils.getMostRecentBookmarkForURI(gBrowser.selectedBrowser.currentURI);
+					if (itemId == -1) return;
+					event.preventDefault();
+					try {
+						Cc["@mozilla.org/browser/nav-bookmarks-service;1"].getService(Ci.nsINavBookmarksService).removeItem(itemId);
+					} catch (ex) {
+						console.log(ex)
+					}
+					event.stopPropagation();
+					break;
 			}
 		},
 
