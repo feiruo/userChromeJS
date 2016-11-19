@@ -14,6 +14,7 @@
 // @downloadURL		https://github.com/feiruo/userChromeJS/raw/master/anoBtn/anoBtn.uc.js
 // @note			支持菜单和脚本设置重载
 // @note			需要 _anoBtn.js 配置文件
+// @version			1.4.1 	2016.11.07 	14:30	Fix For E10s。
 // @version			1.4.0 	2016.03.30 	15:30	修改机制，遍历文件支持参数，开放生成函数AnoBtn_BuildPopup，方法[PopupBuild = new AnoBtn_BuildPopup('PopupID');PopupBuild.Build(Menus)]。
 // @version			1.3.9 	2016.03.24 	17:30	Fix clone & load。
 // @version			1.3.8 	2016.03.24 	14:30	Fix Urlbar-icons & popup。
@@ -54,7 +55,20 @@
 			return this.File = aFile;
 		},
 		get FocusedWindow() {
-			return gContextMenu && gContextMenu.target ? gContextMenu.target.ownerDocument.defaultView : (content ? content : gBrowser.selectedBrowser.contentWindowAsCPOW);
+			var title = gBrowser.selectedTab.label || gBrowser.selectedBrowser.contentTitle;
+			var url = gBrowser.currentURI.spec || gBrowser.selectedBrowser.currentURI.spec;
+			var cont;
+			if (gMultiProcessBrowser) {
+				function listener(message) {
+					cont = message.objects.cont;
+					return cont;
+				}
+				window.messageManager.addMessageListener("AnotherButton:AnotherButton-e10s-content-" + this.E10SMSG, listener);
+				window.messageManager.removeMessageListener("AnotherButton:AnotherButton-e10s-content-" + this.E10SMSG, listener);
+			} else {
+				return window.content || gBrowser.selectedBrowser._contentWindow;
+			}
+			// return window.content || gBrowser.selectedBrowser._contentWindow;
 		},
 
 		init: function() {
@@ -66,6 +80,15 @@
 				class: "menuitem-iconic",
 				onclick: "anoBtn.BtnClick(event);",
 			}), ins);
+			if (!this.E10SMSG) this.E10SMSG = Math.floor(Math.random() * 900000 + 99999);
+			if (gMultiProcessBrowser) {
+
+				if (!this.IsMultiProcessScript) {
+					var script = "data:application/javascript," + encodeURIComponent('sendAsyncMessage("AnotherButton:AnotherButton-e10s-content-' + this.E10SMSG + '", {}, {cont: content,})');
+					window.messageManager.loadFrameScript(script, true);
+					this.IsMultiProcessScript = true;
+				}
+			}
 
 			this.ToRegExp();
 			this.Rebuild();
@@ -386,69 +409,29 @@
 
 		ConvertText: function(text) {
 			var that = this;
-			var context = gContextMenu || {
-				link: {
-					href: "",
-					host: ""
-				},
-				target: {
-					alt: "",
-					title: ""
-				},
-				__noSuchMethod__: function(id, args)
-				"",
-			};
 			var tab = document.popupNode && document.popupNode.localName == "tab" ? document.popupNode : null;
 			var win = tab ? tab.linkedBrowser.contentWindow : this.FocusedWindow;
+			var title = gBrowser.selectedTab.label || gBrowser.selectedBrowser.contentTitle;
+			var url = gBrowser.currentURI.spec || gBrowser.selectedBrowser.currentURI.spec;
+			var host = gBrowser.currentURI.asciiHostPort || gBrowser.currentURI.HostPort || gBrowser.currentURI.hostPort || gBrowser.currentURI.host;
 
 			function convert(str) {
 				switch (str) {
 					case "%T":
-						return win.document.title;
 					case "%TITLE%":
-						return win.document.title;
+						return title;
 					case "%TITLES%":
-						return win.document.title.replace(/\s-\s.*/i, "").replace(/_[^\[\]【】]+$/, "");
+						return title.replace(/\s-\s.*/i, "").replace(/_[^\[\]【】]+$/, "");
 					case "%U":
-						return win.location.href;
 					case "%URL%":
-						return win.location.href;
+						return url;
 					case "%H":
-						return win.location.host;
 					case "%HOST%":
-						return win.location.host;
+						return host;
 					case "%S":
-						return that.getSelection(win) || "";
 					case "%SEL%":
 						return that.getSelection(win) || "";
-					case "%L":
-						return context.linkURL || "";
-					case "%RLINK%":
-						return context.linkURL || "";
-					case "%RLINK_HOST%":
-						return context.link.host || "";
-					case "%RLINK_TEXT%":
-						return context.linkText() || "";
-					case "%RLINK_OR_URL%":
-						return context.linkURL || win.location.href;
-					case "%RLT_OR_UT%":
-						return context.onLink && context.linkText() || win.document.title; // 链接文本或网页标题
-					case "%IMAGE_ALT%":
-						return context.target.alt || "";
-					case "%IMAGE_TITLE%":
-						return context.target.title || "";
-					case "%I":
-						return context.imageURL || "";
-					case "%IMAGE_URL%":
-						return context.imageURL || "";
-					case "%IMAGE_BASE64%":
-						return img2base64(context.imageURL);
-					case "%M":
-						return context.mediaURL || "";
-					case "%MEDIA_URL%":
-						return context.mediaURL || "";
 					case "%P":
-						return readFromClipboard() || "";
 					case "%CLIPBOARD%":
 						return readFromClipboard() || "";
 					case "%FAVICON%":
@@ -458,12 +441,10 @@
 					case "%EMAIL%":
 						return getEmailAddress() || "";
 					case "%IP%":
-						return FeiRuoNet_InfoCaches && FeiRuoNet_InfoCaches.DNS[gBrowser.selectedBrowser.currentURI.host];
+						return FeiRuoNet && FeiRuoNet.Caches.DNS[gBrowser.selectedBrowser.currentURI.host];
 					case "%BASEDOMAIN%":
 						var eTLDService = Cc["@mozilla.org/network/effective-tld-service;1"].getService(Ci.nsIEffectiveTLDService);
 						return eTLDService.getBaseDomain(makeURI(gBrowser.selectedBrowser.currentURI.spec));
-					case "%EOL%":
-						return "\r\n";
 					case "%EOL%":
 						return "\r\n";
 				}
@@ -844,7 +825,7 @@
 			cls.add(this.ID + "_CustomMenu");
 			cls.add("menu-iconic");
 
-			menuObj.child.forEach(function(obj) {
+			menuObj.child && menuObj.child.forEach(function(obj) {
 				Popup.appendChild(this.CreateMenuitem(obj));
 			}, this);
 
@@ -981,7 +962,7 @@
 				if (!uri) return;
 
 				menu.setAttribute("scheme", uri.scheme);
-				PlacesUtils.favicons.getFaviconDataForPage(uri, {
+				PlacesUtils && PlacesUtils.favicons && PlacesUtils.favicons.getFaviconDataForPage(uri, {
 					onComplete: function(aURI, aDataLen, aData, aMimeType) {
 						try {
 							// javascript: URI の host にアクセスするとエラー
@@ -992,7 +973,7 @@
 					}
 				});
 			}
-			PlacesUtils.keywords.fetch(obj.keyword || '').then(entry => {
+			PlacesUtils && PlacesUtils.keywords && PlacesUtils.keywords.fetch(obj.keyword || '').then(entry => {
 				let url;
 				if (entry) {
 					url = entry.url.href;

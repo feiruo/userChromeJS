@@ -7,19 +7,16 @@ anoBtn.uc.js
  - 工具菜单中增加一个重载菜单，左键重载，右键编辑配置文件。
  - 支持多级菜单（如无特殊需求，不推荐，影响体验）。
  - 支持文件夹枚举文件及执行文件参数。
- - 开放的菜单生成函数 window.AnoBtn_BuildPopup。
- - 配置与addmenu一样，但仅支持本脚本菜单位置，具体请参照；https://github.com/ywzhaiqi/userChromeJS/tree/master/addmenuPlus
- - 配置文件位置：
-
-		Chrome\lib\_anoBtn.js
-
+ - 开放的菜单生成函数 `window.AnoBtn_BuildPopup`。
+ - 配置与addmenu一样，但仅支持本脚本菜单位置，具体请参照[addmenuPlus](https://github.com/ywzhaiqi/userChromeJS/tree/master/addmenuPlus "addmenuPlus")
+ - 配置文件位置：`Chrome\lib\_anoBtn.js`
  - 目录枚举添加请注意：
- 1. 斜杠"/"或"\"开头为相对配置文件夹，注意：Linux路径区分大小写！！！！
- 2. 根据文件名全名字符(包括扩展名)排除或筛选;
- 3. 关系为：先排除再枚举。
- 4. 注意：配对模式为 test循环模式正则！！！注意正则全局"g"的使用！！test()继承正则表达式的lastIndex属性，表达式在匹配全局标志g的时候须注意。
- 5. 留空表示不进行该行为。
- 6. 在文件夹上左键点击为打开文件夹
+ 1.  斜杠"/"或"\"开头为相对配置文件夹，注意：Linux路径区分大小写！！！！
+ 1.  根据文件名全名字符(包括扩展名)排除或筛选;
+ 1. 关系为：先排除再枚举。
+ 1. 注意：配对模式为 test循环模式正则！！！注意正则全局"g"的使用！！test()继承正则表达式的lastIndex属性，表达式在匹配全局标志g的时候须注意。
+ 1. 留空表示不进行该行为。
+ 1. 在文件夹上左键点击为打开文件夹
  
  - 示例：
 
