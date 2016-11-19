@@ -8,7 +8,7 @@ https://github.com/ywzhaiqi/userChromeJS/tree/master/userChromeJS_Mix.xpi
 
 
 #####QrCreator.uc.js
-1. 修改于https://raw.github.com/lastdream2013/userChrome/master/qrCreator.uc.js
+1. 修改于[qrCreator](https://raw.github.com/lastdream2013/userChrome/master/qrCreator.uc.js "qrCreator")
 2. 支持E10S
 3. 支持ywzhaiqi的userChromeJS_Mix实时启用禁用
 3. 本地解析二维码，支持背景图像和canvas
@@ -37,24 +37,21 @@ https://github.com/ywzhaiqi/userChromeJS/tree/master/userChromeJS_Mix.xpi
 
 #####starClickMod40Up.uc.js
 - 仅支持40Up。
-- 全面修复。
-- 设置放入about:config中，即时生效。
-- userChromeJS.starClickMod.isAutoPopup;  是否自动弹出面板
-- userChromeJS.starClickMod.isLastFolder; 是否自动定位到上次使用的文件夹
+- 设置放入`about:config`中，即时生效，有以下 参数：
+1.  ` userChromeJS.starClickMod.isAutoPopup;`  是否自动弹出面板
+1.  ` userChromeJS.starClickMod.isLastFolder;` 是否自动定位到上次使用的文件夹
 
 #####StarUrlicon.uc.js
 - UI移动整个书签按钮到地址栏；
-- 推荐和bookmarkBtn.uc.js同时使用
-- 有以下 about:config 开关参数；
-userChromeJS.StarUrlicon.Assistant    //右键 显示/隐藏 书签侧栏，中键删除当前页面书签
-userChromeJS.StarUrlicon.CSS    //自带的css样式
-userChromeJS.StarUrlicon.Dropmarker    //隐藏Dropmarker
-
-		
+- 推荐和`bookmarkBtn.uc.js`同时使用
+- 设置放入`about:config`中，即时生效，有以下 参数：
+1. `userChromeJS.StarUrlicon.Assistant`    //右键 显示/隐藏 书签侧栏，中键删除当前页面书签
+1. `userChromeJS.StarUrlicon.CSS`    //自带的css样式
+1. `userChromeJS.StarUrlicon.Dropmarker`    //隐藏Dropmarker
 
 #####FeiRuoBackup.uc.js
 - 备份、整合和还原配置文件。
 - 需要在脚本内自行参照示例设置。
 - 暂只支持文本形式文件的备份、整合和还原。
-- FeiRuoBackup.Toggle() 可以实时开启或关闭。
+- ` FeiRuoBackup.Toggle() `可以实时开启或关闭。
 - 菜单栏 → 工具 → 备份还原文件 可查看启用状态，实时开启或关闭
